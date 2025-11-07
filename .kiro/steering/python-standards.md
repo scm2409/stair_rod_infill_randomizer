@@ -82,6 +82,10 @@ project-root/
 - Display log messages with color-coded severity levels
 - Format log output with timestamps and module information
 - Include `rich` as a project dependency
+- Default log level should be INFO (debug logs hidden by default)
+- Support debug logging via command-line argument: `-d` or `--debug`
+- When debug flag is provided, set log level to DEBUG to show debug messages
+- Configure logging early in application startup before other operations
 
 ## CLI Applications
 
@@ -90,6 +94,8 @@ project-root/
 - Support extensible command-line options
 - Parse and validate command-line arguments
 - Include Typer as a project dependency
+- Always include a debug flag: `-d` / `--debug` to enable debug logging
+- Debug flag should be a boolean option that controls log level (INFO by default, DEBUG when enabled)
 
 ## Configuration Management
 
