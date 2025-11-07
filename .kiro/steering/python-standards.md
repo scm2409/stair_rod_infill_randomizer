@@ -50,19 +50,24 @@ All Python projects should follow this structure:
 
 ```
 project-root/
-├── src/                  # Application source code
+├── src/                 # Application source code
 │   └── package_name/
 ├── tests/               # Test files
+├── conf/                # Hydra configuration files
+│   └── config.yaml      # Main configuration file
 ├── .venv/               # Virtual environment (not in git)
-├── .gitignore          # Python-specific exclusions
-├── pyproject.toml      # Project metadata and dependencies
-└── README.md           # Project documentation
+├── .gitignore           # Python-specific exclusions
+├── pyproject.toml       # Project metadata and dependencies
+└── README.md            # Project documentation
 ```
 
 ### Key Points:
 - Use `src/` layout for application code
 - Include `tests/` directory for test files
-- Exclude virtual environments, cache files (`__pycache__`, `*.pyc`), and build artifacts from version control
+- Store Hydra configuration files in `conf/` directory (Hydra's default)
+- Main configuration file should be `conf/config.yaml`
+- Organize configs with Hydra's config groups in subdirectories under `conf/`
+- Exclude virtual environments, cache files (`__pycache__`, `*.pyc`), build artifacts, and Hydra outputs from version control
 - Include comprehensive `.gitignore` for Python projects
 
 ## UI Development
@@ -88,11 +93,33 @@ project-root/
 
 ## Configuration Management
 
-- Use `pydantic` for type-safe configuration validation
-- Validate configuration values against defined types
-- Provide clear error messages for invalid configuration
-- Support loading configuration from files and environment variables
-- Include pydantic as a project dependency
+- Use `Hydra` for hierarchical configuration management
+- Store configuration files in `conf/` directory (Hydra's default location)
+- Main configuration file should be `conf/config.yaml`
+- Use YAML format for configuration files
+- Organize related configs using Hydra's config groups (subdirectories under `conf/`)
+- Use `@hydra.main()` decorator to initialize Hydra in your application
+- Access configuration through OmegaConf DictConfig objects
+- Support configuration composition and overrides via command line
+- Include hydra-core as a project dependency
+- Optionally use pydantic with Hydra for structured configs and validation
+
+### Hydra Configuration Structure:
+```
+conf/
+├── config.yaml          # Main config file
+├── db/                  # Config group for database settings
+│   ├── postgres.yaml
+│   └── sqlite.yaml
+└── model/               # Config group for model settings
+    ├── small.yaml
+    └── large.yaml
+```
+
+### Configuration Override Priority (highest to lowest):
+1. Command-line overrides (e.g., `python app.py db=postgres`)
+2. Config group selections in main config
+3. Defaults in config files
 
 ## Development Dependencies
 
@@ -102,7 +129,8 @@ Separate development dependencies from runtime dependencies in `pyproject.toml`:
 - PySide6
 - rich
 - typer
-- pydantic
+- hydra-core
+- omegaconf
 
 **Development dependencies:**
 - mypy
@@ -121,7 +149,8 @@ dependencies = [
     "PySide6",
     "rich",
     "typer",
-    "pydantic",
+    "hydra-core",
+    "omegaconf",
 ]
 
 [project.optional-dependencies]
