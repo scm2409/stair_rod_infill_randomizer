@@ -29,10 +29,13 @@ This document specifies the requirements for a railing infill generator applicat
 #### Acceptance Criteria
 
 1. THE Generator SHALL create random arrangements of rods within the railing frame boundaries
-2. THE Generator SHALL ensure rods do not overlap with each other
-3. THE Generator SHALL ensure rods remain within the railing frame boundaries
-4. THE Generator SHALL produce different arrangements on each generation request
-5. THE Generator SHALL calculate the positions and dimensions for all rods in the infill
+2. THE Generator SHALL organize infill rods into configurable layers
+3. THE Generator SHALL accept a number of layers parameter with a default value of two layers
+4. THE Generator SHALL ensure rods within the same layer do not cross each other
+5. THE Generator SHALL allow rods in different layers to cross each other
+6. THE Generator SHALL ensure rods remain within the railing frame boundaries
+7. THE Generator SHALL produce different arrangements on each generation request
+8. THE Generator SHALL calculate the positions and dimensions for all rods in the infill
 
 ### Requirement 1.1
 
@@ -173,12 +176,15 @@ This document specifies the requirements for a railing infill generator applicat
 1. THE UI Application SHALL provide a graphical user interface
 2. THE UI Application SHALL display a vector-based viewport with visual representation of the railing frame and infill
 3. THE UI Application SHALL render frame and infill as simple lines in the viewport
-4. THE UI Application SHALL allow users to select shape types from available options
-5. THE UI Application SHALL allow users to select generator types from available options
-6. THE UI Application SHALL provide an "Update Shape" button to render the frame without infill (short-running poeration)
-7. THE UI Application SHALL provide a "Generate Infill" button to trigger infill generation (long-running operation)
-8. THE UI Application SHALL update the viewport visualization when shape or infill is updated
-9. THE UI Application SHALL dynamically update parameter input fields based on selected shape and generator types
+4. THE UI Application SHALL render the frame in a distinct color different from infill rods
+5. THE UI Application SHALL render infill rods with colors assigned by layer
+6. THE UI Application SHALL use different colors for each infill layer
+7. THE UI Application SHALL allow users to select shape types from available options
+8. THE UI Application SHALL allow users to select generator types from available options
+9. THE UI Application SHALL provide an "Update Shape" button to render the frame without infill (short-running operation)
+10. THE UI Application SHALL provide a "Generate Infill" button to trigger infill generation (long-running operation)
+11. THE UI Application SHALL update the viewport visualization when shape or infill is updated
+12. THE UI Application SHALL dynamically update parameter input fields based on selected shape and generator types
 
 ### Requirement 7.1
 
