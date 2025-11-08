@@ -325,6 +325,19 @@ This document specifies the requirements for a railing infill generator applicat
 3. THE UI Application SHALL display progress logs in the progress dialog
 4. THE UI Application SHALL block input to the main application window while the progress dialog is visible
 5. THE UI Application SHALL close the progress dialog when the operation completes
+
+### Requirement 9.1.1
+
+**User Story:** As a user, I want to see generation progress metrics, so that I can monitor the quality and performance of the infill generation
+
+#### Acceptance Criteria
+
+1. WHEN infill generation is in progress, THE UI Application SHALL display the current iteration number
+2. THE UI Application SHALL display the best fitness score found so far
+3. THE UI Application SHALL display the elapsed duration of the generation process
+4. THE UI Application SHALL update these metrics in real-time during generation
+5. WHEN a new best fitness score is found, THE UI Application SHALL update the main viewport with the corresponding infill arrangement
+6. THE UI Application SHALL refresh the viewport visualization each time a better solution is discovered
 6. THE UI Application SHALL display a cancel button to clancel the current operation.
 
 ### Requirement 9.2
