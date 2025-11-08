@@ -110,9 +110,10 @@ This document specifies the requirements for a railing infill generator applicat
 2. WHEN a shape type is selected, THE UI Application SHALL display only the relevant parameters for that shape
 3. THE Railing Frame SHALL validate all dimensional parameters before generation
 4. THE UI Application SHALL provide clear error messages for invalid parameter values
-5. THE UI Application SHALL provide input for frame rod weight per meter parameter
+5. THE UI Application SHALL provide input for frame rod weight per meter parameter in kilograms per meter
 6. THE UI Application SHALL use centimeters as the default unit for all length measurements
-7. THE UI Application SHALL load default frame rod weight per meter from configuration files
+7. THE UI Application SHALL use kilograms as the unit for all weight measurements
+8. THE UI Application SHALL load default frame rod weight per meter from configuration files
 
 ### Requirement 6
 
@@ -124,7 +125,7 @@ This document specifies the requirements for a railing infill generator applicat
 2. THE Generator SHALL accept infill parameters that control rod placement behavior
 3. THE Generator SHALL apply infill parameters consistently across all shape types
 4. THE Railing Frame SHALL allow each shape type to define shape-specific infill constraints
-5. THE UI Application SHALL provide input for infill rod weight per meter parameter
+5. THE UI Application SHALL provide input for infill rod weight per meter parameter in kilograms per meter
 6. THE UI Application SHALL load default infill parameter values from configuration files
 7. THE UI Application SHALL load default infill rod weight per meter from configuration files
 8. THE UI Application SHALL allow users to modify infill parameters in the GUI
@@ -141,17 +142,49 @@ This document specifies the requirements for a railing infill generator applicat
 4. THE UI Application SHALL load default generator parameter values from configuration files
 5. THE UI Application SHALL allow users to modify generator parameters in the GUI
 
+### Requirement 6.1.1
+
+**User Story:** As a user, I want to configure random infill generator parameters, so that I can control the characteristics of the generated rod arrangement
+
+#### Acceptance Criteria
+
+1. THE Generator SHALL accept a number of infill rods parameter
+2. THE Generator SHALL accept a maximum infill rod length parameter
+3. THE Generator SHALL accept a maximum angle deviation from vertical parameter
+4. THE Generator SHALL accept a number of layers parameter with default value of two
+5. THE Generator SHALL accept a minimum distance between anchor points parameter
+6. THE Generator SHALL ensure infill rods connect to the frame at anchor points
+7. THE Generator SHALL respect the minimum distance constraint between consecutive anchor points on the frame
+8. THE UI Application SHALL provide input fields for all random generator parameters
+9. THE UI Application SHALL load default values for all random generator parameters from configuration files
+
 ### Requirement 6.2
 
 **User Story:** As a user, I want to configure quality evaluation criteria for the random generator, so that I can control what constitutes an acceptable infill arrangement
 
 #### Acceptance Criteria
 
-1. THE Quality Evaluator SHALL accept configurable evaluation criteria parameters
-2. THE Quality Evaluator SHALL assess generated arrangements against the defined criteria
-3. THE Quality Evaluator SHALL return a quality score or pass/fail result for each arrangement
-4. THE UI Application SHALL provide input fields for evaluation criteria parameters
-5. THE UI Application SHALL load default evaluation criteria from configuration files
+1. THE Quality Evaluator SHALL accept a maximum hole area parameter in square centimeters
+2. THE Quality Evaluator SHALL calculate hole areas between infill rods considering all layers and the frame
+3. THE Quality Evaluator SHALL reject arrangements where any hole area exceeds the maximum
+4. THE Quality Evaluator SHALL assess generated arrangements against the defined criteria
+5. THE Quality Evaluator SHALL return a quality score or pass/fail result for each arrangement
+6. THE UI Application SHALL provide input fields for evaluation criteria parameters
+7. THE UI Application SHALL load default evaluation criteria from configuration files
+
+### Requirement 6.2.1
+
+**User Story:** As a developer, I want a fitness function that evaluates arrangement quality, so that the generator can find optimal solutions
+
+#### Acceptance Criteria
+
+1. THE Quality Evaluator SHALL calculate a fitness score based on multiple quality measures
+2. THE Quality Evaluator SHALL favor arrangements where all holes are approximately the same size. Ideally, all holes would be the same size.
+3. THE Quality Evaluator SHALL penalize arrangements where infill rods are nearly vertical
+4. THE Quality Evaluator SHALL penalize arrangements where infill rod angles approach the maximum deviation angle
+5. THE Quality Evaluator SHALL favor arrangements with evenly distributed anchor point spacing along the frame
+6. THE Quality Evaluator SHALL combine all quality measures into a single fitness score
+7. THE Quality Evaluator SHALL use the fitness score to compare and rank different arrangements
 
 ### Requirement 6.3
 
