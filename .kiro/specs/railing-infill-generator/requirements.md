@@ -180,11 +180,14 @@ This document specifies the requirements for a railing infill generator applicat
 
 1. THE Quality Evaluator SHALL calculate a fitness score based on multiple quality measures
 2. THE Quality Evaluator SHALL favor arrangements where all holes are approximately the same size. Ideally, all holes would be the same size.
-3. THE Quality Evaluator SHALL penalize arrangements where infill rods are nearly vertical
-4. THE Quality Evaluator SHALL penalize arrangements where infill rod angles approach the maximum deviation angle
-5. THE Quality Evaluator SHALL favor arrangements with evenly distributed anchor point spacing along the frame
-6. THE Quality Evaluator SHALL combine all quality measures into a single fitness score
-7. THE Quality Evaluator SHALL use the fitness score to compare and rank different arrangements
+3. THE Quality Evaluator SHALL favor arrangements where the incircles of all holes have approximately the same radius. Ideally, the incircles of all holes would be the same size.
+4. THE Quality Evaluator SHALL penalize arrangements where infill rods are nearly vertical
+5. THE Quality Evaluator SHALL penalize arrangements where infill rod angles approach the maximum deviation angle
+6. THE Quality Evaluator SHALL favor arrangements with evenly distributed anchor point spacing along the frame
+7. THE Quality Evaluator SHALL accept configurable weight parameters for each quality criterion
+8. THE Quality Evaluator SHALL load criterion weight values from configuration files
+9. THE Quality Evaluator SHALL combine all quality measures into a single weighted fitness score
+10. THE Quality Evaluator SHALL use the fitness score to compare and rank different arrangements
 
 ### Requirement 6.3
 
