@@ -293,15 +293,33 @@ This document specifies the requirements for a railing infill generator applicat
 
 #### Acceptance Criteria
 
-1. THE UI Application SHALL provide a main menu with save and load actions
-2. WHEN saving, THE UI Application SHALL export all parameters as a JSON file
-3. WHEN saving, THE UI Application SHALL export the viewport visualization as a PNG image
-4. THE UI Application SHALL render the PNG with the viewport zoomed to show the entire design
-5. THE UI Application SHALL use a configurable resolution for PNG export from configuration files
-6. WHEN saving, THE UI Application SHALL export the frame parts BOM table as a CSV file
-7. WHEN saving with generated infill, THE UI Application SHALL export the infill parts BOM table as a CSV file
-8. WHEN loading, THE UI Application SHALL restore all parameters from the JSON file
-9. THE UI Application SHALL allow users to specify save and load file locations
+1. THE UI Application SHALL provide a main menu with New Project, Save, Save As, Load, and Quit actions
+2. WHEN saving, THE UI Application SHALL create a ZIP archive with *.rig.zip extension
+3. THE UI Application SHALL include all parameters as a JSON file in the archive
+4. WHEN saving with generated infill, THE UI Application SHALL include the complete infill solution geometry as JSON data in the archive
+5. THE UI Application SHALL include the viewport visualization as a PNG image in the archive
+6. THE UI Application SHALL render the PNG with the viewport zoomed to show the entire design
+7. THE UI Application SHALL use a configurable resolution for PNG export from configuration files
+8. THE UI Application SHALL include the frame parts BOM table as a CSV file in the archive
+9. WHEN saving with generated infill, THE UI Application SHALL include the infill parts BOM table as a CSV file in the archive
+10. WHEN loading, THE UI Application SHALL extract and restore all data from the ZIP archive
+11. WHEN loading, THE UI Application SHALL restore all parameters from the JSON file
+12. WHEN loading with saved infill data, THE UI Application SHALL restore and display the exact infill arrangement
+13. WHEN loading, THE UI Application SHALL restore the UI to the exact same state as when it was saved
+14. THE UI Application SHALL allow users to specify save and load file locations
+
+### Requirement 8.2.1
+
+**User Story:** As a user, I want to manage my project workflow, so that I can start new projects and avoid losing unsaved work
+
+#### Acceptance Criteria
+
+1. WHEN New Project is selected, THE UI Application SHALL reset the application to default state
+2. WHEN New Project is selected, THE UI Application SHALL reload default values from configuration files
+3. WHEN Quit is selected with unsaved changes, THE UI Application SHALL display a warning dialog
+4. THE UI Application SHALL display the current saved file name in the window title
+5. WHEN the project has unsaved changes, THE UI Application SHALL mark the file name with an asterisk in the window title
+6. THE UI Application SHALL track changes to determine if the project has been modified since last save
 
 ### Requirement 9
 
