@@ -310,6 +310,19 @@ This document specifies the requirements for a railing infill generator applicat
 
 ### Requirement 8.2.1
 
+**User Story:** As a user, I want to export designs to DXF format, so that I can use them in CAD software for manufacturing
+
+#### Acceptance Criteria
+
+1. THE UI Application SHALL provide an "Export to DXF" action in the main menu
+2. WHEN Export to DXF is selected, THE UI Application SHALL export the frame geometry as DXF format
+3. WHEN Export to DXF is selected with generated infill, THE UI Application SHALL export both frame and infill geometry as DXF format
+4. THE UI Application SHALL organize frame and infill elements on separate layers in the DXF file
+5. THE UI Application SHALL allow users to specify the export file location
+6. THE UI Application SHALL only enable the Export to DXF action when a valid design exists
+
+### Requirement 8.2.2
+
 **User Story:** As a user, I want to manage my project workflow, so that I can start new projects and avoid losing unsaved work
 
 #### Acceptance Criteria
@@ -380,3 +393,18 @@ This document specifies the requirements for a railing infill generator applicat
 3. THE UI Application SHALL store default generator parameter values in configuration files
 4. THE UI Application SHALL organize configuration files by shape type and generator type
 5. THE UI Application SHALL load default values from configuration on startup
+
+### Requirement 11
+
+**User Story:** As a developer, I want comprehensive application logging, so that I can troubleshoot issues and monitor application behavior
+
+#### Acceptance Criteria
+
+1. THE UI Application SHALL log to a file in the logs subdirectory by default
+2. THE UI Application SHALL include the current date in the log filename
+3. THE UI Application SHALL support a verbose command-line argument
+4. WHEN the verbose argument is provided, THE UI Application SHALL log to both file and stdout
+5. THE UI Application SHALL organize loggers in a hierarchical structure by component
+6. THE UI Application SHALL use INFO as the default log level for the root logger
+7. THE UI Application SHALL allow log levels to be configured per logger in the hierarchy via configuration files
+8. THE UI Application SHALL support configuring log levels for individual components independently from the root logger
