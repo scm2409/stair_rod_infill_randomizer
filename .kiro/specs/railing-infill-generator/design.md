@@ -44,7 +44,8 @@ The application uses a four-layer architecture with clear boundaries:
 │                                                             │
 │  • Shape System (frame geometry & validation)               │
 │  • Generator System (infill creation algorithms)            │
-│  • Geometry Primitives (Point, Line, Polygon)               │
+│  • Geometry (Shapely: Point, LineString, Polygon)           │
+│  • Rod (unified data structure for frame & infill)          │
 │  • Quality Evaluator (for generators that need it)          │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
@@ -77,10 +78,10 @@ The application uses a four-layer architecture with clear boundaries:
 Shapes define the railing frame boundary where infill rods can be anchored.
 
 **Shape Responsibilities:**
-- Define frame geometry (boundary polygon, frame lines)
+- Define frame geometry (boundary polygon, frame rods)
 - Validate dimensional parameters
-- Provide boundary for rod anchoring (rods can connect anywhere along frame lines)
-- Calculate frame BOM (length, angles, weight)
+- Provide frame rods for anchoring (infill rods can connect anywhere along frame rod geometries)
+- Frame rods include BOM information (length, angles, weight)
 
 **Shape Types:**
 - **Stair Shape**: Two vertical posts connected by angled handrail at top and stepped bottom
@@ -110,11 +111,16 @@ Generators create infill rod arrangements within a shape boundary.
 **Generation Process (varies by generator type):**
 
 *Random Generator Process:*
-1. Select random positions along frame boundary for rod anchoring (respecting min distance constraint)
+1. Select random positions along frame boundary for rod anchoring (using Shapely LineString.interpolate, respecting min distance constraint)
 2. Generate rods with random angles (deviation from vertical within configured limit)
-3. Ensure no crossings within same layer
+3. Ensure no crossings within same layer (using Shapely LineString.intersects)
 4. Evaluate fitness score using Quality Evaluator
 5. Keep best arrangement, repeat until acceptable or limit reached
+
+**Shapely Operations Used:**
+- `LineString.interpolate()` - Select random anchor points along frame
+- `LineString.intersects()` - Check for rod crossings within layers
+- `Point.distance()` - Enforce minimum anchor distance constraint
 
 *Other generators may use different approaches* (e.g., deterministic algorithms, pre-defined patterns)
 
@@ -173,33 +179,102 @@ Infill rods are organized into layers. Layer organization rules depend on the ge
 
 ### Domain Layer
 
+#### Core Data Structures
+
+**Rod Class** (Pydantic BaseModel)
+
+Unified representation for both frame and infill rods using Shapely geometry and Pydantic.
+
+**Core Fields (with validation):**
+- `geometry: LineString` - Shapely LineString representing rod geometry
+- `start_cut_angle_deg: float` - Cut angle at start (constrained: -90° to 90°)
+- `end_cut_angle_deg: float` - Cut angle at end (constrained: -90° to 90°)
+- `weight_kg_m: float` - Material density kg/m (must be positive)
+- `layer: int` - Layer assignment (0 for frame, ≥1 for infill, must be ≥0)
+
+**Computed Fields (Pydantic @computed_field):**
+- `length_cm` - Computed from geometry.length
+- `weight_kg` - Computed from length and material density
+- `start_point` - Starting point from geometry (Shapely Point)
+- `end_point` - Ending point from geometry (Shapely Point)
+
+**Methods:**
+- `model_dump()` - Serialize to dictionary (includes computed fields)
+- `model_dump_json()` - Serialize directly to JSON string
+- `model_validate(data)` - Deserialize from dictionary with validation
+- `to_bom_entry(rod_id)` - Generate BOM table row
+
+**Usage:**
+- Frame rods: Created by Shape classes, layer = 0
+- Infill rods: Created by Generator classes, layer ≥ 1
+- Automatic validation on instantiation
+- BOM generation: Both frame and infill use same method
+- Serialization: Pydantic handles all serialization/deserialization
+
+**Benefits:**
+- Leverages Shapely for robust geometry operations
+- Pydantic provides automatic validation with clear error messages
+- Computed fields automatically included in serialization
+- Field constraints (ge, le, gt) enforce valid values
+- Type-safe rod handling throughout application
+- Simplified serialization (no manual to_dict/from_dict needed)
+- Consistent format for save/load operations
+- Access to Shapely's geometry methods (intersects, distance, etc.)
+
 #### Shape Components
 
 **Shape Interface**
-- `get_boundary()` → Polygon defining frame boundary
-- `get_frame_lines()` → List of frame line segments (rods can anchor anywhere along these)
-- `validate_parameters()` → Check parameter validity
-- `calculate_bom()` → Generate frame parts list
+- `get_boundary()` → Shapely Polygon defining frame boundary
+- `get_frame_rods()` → List of Rod objects representing frame (layer = 0)
+  - Rod geometry can be accessed via `rod.geometry` for anchor point selection
+  - Rods can anchor anywhere along frame rod geometries
+
+**Shape Parameters** (Pydantic BaseModel)
+- Each shape has a Pydantic model for parameters
+- Validation rules defined using `@field_validator` decorators
+- Automatic validation on instantiation
+- Clear error messages for invalid values
+- UI can catch `ValidationError` and display field-specific errors
 
 **StairShape**
-- Parameters: post_length_cm, stair_height_cm, num_steps, frame_weight_per_meter_kg_m
+- Parameters (Pydantic model): post_length_cm, stair_height_cm, num_steps, frame_weight_kg_m
 - Geometry: 2 vertical posts + angled handrail + stepped bottom
-- Validation: Positive dimensions, reasonable step count
+- Validation (via Pydantic validators):
+  - post_length_cm > 0
+  - stair_height_cm > 0
+  - 1 ≤ num_steps ≤ 50
+  - frame_weight_kg_m > 0
 
 **RectangularShape**
-- Parameters: width_cm, height_cm, frame_weight_per_meter_kg_m
+- Parameters (Pydantic model): width_cm, height_cm, frame_weight_kg_m
 - Geometry: 4 straight lines forming rectangle
-- Validation: Positive dimensions
+- Validation (via Pydantic validators):
+  - width_cm > 0
+  - height_cm > 0
+  - frame_weight_kg_m > 0
 
 #### Generator Components
 
 **Generator Interface**
 - `generate(shape, params)` → InfillResult (emits signals during execution)
-- `validate_parameters()` → Check parameter validity
 - Signals: `progress_updated`, `best_result_updated`, `generation_completed`, `generation_failed`
 
+**Generator Parameters** (Pydantic BaseModel)
+- Each generator has a Pydantic model for parameters
+- Validation rules defined using `@field_validator` decorators
+- Automatic validation on instantiation
+- UI can catch `ValidationError` and display field-specific errors
+
 **RandomGenerator** (uses Quality Evaluator)
-- Parameters: num_rods, max_rod_length_cm, max_angle_deviation_deg, num_layers, min_anchor_distance_cm, max_iterations, max_duration_sec
+- Parameters (Pydantic model): num_rods, max_rod_length_cm, max_angle_deviation_deg, num_layers, min_anchor_distance_cm, max_iterations, max_duration_sec
+- Validation (via Pydantic validators):
+  - num_rods > 0
+  - max_rod_length_cm > 0
+  - 0 ≤ max_angle_deviation_deg ≤ 90
+  - num_layers ≥ 1
+  - min_anchor_distance_cm ≥ 0
+  - max_iterations > 0
+  - max_duration_sec > 0
 - Algorithm: Iterative random generation with fitness evaluation
 - Termination: Acceptable fitness OR max iterations OR max duration OR user cancel
 - Requires: QualityEvaluator instance
@@ -208,10 +283,15 @@ Infill rods are organized into layers. Layer organization rules depend on the ge
 - **PatternGenerator**: Deterministic pattern-based (no iteration, no evaluator)
 - **MLGenerator**: ML model-based (may or may not use evaluator)
 
-**InfillResult**
-- Contains: rod list, layer organization
-- Optional: fitness score (only for generators using evaluator), iteration count, duration
-- Immutable once created
+**InfillResult** (Pydantic BaseModel)
+- `rods: list[Rod]` - List of Rod objects with layer assignments
+- `fitness_score: float | None` - Optional fitness score (for generators using evaluator)
+- `iteration_count: int | None` - Optional iteration count (for iterative generators)
+- `duration_sec: float | None` - Optional generation duration
+- Immutable once created (Pydantic frozen=True)
+- Automatic serialization via `model_dump()` and `model_dump_json()`
+- Rods automatically serialized (Pydantic handles nested models)
+- BOM entries generated via `Rod.to_bom_entry()` for each rod
 
 #### Quality Evaluator (Used by Random Generator)
 
@@ -222,11 +302,19 @@ Infill rods are organized into layers. Layer organization rules depend on the ge
 - Usage: Optional component, only used by generators that need quality assessment
 
 **Evaluation Process:**
-1. Identify all holes (polygons between rods and frame)
-2. Calculate hole areas and incircle radii
-3. Analyze rod angles and anchor spacing
+1. Identify all holes (Shapely Polygons between rods and frame using polygonize)
+2. Calculate hole areas (Shapely Polygon.area) and incircle radii (using Polygon.minimum_rotated_rectangle)
+3. Analyze rod angles and anchor spacing (using Shapely geometry operations)
 4. Compute individual criterion scores
 5. Combine using configured weights
+
+**Shapely Operations Used:**
+- `polygonize()` - Identify holes from rod arrangement
+- `Polygon.area` - Calculate hole areas
+- `Polygon.minimum_rotated_rectangle` - Approximate incircle calculations
+- `LineString.intersects()` - Check rod crossings
+- `LineString.distance()` - Calculate anchor spacing
+- `Point.distance()` - Measure distances between anchors
 
 ### Application Layer
 
@@ -309,7 +397,7 @@ Vector-based rendering of frame and infill.
 - Pan with mouse drag
 - Render frame in distinct color
 - Render infill with layer colors
-- Optional line enumeration (circles for infill, squares for frame)
+- Optional rod enumeration (circles for infill, squares for frame, dashed anchor lines)
 - Part highlighting on BOM selection
 
 **Rendering Strategy:**
@@ -358,7 +446,7 @@ Modal dialog for long-running operations.
 - Progress information (generator-specific, e.g., iteration number for Random Generator)
 - Quality metrics (if applicable, e.g., fitness score for Random Generator)
 - Elapsed duration
-- Progress logs
+- Progress logs text window
 - Cancel button
 
 **Behavior:**
@@ -392,8 +480,17 @@ conf/
 
 **Configuration Loading:**
 - Loaded at startup via Hydra
-- Command-line overrides supported
-- Type-safe access via dataclasses
+- Type-safe access via Pydantic models
+- Hydra configs converted to Pydantic parameter models
+- Automatic validation on config load
+- Clear error messages for invalid config values
+
+**Pydantic + Hydra Integration:**
+- Hydra loads YAML configs into dictionaries
+- Dictionaries passed to Pydantic models for validation
+- Pydantic raises `ValidationError` if config is invalid
+- UI parameter panels use same Pydantic models
+- Consistent validation between config files and UI input
 
 #### File Management
 
@@ -540,12 +637,6 @@ Update window title
 
 **Target**: < 60 seconds for 1000 iterations
 
-**Optimizations:**
-- NumPy for geometry calculations (vectorized operations)
-- Spatial indexing for collision detection (quadtree)
-- Early termination when acceptable quality reached (for iterative generators)
-- Efficient hole identification algorithm (for generators using evaluator)
-
 ### UI Responsiveness
 
 **Strategy**: Run generation in separate thread using QThread
@@ -563,18 +654,16 @@ Update window title
 **Considerations:**
 - Only store best arrangement during generation
 - Clear viewport scene when loading new project
-- Compress geometry in save files (JSON)
-- Limit log file size (rotation)
 
 ## Testing Strategy
 
 ### Unit Tests
 
 **Domain Layer:**
-- Geometry primitives (Point, Line, Polygon operations)
-- Shape implementations (boundary, validation, BOM)
-- Generator logic (arrangement generation, layer organization)
-- Quality evaluator (fitness calculations, individual metrics) - for Random Generator
+- Rod class (geometry operations, serialization, BOM generation)
+- Shape implementations (boundary, validation, BOM, Shapely geometry)
+- Generator logic (arrangement generation, layer organization, Shapely operations)
+- Quality evaluator (fitness calculations, individual metrics, hole identification) - for Random Generator
 
 **Infrastructure Layer:**
 - File I/O (save/load, ZIP structure)
@@ -635,11 +724,13 @@ railing-generator/
 ### Dependencies
 
 - PySide6 (UI framework)
+- pydantic (parameter validation and data models)
 - hydra-core (configuration)
 - omegaconf (config objects)
 - rich (logging)
 - typer (CLI)
-- numpy (geometry calculations)
+- shapely (geometry and geometry calculations)
+- numpy (when shapely is not enough)
 - ezdxf (DXF export)
 
 ### Entry Point
@@ -656,10 +747,8 @@ Command-line interface with options:
 - Undo/redo functionality
 - 3D visualization
 - Material cost calculation
-- Structural analysis integration
 - Recent files list
-- Keyboard shortcuts
-- Print functionality
+- Optimal cutting plan for manufacturing
 
 ## PySide6 Framework Integration
 
@@ -755,7 +844,6 @@ PySide6 provides the Qt framework bindings for Python, offering a comprehensive 
 
 **Status Bar Usage:**
 - Left section: Current operation status ("Ready", "Generating...", "Saved")
-- Center section: Current file name with modified indicator (asterisk)
 - Right section: Quick stats (number of rods, quality metrics if available, etc.)
 
 #### 5. QTableWidget (BOM Tables)
@@ -1004,25 +1092,6 @@ def test_generation_progress(qtbot):
     assert generator.best_fitness > 0
 ```
 
-### Why PySide6 Over Alternatives
-
-**vs PyQt6:**
-- LGPL license (more permissive)
-- Official Qt for Python project
-- Better long-term support
-
-**vs Tkinter:**
-- Much richer widget set
-- Better graphics support (QGraphicsView)
-- Native threading integration
-- Professional appearance
-
-**vs Web-based (Electron, etc.):**
-- Better performance
-- Native look and feel
-- Smaller distribution size
-- Direct Python integration
-
 ## Configuration Management: Hybrid Approach
 
 **Use both for different purposes:**
@@ -1141,231 +1210,6 @@ railing-generator = "railing_generator.__main__:main"
 - QSettings for user preferences (window state, recent files)
 - Hybrid approach leverages strengths of both systems
 
-## Integration of Other Technologies with PySide6
-
-### Rich (RichHandler for Logging)
-
-**Compatibility: Excellent ✓**
-
-**Why it works well:**
-- Rich is purely for console output (stdout/stderr)
-- PySide6 GUI runs independently of console
-- Perfect for CLI mode and development
-- No conflicts with Qt's event system
-
-**Integration approach:**
-```python
-import logging
-from rich.logging import RichHandler
-
-# Setup logging with Rich
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[
-        RichHandler(rich_tracebacks=True),  # Console output
-        logging.FileHandler("logs/app.log")  # File output
-    ]
-)
-
-# Works perfectly with PySide6
-from PySide6.QtWidgets import QApplication
-app = QApplication(sys.argv)
-# Logging works in parallel with GUI
-```
-
-**Benefits:**
-- Beautiful console output during development
-- Rich tracebacks for debugging
-- Progress bars can run alongside GUI (in terminal)
-- No interference with Qt widgets
-
-**Considerations:**
-- Rich output only visible if app launched from terminal
-- Use `--verbose` flag to enable console logging
-- File logging always works regardless
-
-**Verdict: Keep Rich** - Perfect for development and CLI debugging
-
-### Typer (CLI Parsing)
-
-**Compatibility: Excellent ✓**
-
-**Why it works well:**
-- Typer handles CLI parsing before GUI starts
-- Clean separation: CLI → parse args → launch GUI
-- Common pattern in Qt applications
-- No runtime conflicts
-
-**Integration approach:**
-```python
-# src/railing_generator/__main__.py
-import typer
-from PySide6.QtWidgets import QApplication
-from railing_generator.presentation.main_window import MainWindow
-
-app = typer.Typer()
-
-@app.command()
-def main(
-    debug: bool = typer.Option(False, "-d", "--debug"),
-    verbose: bool = typer.Option(False, "-v", "--verbose"),
-    config_path: str = typer.Option(None, "--config"),
-    file: str = typer.Option(None, "--file", help="Open project file")
-):
-    """Launch Railing Infill Generator"""
-    
-    # Setup logging based on flags
-    setup_logging(debug, verbose)
-    
-    # Create Qt application
-    qt_app = QApplication(sys.argv)
-    
-    # Create main window with config
-    window = MainWindow(config_path=config_path)
-    
-    # Load file if specified
-    if file:
-        window.load_project(file)
-    
-    window.show()
-    sys.exit(qt_app.exec())
-
-if __name__ == "__main__":
-    app()
-```
-
-**Benefits:**
-- Clean CLI interface: `railing-generator --debug --file project.rig.zip`
-- Automatic help generation: `railing-generator --help`
-- Type-safe argument parsing
-- Easy to add new CLI options
-
-**Common Qt + Typer patterns:**
-- `--debug` flag for debug logging
-- `--verbose` flag for console output
-- `--file <path>` to open file on startup
-- `--config <path>` for custom config location
-- `--version` to show version info
-
-**Verdict: Keep Typer** - Standard pattern for Qt CLI applications
-
-### mypy (Type Checking)
-
-**Compatibility: Excellent ✓**
-
-**Why it works well:**
-- mypy is a static analysis tool (no runtime impact)
-- PySide6 has excellent type stubs (PySide6-stubs)
-- Qt's Signal/Slot system is fully typed
-- Catches Qt-specific errors at development time
-
-**Type checking benefits with PySide6:**
-
-1. **Signal/Slot type safety:**
-```python
-from PySide6.QtCore import Signal, Slot, QObject
-
-class Generator(QObject):
-    # Typed signals - mypy validates these!
-    progress_updated = Signal(dict)  # progress_data (generator-specific)
-    
-    @Slot(dict)  # mypy checks slot signature matches
-    def on_progress(self, progress_data: dict):
-        # progress_data may contain: iteration, fitness, percentage, etc.
-        # Content varies by generator type
-        pass
-```
-
-2. **Widget type checking:**
-```python
-from PySide6.QtWidgets import QMainWindow, QWidget
-
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.central: QWidget = QWidget()  # mypy knows this is QWidget
-        self.setCentralWidget(self.central)  # mypy validates this call
-```
-
-3. **Catches common Qt errors:**
-```python
-# mypy catches this error:
-widget.clicked.connect(self.wrong_signature)  # Error: incompatible types
-
-# mypy validates this:
-widget.clicked.connect(self.correct_signature)  # OK
-```
-
-**Configuration for PySide6:**
-```toml
-# pyproject.toml
-[tool.mypy]
-python_version = "3.12"
-strict = true
-warn_return_any = true
-warn_unused_configs = true
-
-# PySide6 specific
-plugins = []  # No special plugins needed
-ignore_missing_imports = false  # PySide6 has stubs
-
-[[tool.mypy.overrides]]
-module = "PySide6.*"
-ignore_missing_imports = false  # Use PySide6 type stubs
-```
-
-**Install type stubs:**
-```bash
-uv pip install PySide6-stubs
-```
-
-**Benefits:**
-- Catch Signal/Slot signature mismatches
-- Validate widget method calls
-- Ensure proper QObject inheritance
-- Type-safe configuration access
-- Better IDE autocomplete
-
-**Verdict: Keep mypy** - Essential for type-safe Qt development
-
-### Summary: All Technologies Integrate Well
-
-| Technology | Compatibility | Purpose | Integration |
-|------------|---------------|---------|-------------|
-| **Rich** | ✓ Excellent | Console logging | Parallel to GUI, no conflicts |
-| **Typer** | ✓ Excellent | CLI parsing | Pre-GUI, standard Qt pattern |
-| **mypy** | ✓ Excellent | Type checking | Static analysis, PySide6 stubs available |
-| **Hydra** | ✓ Good | Config defaults | Hybrid with QSettings |
-| **PySide6** | ✓ Native | GUI framework | Core framework |
-
-### Recommended Tech Stack
-
-**Final stack for the application:**
-
-```toml
-[project]
-dependencies = [
-    "PySide6>=6.6.0",           # GUI framework
-    "PySide6-stubs",            # Type stubs for mypy
-    "hydra-core>=1.3.0",        # Configuration defaults
-    "omegaconf>=2.3.0",         # Config objects
-    "rich>=13.0.0",             # Console logging
-    "typer>=0.9.0",             # CLI parsing
-    "numpy>=1.24.0",            # Geometry calculations
-    "ezdxf>=1.1.0",             # DXF export
-]
-
-[project.optional-dependencies]
-dev = [
-    "mypy>=1.0.0",              # Type checking
-    "ruff>=0.1.0",              # Linting/formatting
-    "pytest>=7.0.0",            # Testing
-    "pytest-qt>=4.0.0",         # Qt testing
-    "pytest-cov",               # Coverage
-]
-```
-
 ### Development Workflow
 
 **With all technologies integrated:**
@@ -1396,16 +1240,219 @@ dev = [
 
 **All technologies complement each other perfectly and are commonly used together in professional PySide6 applications.**
 
+## Pydantic Usage Throughout Application
+
+Pydantic is used extensively for data validation, serialization, and computed fields:
+
+### 1. Parameter Models
+- **ShapeParameters** (StairShapeParameters, RectangularShapeParameters)
+  - Field validation with `@field_validator`
+  - Constraints using `Field(gt=0, ge=0, le=90, etc.)`
+  - Used by both Hydra config loading and UI input
+  - Automatic validation with clear error messages
+
+- **GeneratorParameters** (RandomGeneratorParameters, etc.)
+  - Same validation approach as shape parameters
+  - Consistent validation across config and UI
+
+### 2. Data Models
+- **Rod** (BaseModel)
+  - Core data structure for frame and infill rods
+  - Computed fields: `length_cm`, `weight_kg`, `start_point`, `end_point`
+  - Field constraints for angles and weights
+  - Custom serialization for Shapely geometry
+  - Automatic serialization/deserialization
+
+- **InfillResult** (BaseModel)
+  - Contains list of Rod objects
+  - Optional fields for fitness, iteration count, duration
+  - Immutable (frozen=True)
+  - Automatic nested model serialization
+
+### 3. Configuration Integration
+- Hydra loads YAML → dict
+- Dict passed to Pydantic models for validation
+- ValidationError raised if config invalid
+- Same models used for UI parameter panels
+
+### 4. Serialization (Save/Load)
+- `model_dump()` - Convert to dict for JSON serialization
+- `model_dump_json()` - Direct JSON string output
+- `model_validate()` - Deserialize with validation
+- Computed fields automatically included
+- Custom serializers for Shapely types
+
+### 5. UI Integration
+- UI catches `ValidationError` for inline error display
+- Field-specific error messages shown in parameter panel
+- Same validation logic as config files
+- Real-time validation as user types
+
+### Benefits
+- **Single source of truth** for validation logic
+- **Type-safe** throughout application (works with mypy)
+- **Clear error messages** for users and developers
+- **Automatic serialization** (no manual dict conversion)
+- **Computed fields** eliminate redundant calculations
+- **Field constraints** enforce valid values at model level
+
 ## Appendix: Code Examples
+
+### Rod Class Example
+
+```python
+from typing import Any
+from pydantic import BaseModel, Field, computed_field, field_serializer, ValidationError
+from shapely.geometry import LineString, Point
+
+class Rod(BaseModel):
+    """
+    Unified representation for frame and infill rods using Shapely geometry.
+    Uses Pydantic for validation, serialization, and computed fields.
+    """
+    
+    # Core fields with validation constraints
+    geometry: LineString = Field(exclude=True)  # Excluded from default serialization
+    start_cut_angle_deg: float = Field(ge=-90, le=90)  # Constrained to valid range
+    end_cut_angle_deg: float = Field(ge=-90, le=90)
+    weight_kg_m: float = Field(gt=0)  # Must be positive
+    layer: int = Field(ge=0, default=0)  # 0 for frame, ≥1 for infill
+    
+    # Pydantic config to allow Shapely types
+    model_config = {"arbitrary_types_allowed": True}
+    
+    @computed_field
+    @property
+    def length_cm(self) -> float:
+        """Computed from geometry - automatically included in serialization"""
+        return self.geometry.length
+    
+    @computed_field
+    @property
+    def weight_kg(self) -> float:
+        """Computed from length and material density"""
+        return (self.length_cm / 100.0) * self.weight_kg_m
+    
+    @computed_field
+    @property
+    def start_point(self) -> Point:
+        """Get start point from geometry"""
+        return Point(self.geometry.coords[0])
+    
+    @computed_field
+    @property
+    def end_point(self) -> Point:
+        """Get end point from geometry"""
+        return Point(self.geometry.coords[-1])
+    
+    @field_serializer('geometry', when_used='json')
+    def serialize_geometry(self, geometry: LineString) -> dict[str, Any]:
+        """Serialize LineString as coordinate pairs for JSON"""
+        coords = list(geometry.coords)
+        return {
+            "start": {"x": coords[0][0], "y": coords[0][1]},
+            "end": {"x": coords[-1][0], "y": coords[-1][1]}
+        }
+    
+    def to_bom_entry(self, rod_id: int) -> dict[str, Any]:
+        """Generate BOM table entry with rounded values"""
+        return {
+            "id": rod_id,
+            "length_cm": round(self.length_cm, 2),
+            "start_angle_deg": round(self.start_cut_angle_deg, 1),
+            "end_angle_deg": round(self.end_cut_angle_deg, 1),
+            "weight_kg": round(self.weight_kg, 3)
+        }
+
+# Usage examples:
+
+# Create rod with automatic validation
+rod = Rod(
+    geometry=LineString([(0, 0), (100, 50)]),
+    start_cut_angle_deg=45.0,
+    end_cut_angle_deg=-30.0,
+    weight_kg_m=0.5,
+    layer=1
+)
+
+# Computed fields automatically available
+print(rod.length_cm)  # Computed from geometry
+print(rod.weight_kg)  # Computed from length and density
+
+# Serialize to dict (for save/load) - includes computed fields
+data = rod.model_dump()
+json_str = rod.model_dump_json()  # Direct JSON serialization
+
+# Deserialize from dict
+rod2 = Rod.model_validate(data)
+
+# Validation happens automatically on instantiation
+try:
+    invalid_rod = Rod(
+        geometry=LineString([(0, 0), (100, 50)]),
+        start_cut_angle_deg=100.0,  # Invalid! Must be -90 to 90
+        end_cut_angle_deg=0.0,
+        weight_kg_m=0.5
+    )
+except ValidationError as e:
+    print(e)  # Clear error message about angle constraint
+```
 
 ### Shape Interface Example
 
 ```python
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
+from typing import List
+from pydantic import BaseModel, field_validator
+from shapely.geometry import Polygon
+
+class ShapeParameters(BaseModel):
+    """Base class for shape parameters with Pydantic validation"""
+    pass
+
+class StairShapeParameters(ShapeParameters):
+    """Parameters for stair-shaped railing frame"""
+    post_length_cm: float
+    stair_height_cm: float
+    num_steps: int
+    frame_weight_kg_m: float
+    
+    @field_validator('post_length_cm', 'stair_height_cm', 'frame_weight_kg_m')
+    @classmethod
+    def validate_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError('Must be positive')
+        return v
+    
+    @field_validator('num_steps')
+    @classmethod
+    def validate_num_steps(cls, v: int) -> int:
+        if not 1 <= v <= 50:
+            raise ValueError('Must be between 1 and 50')
+        return v
+
+class RectangularShapeParameters(ShapeParameters):
+    """Parameters for rectangular railing frame"""
+    width_cm: float
+    height_cm: float
+    frame_weight_kg_m: float
+    
+    @field_validator('width_cm', 'height_cm', 'frame_weight_kg_m')
+    @classmethod
+    def validate_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError('Must be positive')
+        return v
 
 class Shape(ABC):
     """Abstract base class for all railing frame shapes"""
+    
+    def __init__(self, params: ShapeParameters):
+        """
+        Initialize shape with validated parameters.
+        Pydantic raises ValidationError if params are invalid.
+        """
+        self.params = params
     
     @abstractmethod
     def get_boundary(self) -> Polygon:
@@ -1413,20 +1460,11 @@ class Shape(ABC):
         pass
     
     @abstractmethod
-    def get_frame_lines(self) -> List[Line]:
-        """Returns the individual frame lines"""
-        pass
-    
-    @abstractmethod
-    def validate_parameters(self, params: ShapeParameters) -> bool:
-        """Validates shape parameters"""
-        pass
-    
-
-    
-    @abstractmethod
-    def calculate_bom(self, weight_per_meter_kg_m: float) -> List[Dict[str, Any]]:
-        """Calculates bill of materials for frame"""
+    def get_frame_rods(self) -> List[Rod]:
+        """
+        Returns frame rods (layer = 0)
+        Rod geometry can be accessed via rod.geometry for anchor operations
+        """
         pass
 ```
 
@@ -1560,7 +1598,7 @@ max_rod_length_cm: 200.0
 max_angle_deviation_deg: 30.0
 num_layers: 2
 min_anchor_distance_cm: 10.0
-infill_weight_per_meter_kg_m: 0.5
+infill_weight_kg_m: 0.5
 max_iterations: 1000
 max_duration_sec: 60.0
 ```
