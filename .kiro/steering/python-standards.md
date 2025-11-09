@@ -76,6 +76,15 @@ project-root/
 - Include PySide6 type stubs for type checking support
 - Manage PySide6 installation through uv
 
+### Signal/Slot Pattern
+
+- Use PySide6's Signal/Slot mechanism for event handling and progress updates
+- Prefer Signals over callbacks for type safety and thread safety
+- Define typed signals (e.g., `Signal(int, float, str)`) for compile-time checking
+- Use QThread with moveToThread pattern for background operations
+- Signals automatically handle cross-thread communication safely
+- Components emit signals; UI connects to slots for updates
+
 ## Logging
 
 - Use `RichHandler` from the `rich` library for console output
@@ -96,6 +105,57 @@ project-root/
 - Include Typer as a project dependency
 - Always include a debug flag: `-d` / `--debug` to enable debug logging
 - Debug flag should be a boolean option that controls log level (INFO by default, DEBUG when enabled)
+
+## Naming Conventions
+
+### Unit Suffixes for Variables and Configuration
+
+- Always append unit suffix to variable/parameter/config names that represent physical quantities
+- Use underscore separator before unit suffix
+- Common unit suffixes:
+  - Length: `_cm`, `_m`, `_mm`
+  - Weight/Mass: `_kg`, `_g`
+  - Angle: `_deg`, `_rad`
+  - Time: `_sec`, `_ms`, `_min`
+  - Area: `_cm2`, `_m2`
+  - Speed: `_m_s`, `_km_h`
+  - Weight per length: `_kg_m` (kilograms per meter)
+
+**Examples:**
+```python
+# Good - unit is clear from name
+post_length_cm: float = 150.0
+stair_height_cm: float = 280.0
+weight_per_meter_kg_m: float = 0.5
+max_angle_deg: float = 30.0
+max_hole_area_cm2: float = 500.0
+max_duration_sec: float = 60.0
+
+# Bad - unit is ambiguous
+post_length: float = 150.0  # cm? m? mm?
+weight_per_meter: float = 0.5  # kg/m? g/m?
+max_angle: float = 30.0  # degrees? radians?
+```
+
+**Configuration files:**
+```yaml
+# conf/shapes/stair.yaml
+post_length_cm: 150.0
+stair_height_cm: 280.0
+frame_weight_per_meter_kg_m: 0.5
+
+# conf/generators/random.yaml
+max_rod_length_cm: 200.0
+max_angle_deviation_deg: 30.0
+min_anchor_distance_cm: 10.0
+max_duration_sec: 60.0
+```
+
+**Benefits:**
+- Self-documenting code
+- Prevents unit confusion errors
+- No need for comments explaining units
+- Type checkers can't catch unit errors, naming convention helps
 
 ## Configuration Management
 
