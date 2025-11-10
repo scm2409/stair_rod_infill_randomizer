@@ -71,9 +71,11 @@ Shapes define the railing frame boundary where infill rods can be anchored.
 - `get_boundary()` → Shapely Polygon defining frame boundary
 - `get_frame_rods()` → List of Rod objects (layer = 0)
 
-**Parameters** (Pydantic models with validation):
-- StairShapeParameters: post_length_cm, stair_height_cm, num_steps, frame_weight_kg_m
-- RectangularShapeParameters: width_cm, height_cm, frame_weight_kg_m
+**Parameters** (Pydantic models for UI validation):
+- StairShapeParameters: post_length_cm, stair_height_cm, num_steps, frame_weight_per_meter_kg_m
+- RectangularShapeParameters: width_cm, height_cm, frame_weight_per_meter_kg_m
+- Initialized with defaults from Hydra config (dataclass)
+- Pydantic validation errors displayed in UI
 
 ### 2. Generator System
 
@@ -94,8 +96,10 @@ Generators create infill rod arrangements within a shape boundary.
 - `generate(shape, params)` → InfillResult
 - Signals: `progress_updated`, `best_result_updated`, `generation_completed`, `generation_failed`
 
-**Parameters** (Pydantic models with validation):
+**Parameters** (Pydantic models for UI validation):
 - RandomGeneratorParameters: num_rods, max_rod_length_cm, max_angle_deviation_deg, num_layers, min_anchor_distance_cm, max_iterations, max_duration_sec
+- Initialized with defaults from Hydra config (dataclass)
+- Pydantic validation errors displayed in UI
 
 ### 3. Quality Evaluator
 
@@ -254,7 +258,7 @@ conf/
 
 ```
 User selects shape type → Parameter panel updates → User enters parameters →
-User clicks "Update Shape" → Validate parameters (Pydantic) →
+User clicks "Update Shape" → Validate parameters (dataclass __post_init__) →
 Create shape instance → Viewport renders frame → BOM table updates
 ```
 
@@ -262,7 +266,7 @@ Create shape instance → Viewport renders frame → BOM table updates
 
 ```
 User configures generator → User clicks "Generate Infill" →
-Validate parameters (Pydantic) → Progress dialog opens →
+Validate parameters (dataclass __post_init__) → Progress dialog opens →
 Generator runs in QThread:
   - Execute generation algorithm
   - Emit progress_updated signal → Update progress dialog
@@ -275,8 +279,8 @@ Generator runs in QThread:
 
 ```
 User clicks Save/Save As → File dialog → Create ZIP archive:
-  - Serialize parameters (Pydantic model_dump_json)
-  - Serialize infill geometry (Pydantic model_dump_json)
+  - Serialize parameters (dataclasses.asdict + json.dumps)
+  - Serialize infill geometry (Pydantic model_dump_json for Rod/InfillResult)
   - Render viewport to PNG
   - Export BOM tables to CSV
 → Mark project as saved → Update window title
@@ -354,31 +358,80 @@ User clicks Save/Save As → File dialog → Create ZIP archive:
 
 ```python
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import List
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, Field, field_validator
 from shapely.geometry import Polygon
+from omegaconf import MISSING
 
-class ShapeParameters(BaseModel):
-    """Base class for shape parameters"""
-    pass
+# Configuration defaults (dataclass for Hydra)
+@dataclass
+class StairShapeDefaults:
+    """Default values loaded from Hydra YAML config"""
+    post_length_cm: float = 150.0
+    stair_height_cm: float = 280.0
+    num_steps: int = 10
+    frame_weight_per_meter_kg_m: float = 0.5
 
-class StairShapeParameters(ShapeParameters):
-    post_length_cm: float = Field(gt=0)
-    stair_height_cm: float = Field(gt=0)
-    num_steps: int = Field(ge=1, le=50)
-    frame_weight_kg_m: float = Field(gt=0)
+# Parameter models (Pydantic for UI validation)
+class StairShapeParameters(BaseModel):
+    """Runtime parameters with Pydantic validation for UI"""
+    post_length_cm: float = Field(gt=0, description="Post length in cm")
+    stair_height_cm: float = Field(gt=0, description="Stair height in cm")
+    num_steps: int = Field(ge=1, le=50, description="Number of steps")
+    frame_weight_per_meter_kg_m: float = Field(gt=0, description="Frame weight per meter")
+    
+    @field_validator('post_length_cm', 'stair_height_cm')
+    @classmethod
+    def validate_positive(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError('Must be positive')
+        return v
+    
+    @classmethod
+    def from_defaults(cls, defaults: StairShapeDefaults) -> "StairShapeParameters":
+        """Create parameters from config defaults"""
+        return cls(
+            post_length_cm=defaults.post_length_cm,
+            stair_height_cm=defaults.stair_height_cm,
+            num_steps=defaults.num_steps,
+            frame_weight_per_meter_kg_m=defaults.frame_weight_per_meter_kg_m
+        )
+
+class RectangularShapeParameters(BaseModel):
+    """Runtime parameters with Pydantic validation for UI"""
+    width_cm: float = Field(gt=0, description="Width in cm")
+    height_cm: float = Field(gt=0, description="Height in cm")
+    frame_weight_per_meter_kg_m: float = Field(gt=0, description="Frame weight per meter")
 
 class Shape(ABC):
-    def __init__(self, params: ShapeParameters):
+    """Abstract base class for all railing frame shapes"""
+    
+    def __init__(self, params: BaseModel):  # Accepts Pydantic model
+        """
+        Initialize shape with validated parameters.
+        Parameters are Pydantic models validated before passing here.
+        """
         self.params = params
     
     @abstractmethod
     def get_boundary(self) -> Polygon:
+        """Returns the boundary polygon of the shape"""
         pass
     
     @abstractmethod
     def get_frame_rods(self) -> List[Rod]:
+        """
+        Returns frame rods (layer = 0)
+        Rod geometry can be accessed via rod.geometry for anchor operations
+        """
         pass
+
+# Usage in UI:
+# 1. Load defaults from Hydra config (dataclass)
+# 2. Create Pydantic parameter model from defaults
+# 3. User modifies in UI, Pydantic validates
+# 4. Pass validated Pydantic model to Shape constructor
 ```
 
 ### Generator Interface

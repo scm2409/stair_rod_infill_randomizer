@@ -235,45 +235,126 @@ max_duration_sec: 60.0
 
 ## Data Validation and Models
 
-- Use `Pydantic` for all data models and parameter validation
-- Define models as `BaseModel` subclasses
-- Use `@field_validator` for custom validation logic
-- Use `Field()` with constraints (gt, ge, lt, le) for numeric validation
-- Use `@computed_field` for derived properties
-- Leverage `model_dump()` and `model_dump_json()` for serialization
-- Use `model_validate()` for deserialization with validation
-- Set `model_config = {"arbitrary_types_allowed": True}` when using non-Pydantic types (e.g., Shapely)
+### When to Use Dataclasses vs Pydantic
 
-### Pydantic Field Validation Examples:
+**Use Dataclasses for:**
+- **Configuration defaults** loaded from Hydra/YAML
+- Values that work natively with Hydra's ConfigStore
+- Simple data structures holding default values
+- Example: `StairShapeDefaults`, `RandomGeneratorDefaults`
+
+**Use Pydantic for:**
+- **Parameter models** used in UI with real-time validation
+- **Domain models** with business logic
+- Models requiring computed fields (`@computed_field`)
+- Models needing advanced serialization/deserialization
+- Runtime data that changes during execution
+- Models with complex validation logic
+- Example: `StairShapeParameters`, `Rod`, `InfillResult`
+
+**Architecture Pattern:**
+```
+YAML Config (Hydra) → Dataclass (defaults) → Pydantic Model (UI parameters) → Domain Logic
+```
+
+### Dataclass Configuration Defaults (for Hydra)
+
 ```python
-from pydantic import BaseModel, Field, field_validator
+from dataclasses import dataclass
+from hydra.core.config_store import ConfigStore
 
-class Parameters(BaseModel):
-    length_cm: float = Field(gt=0)  # Must be positive
-    angle_deg: float = Field(ge=-90, le=90)  # Constrained range
-    count: int = Field(ge=1, le=100)  # Integer constraints
+@dataclass
+class StairShapeDefaults:
+    """Default values loaded from Hydra YAML config"""
+    post_length_cm: float = 150.0
+    stair_height_cm: float = 280.0
+    num_steps: int = 10
+    frame_weight_per_meter_kg_m: float = 0.5
+
+@dataclass
+class AppConfig:
+    """Main application configuration"""
+    stair_defaults: StairShapeDefaults
+
+# Register with Hydra
+cs = ConfigStore.instance()
+cs.store(name="base_config", node=AppConfig)
+cs.store(group="shapes", name="stair", node=StairShapeDefaults)
+```
+
+### Pydantic Parameter Models (for UI)
+
+```python
+from pydantic import BaseModel, Field, field_validator, ValidationError
+
+class StairShapeParameters(BaseModel):
+    """Runtime parameters with Pydantic validation for UI"""
+    post_length_cm: float = Field(gt=0, description="Post length in cm")
+    stair_height_cm: float = Field(gt=0, description="Stair height in cm")
+    num_steps: int = Field(ge=1, le=50, description="Number of steps")
+    frame_weight_per_meter_kg_m: float = Field(gt=0)
     
-    @field_validator('length_cm')
+    @field_validator('post_length_cm')
     @classmethod
     def validate_length(cls, v: float) -> float:
         if v > 1000:
             raise ValueError('Length too large')
         return v
+    
+    @classmethod
+    def from_defaults(cls, defaults: StairShapeDefaults) -> "StairShapeParameters":
+        """Create parameters from config defaults"""
+        return cls(
+            post_length_cm=defaults.post_length_cm,
+            stair_height_cm=defaults.stair_height_cm,
+            num_steps=defaults.num_steps,
+            frame_weight_per_meter_kg_m=defaults.frame_weight_per_meter_kg_m
+        )
+
+# In UI code:
+try:
+    params = StairShapeParameters(
+        post_length_cm=user_input_length,
+        stair_height_cm=user_input_height,
+        num_steps=user_input_steps,
+        frame_weight_per_meter_kg_m=0.5
+    )
+except ValidationError as e:
+    # Display validation errors in UI
+    for error in e.errors():
+        field = error['loc'][0]
+        message = error['msg']
+        # Show error message next to field in UI
 ```
 
-### Pydantic Computed Fields:
+### Pydantic Domain Models
+
 ```python
-from pydantic import BaseModel, computed_field
+from pydantic import BaseModel, Field, computed_field
 
 class Rod(BaseModel):
-    length_cm: float
-    weight_per_meter_kg_m: float
+    """Domain model with computed fields and validation"""
+    length_cm: float = Field(gt=0)
+    start_cut_angle_deg: float = Field(ge=-90, le=90)
+    end_cut_angle_deg: float = Field(ge=-90, le=90)
+    weight_per_meter_kg_m: float = Field(gt=0)
+    
+    model_config = {"arbitrary_types_allowed": True}  # For Shapely types
     
     @computed_field
     @property
     def weight_kg(self) -> float:
+        """Computed field automatically included in serialization"""
         return (self.length_cm / 100.0) * self.weight_per_meter_kg_m
 ```
+
+### Pydantic Features:
+- `model_dump()` - Serialize to dictionary (includes computed fields)
+- `model_dump_json()` - Serialize directly to JSON string
+- `model_validate()` - Deserialize with validation
+- `@computed_field` - Derived properties
+- `Field()` with constraints - Numeric validation
+- `@field_validator` - Custom validation logic
 
 ## Configuration Management
 
@@ -283,31 +364,53 @@ class Rod(BaseModel):
 - Use YAML format for configuration files
 - Organize related configs using Hydra's config groups (subdirectories under `conf/`)
 - Use `@hydra.main()` decorator to initialize Hydra in your application
-- **Integrate with Pydantic**: Load Hydra configs into Pydantic models for validation
+- **Use dataclasses for Structured Configs**: Hydra works natively with dataclasses, not Pydantic
 - Support configuration composition and overrides via command line
-- Include hydra-core as a project dependency
+- Include hydra-core and omegaconf as project dependencies
 
-### Hydra + Pydantic Integration:
+### Hydra with Dataclass Structured Configs:
 ```python
+from dataclasses import dataclass
 import hydra
-from omegaconf import DictConfig
-from pydantic import BaseModel, ValidationError
+from hydra.core.config_store import ConfigStore
+from omegaconf import DictConfig, MISSING, OmegaConf
 
-class AppConfig(BaseModel):
-    param1: float
-    param2: int
+@dataclass
+class DatabaseConfig:
+    """Database configuration parameters"""
+    host: str = "localhost"
+    port: int = 5432
+    user: str = MISSING  # Required field
+    password: str = MISSING  # Required field
+    
+    def __post_init__(self):
+        """Validate after initialization"""
+        if self.port < 1 or self.port > 65535:
+            raise ValueError("Port must be between 1 and 65535")
+
+@dataclass
+class AppConfig:
+    """Main application configuration"""
+    db: DatabaseConfig = MISSING
+    debug: bool = False
+
+# Register structured configs with Hydra
+cs = ConfigStore.instance()
+cs.store(name="base_config", node=AppConfig)
+cs.store(group="db", name="postgres", node=DatabaseConfig)
 
 @hydra.main(config_path="conf", config_name="config", version_base=None)
-def main(cfg: DictConfig):
-    try:
-        # Convert Hydra config to Pydantic model for validation
-        config = AppConfig(**cfg)
-    except ValidationError as e:
-        print(f"Invalid configuration: {e}")
-        return
+def main(cfg: AppConfig):  # Type hint with dataclass
+    # Hydra automatically validates against dataclass schema
+    # cfg is a DictConfig but validated against AppConfig structure
+    print(f"Connecting to {cfg.db.host}:{cfg.db.port}")
     
-    # Use validated config
-    print(config.param1)
+    # Convert to dataclass instance if needed
+    config_obj = OmegaConf.to_object(cfg)  # Returns AppConfig instance
+    print(config_obj.db.host)
+
+if __name__ == "__main__":
+    main()
 ```
 
 ### Hydra Configuration Structure:
