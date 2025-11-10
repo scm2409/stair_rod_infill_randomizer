@@ -178,8 +178,14 @@ Orchestrates application workflows.
 
 ### Main Window Layout
 
+**Window Title Format:**
+- `{filename}* - Railing Infill Generator` (asterisk if unsaved changes)
+- Example: `project.rig.zip* - Railing Infill Generator`
+- Example: `Untitled* - Railing Infill Generator`
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│  Title: project.rig.zip* - Railing Infill Generator         │
 │  Menu Bar: File | View | Help                               │
 ├──────────────┬──────────────────────────────────────────────┤
 │  Parameter   │      Viewport (zoom, pan, render)            │
@@ -188,9 +194,13 @@ Orchestrates application workflows.
 │  - Generator │  BOM Table (2 tabs: Frame | Infill)         │
 │  - Buttons   │  - ID, Length, Start Angle, End Angle, Weight│
 ├──────────────┴──────────────────────────────────────────────┤
-│  Status Bar: Ready | File: project.rig.zip* | Rods: 50      │
+│  Status Bar: Ready | Rods: 50                               │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Status Bar:**
+- Left: Operation status ("Ready", "Generating...", "Saved")
+- Right: Quick stats (rod count, quality metrics if available)
 
 ### Key UI Components
 
