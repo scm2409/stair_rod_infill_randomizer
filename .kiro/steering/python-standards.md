@@ -52,9 +52,18 @@ All Python projects should follow this structure:
 project-root/
 ├── src/                 # Application source code
 │   └── package_name/
+│       ├── __main__.py  # Entry point
+│       ├── app.py       # Application setup
+│       ├── domain/      # Business logic and models
+│       ├── application/ # Application services
+│       ├── presentation/# UI layer (if GUI app)
+│       └── infrastructure/ # External services (file I/O, config)
 ├── tests/               # Test files
 ├── conf/                # Hydra configuration files
-│   └── config.yaml      # Main configuration file
+│   ├── config.yaml      # Main configuration file
+│   ├── shapes/          # Config groups
+│   ├── generators/
+│   └── evaluator/
 ├── .venv/               # Virtual environment (not in git)
 ├── .gitignore           # Python-specific exclusions
 ├── pyproject.toml       # Project metadata and dependencies
@@ -63,12 +72,50 @@ project-root/
 
 ### Key Points:
 - Use `src/` layout for application code
+- Follow layered architecture: domain, application, presentation, infrastructure
 - Include `tests/` directory for test files
 - Store Hydra configuration files in `conf/` directory (Hydra's default)
 - Main configuration file should be `conf/config.yaml`
 - Organize configs with Hydra's config groups in subdirectories under `conf/`
 - Exclude virtual environments, cache files (`__pycache__`, `*.pyc`), build artifacts, and Hydra outputs from version control
 - Include comprehensive `.gitignore` for Python projects
+
+## Architecture Patterns
+
+### Layered Architecture
+- **Domain Layer**: Business logic, data models (Pydantic), core algorithms
+- **Application Layer**: Orchestration, workflows, state management
+- **Presentation Layer**: UI components (PySide6), user interaction
+- **Infrastructure Layer**: External services (file I/O, config, logging)
+
+### Design Patterns
+- **Strategy Pattern**: For interchangeable algorithms (e.g., different generators)
+- **Factory Pattern**: For creating instances based on type strings
+- **Observer Pattern**: Use PySide6 Signal/Slot for event handling
+- **Repository Pattern**: For configuration and data access abstraction
+
+## Geometry Operations
+
+- Use `Shapely` for all geometry operations
+- Use Shapely types: `Point`, `LineString`, `Polygon`
+- Use `STRtree` for spatial indexing when needed
+- Common operations:
+  - `LineString.interpolate()` - Get point at distance along line
+  - `LineString.intersects()` - Check if geometries intersect
+  - `Point.distance()` - Calculate distance between points
+  - `Polygon.area` - Calculate polygon area
+  - `polygonize()` - Create polygons from line network
+
+### Shapely with Pydantic:
+```python
+from pydantic import BaseModel
+from shapely.geometry import LineString
+
+class GeometryModel(BaseModel):
+    geometry: LineString
+    
+    model_config = {"arbitrary_types_allowed": True}
+```
 
 ## UI Development
 
@@ -80,10 +127,39 @@ project-root/
 
 - Use PySide6's Signal/Slot mechanism for event handling and progress updates
 - Prefer Signals over callbacks for type safety and thread safety
-- Define typed signals (e.g., `Signal(int, float, str)`) for compile-time checking
+- Define typed signals (e.g., `Signal(dict)`, `Signal(object)`) for compile-time checking
 - Use QThread with moveToThread pattern for background operations
 - Signals automatically handle cross-thread communication safely
 - Components emit signals; UI connects to slots for updates
+
+### Threading Pattern:
+```python
+from PySide6.QtCore import QObject, QThread, Signal, Slot
+
+class Worker(QObject):
+    progress_updated = Signal(dict)
+    finished = Signal(object)
+    
+    def run(self):
+        # Long-running operation
+        self.progress_updated.emit({"status": "working"})
+        result = do_work()
+        self.finished.emit(result)
+
+# In main thread:
+thread = QThread()
+worker = Worker()
+worker.moveToThread(thread)
+thread.started.connect(worker.run)
+worker.finished.connect(thread.quit)
+thread.start()
+```
+
+### QGraphicsView for Vector Graphics:
+- Use `QGraphicsView` and `QGraphicsScene` for 2D vector rendering
+- Efficient for thousands of line items
+- Built-in zoom and pan support
+- Hardware-accelerated rendering
 
 ## Logging
 
@@ -157,6 +233,48 @@ max_duration_sec: 60.0
 - No need for comments explaining units
 - Type checkers can't catch unit errors, naming convention helps
 
+## Data Validation and Models
+
+- Use `Pydantic` for all data models and parameter validation
+- Define models as `BaseModel` subclasses
+- Use `@field_validator` for custom validation logic
+- Use `Field()` with constraints (gt, ge, lt, le) for numeric validation
+- Use `@computed_field` for derived properties
+- Leverage `model_dump()` and `model_dump_json()` for serialization
+- Use `model_validate()` for deserialization with validation
+- Set `model_config = {"arbitrary_types_allowed": True}` when using non-Pydantic types (e.g., Shapely)
+
+### Pydantic Field Validation Examples:
+```python
+from pydantic import BaseModel, Field, field_validator
+
+class Parameters(BaseModel):
+    length_cm: float = Field(gt=0)  # Must be positive
+    angle_deg: float = Field(ge=-90, le=90)  # Constrained range
+    count: int = Field(ge=1, le=100)  # Integer constraints
+    
+    @field_validator('length_cm')
+    @classmethod
+    def validate_length(cls, v: float) -> float:
+        if v > 1000:
+            raise ValueError('Length too large')
+        return v
+```
+
+### Pydantic Computed Fields:
+```python
+from pydantic import BaseModel, computed_field
+
+class Rod(BaseModel):
+    length_cm: float
+    weight_per_meter_kg_m: float
+    
+    @computed_field
+    @property
+    def weight_kg(self) -> float:
+        return (self.length_cm / 100.0) * self.weight_per_meter_kg_m
+```
+
 ## Configuration Management
 
 - Use `Hydra` for hierarchical configuration management
@@ -165,10 +283,32 @@ max_duration_sec: 60.0
 - Use YAML format for configuration files
 - Organize related configs using Hydra's config groups (subdirectories under `conf/`)
 - Use `@hydra.main()` decorator to initialize Hydra in your application
-- Access configuration through OmegaConf DictConfig objects
+- **Integrate with Pydantic**: Load Hydra configs into Pydantic models for validation
 - Support configuration composition and overrides via command line
 - Include hydra-core as a project dependency
-- Optionally use pydantic with Hydra for structured configs and validation
+
+### Hydra + Pydantic Integration:
+```python
+import hydra
+from omegaconf import DictConfig
+from pydantic import BaseModel, ValidationError
+
+class AppConfig(BaseModel):
+    param1: float
+    param2: int
+
+@hydra.main(config_path="conf", config_name="config", version_base=None)
+def main(cfg: DictConfig):
+    try:
+        # Convert Hydra config to Pydantic model for validation
+        config = AppConfig(**cfg)
+    except ValidationError as e:
+        print(f"Invalid configuration: {e}")
+        return
+    
+    # Use validated config
+    print(config.param1)
+```
 
 ### Hydra Configuration Structure:
 ```
@@ -192,17 +332,23 @@ conf/
 Separate development dependencies from runtime dependencies in `pyproject.toml`:
 
 **Runtime dependencies:**
-- PySide6
-- rich
-- typer
-- hydra-core
-- omegaconf
+- PySide6 (GUI framework)
+- PySide6-stubs (type stubs for mypy)
+- pydantic (data validation and models)
+- shapely (geometry operations)
+- hydra-core (configuration management)
+- omegaconf (config objects)
+- rich (logging)
+- typer (CLI)
+- ezdxf (DXF export, if needed)
+- numpy (when shapely is not enough)
 
 **Development dependencies:**
-- mypy
-- ruff
-- pytest
-- pytest-cov (for coverage reporting)
+- mypy (type checking)
+- ruff (formatting and linting)
+- pytest (testing)
+- pytest-qt (Qt testing)
+- pytest-cov (coverage reporting)
 
 ## Example pyproject.toml Structure
 
@@ -212,18 +358,24 @@ name = "your-project"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "PySide6",
-    "rich",
-    "typer",
-    "hydra-core",
-    "omegaconf",
+    "PySide6>=6.6.0",
+    "PySide6-stubs",
+    "pydantic>=2.0.0",
+    "shapely>=2.0.0",
+    "hydra-core>=1.3.0",
+    "omegaconf>=2.3.0",
+    "rich>=13.0.0",
+    "typer>=0.9.0",
+    "numpy>=1.24.0",
+    "ezdxf>=1.1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "mypy",
-    "ruff",
-    "pytest",
+    "mypy>=1.0.0",
+    "ruff>=0.1.0",
+    "pytest>=7.0.0",
+    "pytest-qt>=4.0.0",
     "pytest-cov",
 ]
 
