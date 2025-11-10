@@ -21,7 +21,7 @@ This application follows the Python development standards defined in `.kiro/stee
 - Hydra for configuration management
 - Layered architecture (domain, application, presentation, infrastructure)
 
-See the steering document for detailed patterns and examples.
+See the steering document for general patterns. Feature-specific implementations are detailed below.
 
 ## Architecture
 
@@ -234,9 +234,40 @@ conf/
 ```
 
 **Configuration Loading:**
-- Hydra loads YAML → dict
-- Dict passed to Pydantic models for validation
-- Same models used for UI parameter panels
+- Hydra loads YAML → Dataclass (defaults)
+- Dataclass → Pydantic models for UI validation
+- Same Pydantic models used for UI parameter panels
+
+### Geometry Operations (Feature-Specific)
+
+This application uses Shapely extensively for geometric calculations:
+
+**Common Operations:**
+- `LineString.interpolate(distance)` - Get point at distance along frame for anchor points
+- `LineString.intersects(other)` - Check if rods cross (same layer constraint)
+- `Point.distance(other)` - Measure anchor spacing for quality evaluation
+- `Polygon.area` - Calculate hole areas for quality criteria
+- `polygonize(lines)` - Identify holes from rod arrangement network
+
+**Example Usage:**
+```python
+from shapely.geometry import LineString, Point
+from shapely.ops import polygonize
+
+# Get anchor point along frame
+frame_line = LineString([(0, 0), (100, 0)])
+anchor = frame_line.interpolate(50.0)  # Point at 50cm along frame
+
+# Check if rods intersect (same layer)
+rod1 = LineString([(10, 0), (10, 100)])
+rod2 = LineString([(20, 0), (20, 100)])
+crosses = rod1.intersects(rod2)  # False
+
+# Find holes for quality evaluation
+all_lines = frame_rods + infill_rods
+holes = list(polygonize([rod.geometry for rod in all_lines]))
+hole_areas = [hole.area for hole in holes]
+```
 
 ### File Management
 
@@ -354,23 +385,29 @@ User clicks Save/Save As → File dialog → Create ZIP archive:
 
 ## Code Examples
 
-### Shape Interface
+### Shape Interface (Feature-Specific Implementation)
 
 ```python
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List
 from pydantic import BaseModel, Field, field_validator
-from shapely.geometry import Polygon
-from omegaconf import MISSING
+from shapely.geometry import Polygon, LineString
 
 # Configuration defaults (dataclass for Hydra)
 @dataclass
 class StairShapeDefaults:
-    """Default values loaded from Hydra YAML config"""
+    """Default values loaded from Hydra YAML config (conf/shapes/stair.yaml)"""
     post_length_cm: float = 150.0
     stair_height_cm: float = 280.0
     num_steps: int = 10
+    frame_weight_per_meter_kg_m: float = 0.5
+
+@dataclass
+class RectangularShapeDefaults:
+    """Default values loaded from Hydra YAML config (conf/shapes/rectangular.yaml)"""
+    width_cm: float = 200.0
+    height_cm: float = 100.0
     frame_weight_per_meter_kg_m: float = 0.5
 
 # Parameter models (Pydantic for UI validation)
@@ -403,6 +440,15 @@ class RectangularShapeParameters(BaseModel):
     width_cm: float = Field(gt=0, description="Width in cm")
     height_cm: float = Field(gt=0, description="Height in cm")
     frame_weight_per_meter_kg_m: float = Field(gt=0, description="Frame weight per meter")
+    
+    @classmethod
+    def from_defaults(cls, defaults: RectangularShapeDefaults) -> "RectangularShapeParameters":
+        """Create parameters from config defaults"""
+        return cls(
+            width_cm=defaults.width_cm,
+            height_cm=defaults.height_cm,
+            frame_weight_per_meter_kg_m=defaults.frame_weight_per_meter_kg_m
+        )
 
 class Shape(ABC):
     """Abstract base class for all railing frame shapes"""
@@ -426,6 +472,13 @@ class Shape(ABC):
         Rod geometry can be accessed via rod.geometry for anchor operations
         """
         pass
+    
+    def get_frame_lines(self) -> List[LineString]:
+        """
+        Returns frame as list of LineStrings for anchor point selection.
+        Used by generators to select random anchor points along frame.
+        """
+        return [rod.geometry for rod in self.get_frame_rods()]
 
 # Usage in UI:
 # 1. Load defaults from Hydra config (dataclass)
@@ -434,52 +487,134 @@ class Shape(ABC):
 # 4. Pass validated Pydantic model to Shape constructor
 ```
 
-### Generator Interface
+### Generator Interface (Feature-Specific Implementation)
 
 ```python
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from pydantic import BaseModel, Field
 from PySide6.QtCore import QObject, Signal
 
+# Configuration defaults (dataclass for Hydra)
+@dataclass
+class RandomGeneratorDefaults:
+    """Default values loaded from Hydra YAML config (conf/generators/random.yaml)"""
+    num_rods: int = 50
+    max_rod_length_cm: float = 200.0
+    max_angle_deviation_deg: float = 30.0
+    num_layers: int = 2
+    min_anchor_distance_cm: float = 10.0
+    max_iterations: int = 1000
+    max_duration_sec: float = 60.0
+    infill_weight_per_meter_kg_m: float = 0.3
+
+# Parameter models (Pydantic for UI validation)
+class RandomGeneratorParameters(BaseModel):
+    """Runtime parameters with Pydantic validation for UI"""
+    num_rods: int = Field(ge=1, le=200, description="Number of infill rods")
+    max_rod_length_cm: float = Field(gt=0, description="Maximum rod length")
+    max_angle_deviation_deg: float = Field(ge=0, le=45, description="Max angle from vertical")
+    num_layers: int = Field(ge=1, le=5, description="Number of layers")
+    min_anchor_distance_cm: float = Field(gt=0, description="Min distance between anchors")
+    max_iterations: int = Field(ge=1, description="Maximum iterations")
+    max_duration_sec: float = Field(gt=0, description="Maximum duration in seconds")
+    infill_weight_per_meter_kg_m: float = Field(gt=0, description="Infill rod weight per meter")
+    
+    @classmethod
+    def from_defaults(cls, defaults: RandomGeneratorDefaults) -> "RandomGeneratorParameters":
+        """Create parameters from config defaults"""
+        return cls(
+            num_rods=defaults.num_rods,
+            max_rod_length_cm=defaults.max_rod_length_cm,
+            max_angle_deviation_deg=defaults.max_angle_deviation_deg,
+            num_layers=defaults.num_layers,
+            min_anchor_distance_cm=defaults.min_anchor_distance_cm,
+            max_iterations=defaults.max_iterations,
+            max_duration_sec=defaults.max_duration_sec,
+            infill_weight_per_meter_kg_m=defaults.infill_weight_per_meter_kg_m
+        )
+
 class Generator(QObject, ABC):
-    progress_updated = Signal(dict)
-    best_result_updated = Signal(object)
-    generation_completed = Signal(object)
-    generation_failed = Signal(str)
+    """Abstract base class for all infill generators"""
+    progress_updated = Signal(dict)  # {"iteration": int, "best_fitness": float, "elapsed_sec": float}
+    best_result_updated = Signal(object)  # InfillResult
+    generation_completed = Signal(object)  # InfillResult
+    generation_failed = Signal(str)  # error message
     
     def __init__(self):
         super().__init__()
         self._cancelled = False
     
     @abstractmethod
-    def generate(self, shape: Shape, params: GeneratorParameters) -> InfillResult:
+    def generate(self, shape: Shape, params: BaseModel) -> InfillResult:
+        """
+        Generate infill arrangement for the given shape.
+        Emits signals during generation for progress updates.
+        """
         pass
     
     def cancel(self):
+        """Request cancellation of ongoing generation"""
         self._cancelled = True
 ```
 
-### Rod Class
+### Rod Class (Feature-Specific Implementation)
 
 ```python
 from pydantic import BaseModel, Field, computed_field
 from shapely.geometry import LineString, Point
+from typing import Dict, Any
 
 class Rod(BaseModel):
-    geometry: LineString = Field(exclude=True)
-    start_cut_angle_deg: float = Field(ge=-90, le=90)
-    end_cut_angle_deg: float = Field(ge=-90, le=90)
-    weight_kg_m: float = Field(gt=0)
-    layer: int = Field(ge=0, default=0)
+    """
+    Unified representation for frame and infill rods.
+    Uses Shapely LineString for geometry operations.
+    """
+    geometry: LineString = Field(exclude=True)  # Excluded from serialization
+    start_cut_angle_deg: float = Field(ge=-90, le=90, description="Cut angle at start point")
+    end_cut_angle_deg: float = Field(ge=-90, le=90, description="Cut angle at end point")
+    weight_kg_m: float = Field(gt=0, description="Weight per meter")
+    layer: int = Field(ge=0, default=0, description="Layer (0=frame, >=1=infill)")
     
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = {"arbitrary_types_allowed": True}  # Required for Shapely types
     
     @computed_field
     @property
     def length_cm(self) -> float:
+        """Calculate rod length from geometry"""
         return self.geometry.length
     
     @computed_field
     @property
     def weight_kg(self) -> float:
+        """Calculate rod weight from length and weight per meter"""
         return (self.length_cm / 100.0) * self.weight_kg_m
+    
+    @computed_field
+    @property
+    def start_point(self) -> Point:
+        """Get start point of rod"""
+        return Point(self.geometry.coords[0])
+    
+    @computed_field
+    @property
+    def end_point(self) -> Point:
+        """Get end point of rod"""
+        return Point(self.geometry.coords[-1])
+    
+    def to_bom_entry(self, rod_id: int) -> Dict[str, Any]:
+        """Convert rod to BOM table entry"""
+        return {
+            "id": rod_id,
+            "length_cm": round(self.length_cm, 2),
+            "start_cut_angle_deg": round(self.start_cut_angle_deg, 1),
+            "end_cut_angle_deg": round(self.end_cut_angle_deg, 1),
+            "weight_kg": round(self.weight_kg, 3)
+        }
+    
+    def model_dump_geometry(self) -> Dict[str, Any]:
+        """Serialize including geometry as coordinate list"""
+        data = self.model_dump()
+        data["geometry"] = list(self.geometry.coords)
+        return data
 ```

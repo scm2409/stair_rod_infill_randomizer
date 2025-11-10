@@ -59,11 +59,9 @@ project-root/
 │       ├── presentation/# UI layer (if GUI app)
 │       └── infrastructure/ # External services (file I/O, config)
 ├── tests/               # Test files
-├── conf/                # Hydra configuration files
+├── conf/                # Hydra configuration files (if using Hydra)
 │   ├── config.yaml      # Main configuration file
-│   ├── shapes/          # Config groups
-│   ├── generators/
-│   └── evaluator/
+│   └── [feature]/       # Config groups organized by feature
 ├── .venv/               # Virtual environment (not in git)
 ├── .gitignore           # Python-specific exclusions
 ├── pyproject.toml       # Project metadata and dependencies
@@ -96,26 +94,10 @@ project-root/
 
 ## Geometry Operations
 
-- Use `Shapely` for all geometry operations
-- Use Shapely types: `Point`, `LineString`, `Polygon`
-- Use `STRtree` for spatial indexing when needed
-- Common operations:
-  - `LineString.interpolate()` - Get point at distance along line
-  - `LineString.intersects()` - Check if geometries intersect
-  - `Point.distance()` - Calculate distance between points
-  - `Polygon.area` - Calculate polygon area
-  - `polygonize()` - Create polygons from line network
-
-### Shapely with Pydantic:
-```python
-from pydantic import BaseModel
-from shapely.geometry import LineString
-
-class GeometryModel(BaseModel):
-    geometry: LineString
-    
-    model_config = {"arbitrary_types_allowed": True}
-```
+- Use `Shapely` for geometry operations when working with 2D geometric shapes
+- Common Shapely types: `Point`, `LineString`, `Polygon`, `MultiPolygon`
+- Use `STRtree` for spatial indexing when performing many spatial queries
+- When using Shapely geometries with Pydantic, set `model_config = {"arbitrary_types_allowed": True}`
 
 ## UI Development
 
@@ -264,22 +246,21 @@ from dataclasses import dataclass
 from hydra.core.config_store import ConfigStore
 
 @dataclass
-class StairShapeDefaults:
+class FeatureDefaults:
     """Default values loaded from Hydra YAML config"""
-    post_length_cm: float = 150.0
-    stair_height_cm: float = 280.0
-    num_steps: int = 10
-    frame_weight_per_meter_kg_m: float = 0.5
+    param_one: float = 100.0
+    param_two: int = 10
+    weight_kg_m: float = 0.5
 
 @dataclass
 class AppConfig:
     """Main application configuration"""
-    stair_defaults: StairShapeDefaults
+    feature_defaults: FeatureDefaults
 
 # Register with Hydra
 cs = ConfigStore.instance()
 cs.store(name="base_config", node=AppConfig)
-cs.store(group="shapes", name="stair", node=StairShapeDefaults)
+cs.store(group="feature", name="default", node=FeatureDefaults)
 ```
 
 ### Pydantic Parameter Models (for UI)
@@ -287,37 +268,34 @@ cs.store(group="shapes", name="stair", node=StairShapeDefaults)
 ```python
 from pydantic import BaseModel, Field, field_validator, ValidationError
 
-class StairShapeParameters(BaseModel):
+class FeatureParameters(BaseModel):
     """Runtime parameters with Pydantic validation for UI"""
-    post_length_cm: float = Field(gt=0, description="Post length in cm")
-    stair_height_cm: float = Field(gt=0, description="Stair height in cm")
-    num_steps: int = Field(ge=1, le=50, description="Number of steps")
-    frame_weight_per_meter_kg_m: float = Field(gt=0)
+    param_one: float = Field(gt=0, description="Parameter one")
+    param_two: int = Field(ge=1, le=50, description="Parameter two")
+    weight_kg_m: float = Field(gt=0, description="Weight per meter")
     
-    @field_validator('post_length_cm')
+    @field_validator('param_one')
     @classmethod
-    def validate_length(cls, v: float) -> float:
+    def validate_param(cls, v: float) -> float:
         if v > 1000:
-            raise ValueError('Length too large')
+            raise ValueError('Value too large')
         return v
     
     @classmethod
-    def from_defaults(cls, defaults: StairShapeDefaults) -> "StairShapeParameters":
+    def from_defaults(cls, defaults: FeatureDefaults) -> "FeatureParameters":
         """Create parameters from config defaults"""
         return cls(
-            post_length_cm=defaults.post_length_cm,
-            stair_height_cm=defaults.stair_height_cm,
-            num_steps=defaults.num_steps,
-            frame_weight_per_meter_kg_m=defaults.frame_weight_per_meter_kg_m
+            param_one=defaults.param_one,
+            param_two=defaults.param_two,
+            weight_kg_m=defaults.weight_kg_m
         )
 
 # In UI code:
 try:
-    params = StairShapeParameters(
-        post_length_cm=user_input_length,
-        stair_height_cm=user_input_height,
-        num_steps=user_input_steps,
-        frame_weight_per_meter_kg_m=0.5
+    params = FeatureParameters(
+        param_one=user_input_one,
+        param_two=user_input_two,
+        weight_kg_m=0.5
     )
 except ValidationError as e:
     # Display validation errors in UI
@@ -332,14 +310,12 @@ except ValidationError as e:
 ```python
 from pydantic import BaseModel, Field, computed_field
 
-class Rod(BaseModel):
+class DomainModel(BaseModel):
     """Domain model with computed fields and validation"""
     length_cm: float = Field(gt=0)
-    start_cut_angle_deg: float = Field(ge=-90, le=90)
-    end_cut_angle_deg: float = Field(ge=-90, le=90)
     weight_per_meter_kg_m: float = Field(gt=0)
     
-    model_config = {"arbitrary_types_allowed": True}  # For Shapely types
+    model_config = {"arbitrary_types_allowed": True}  # For Shapely types if needed
     
     @computed_field
     @property
@@ -376,38 +352,36 @@ from hydra.core.config_store import ConfigStore
 from omegaconf import DictConfig, MISSING, OmegaConf
 
 @dataclass
-class DatabaseConfig:
-    """Database configuration parameters"""
-    host: str = "localhost"
-    port: int = 5432
-    user: str = MISSING  # Required field
-    password: str = MISSING  # Required field
+class FeatureConfig:
+    """Feature configuration parameters"""
+    param_one: str = "default"
+    param_two: int = 100
     
     def __post_init__(self):
         """Validate after initialization"""
-        if self.port < 1 or self.port > 65535:
-            raise ValueError("Port must be between 1 and 65535")
+        if self.param_two < 1:
+            raise ValueError("param_two must be positive")
 
 @dataclass
 class AppConfig:
     """Main application configuration"""
-    db: DatabaseConfig = MISSING
+    feature: FeatureConfig = MISSING
     debug: bool = False
 
 # Register structured configs with Hydra
 cs = ConfigStore.instance()
 cs.store(name="base_config", node=AppConfig)
-cs.store(group="db", name="postgres", node=DatabaseConfig)
+cs.store(group="feature", name="default", node=FeatureConfig)
 
 @hydra.main(config_path="conf", config_name="config", version_base=None)
 def main(cfg: AppConfig):  # Type hint with dataclass
     # Hydra automatically validates against dataclass schema
     # cfg is a DictConfig but validated against AppConfig structure
-    print(f"Connecting to {cfg.db.host}:{cfg.db.port}")
+    print(f"Feature param: {cfg.feature.param_one}")
     
     # Convert to dataclass instance if needed
     config_obj = OmegaConf.to_object(cfg)  # Returns AppConfig instance
-    print(config_obj.db.host)
+    print(config_obj.feature.param_one)
 
 if __name__ == "__main__":
     main()
@@ -417,16 +391,13 @@ if __name__ == "__main__":
 ```
 conf/
 ├── config.yaml          # Main config file
-├── db/                  # Config group for database settings
-│   ├── postgres.yaml
-│   └── sqlite.yaml
-└── model/               # Config group for model settings
-    ├── small.yaml
-    └── large.yaml
+└── feature/             # Config group for feature settings
+    ├── option_a.yaml
+    └── option_b.yaml
 ```
 
 ### Configuration Override Priority (highest to lowest):
-1. Command-line overrides (e.g., `python app.py db=postgres`)
+1. Command-line overrides (e.g., `python app.py feature=option_a`)
 2. Config group selections in main config
 3. Defaults in config files
 
