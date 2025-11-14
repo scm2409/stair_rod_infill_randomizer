@@ -149,10 +149,45 @@ Unified representation for frame and infill rods.
 ### InfillResult (Pydantic BaseModel)
 
 **Fields:**
-- `rods: list[Rod]`
-- `fitness_score: float | None` - Optional (for generators using evaluator)
-- `iteration_count: int | None` - Optional (for iterative generators)
-- `duration_sec: float | None` - Optional
+- `rods: list[Rod]` - List of Rod objects with layer assignments
+- `fitness_score: float | None` - Optional fitness score (for generators using evaluator)
+- `iteration_count: int | None` - Optional iteration count (for iterative generators)
+- `duration_sec: float | None` - Optional generation duration
+
+**Features:**
+- Immutable once created (consider using `frozen=True` if needed)
+- Automatic serialization via `model_dump()` and `model_dump_json()`
+- Rods automatically serialized (Pydantic handles nested models)
+- BOM entries generated via `Rod.to_bom_entry()` for each rod
+
+### QualityEvaluator (Used by Random Generator)
+
+**Purpose:** Scores infill arrangements using multiple weighted criteria.
+
+**Methods:**
+- `evaluate(arrangement, shape, params)` → float (fitness score, higher = better)
+- `is_acceptable(arrangement, shape, params)` → bool (checks if arrangement meets minimum criteria)
+
+**Evaluation Process:**
+1. Identify all holes using Shapely `polygonize()` from rod arrangement
+2. Calculate hole areas using `Polygon.area`
+3. Calculate incircle radii using `Polygon.minimum_rotated_rectangle`
+4. Analyze rod angles and anchor spacing
+5. Compute individual criterion scores (0-1, where 1 = perfect)
+6. Combine using configured weights
+7. Reject if any hole exceeds max area
+
+**Criteria Details:**
+- **Hole Uniformity** (weight: 0.3): Prefer similar hole areas across all holes
+- **Incircle Uniformity** (weight: 0.2): Prefer uniform incircle radii
+- **Angle Distribution** (weight: 0.2): Penalize rods too vertical or too angled
+- **Anchor Spacing Horizontal** (weight: 0.15): Evenly distributed anchors on top/bottom frame elements
+- **Anchor Spacing Vertical** (weight: 0.15): Evenly distributed anchors on post frame elements
+
+**Configuration:**
+- Criteria weights loaded from `conf/evaluator/criteria.yaml`
+- Max hole area threshold (cm²) for rejection
+- Separate weights for horizontal vs vertical anchor spacing
 
 ## Application Layer
 
@@ -208,10 +243,47 @@ Orchestrates application workflows.
 
 ### Key UI Components
 
-- **Viewport**: QGraphicsView for vector rendering (zoom, pan, line rendering)
-- **Parameter Panel**: Dynamic form based on selected shape/generator type
-- **BOM Table**: Two tabs (Frame/Infill) with totals
-- **Progress Dialog**: Shows generation progress, metrics, logs, cancel button
+#### Viewport (QGraphicsView/QGraphicsScene)
+- Vector-based rendering using QGraphicsScene
+- Zoom with mouse wheel (centered on cursor position)
+- Pan with mouse drag
+- Render frame in distinct color
+- Render infill with layer-specific colors
+- Optional rod enumeration (circles for infill, squares for frame, dashed anchor lines)
+- Part highlighting on BOM selection
+- Performance optimizations:
+  - `setViewportUpdateMode(QGraphicsView.MinimalViewportUpdate)` for efficient updates
+  - `setItemIndexMethod(QGraphicsScene.NoIndex)` for static scenes
+  - `setCacheMode(QGraphicsItem.DeviceCoordinateCache)` for cached rendering
+  - Signal throttling (max every 100ms for progress updates)
+
+#### Parameter Panel (QFormLayout with Dynamic Widgets)
+- Dynamic form using QFormLayout for automatic label alignment
+- QComboBox for shape/generator type selection
+- QDoubleSpinBox/QSpinBox for numeric inputs with validation
+- Unit suffixes displayed (cm, kg, °)
+- Show/hide parameters based on selected type
+- Real-time validation with inline error display
+- "Update Shape" button (short operation, disables UI during execution)
+- "Generate Infill" button (long operation, opens progress dialog)
+
+#### BOM Table (QTableWidget with QTabWidget)
+- Two tabs: Frame Parts, Infill Parts
+- Columns: ID, Length (cm), Start Angle (°), End Angle (°), Weight (kg)
+- Sortable columns
+- Per-tab totals: Sum Length, Sum Weight
+- Combined totals: Total Length, Total Weight
+- Row selection triggers viewport highlighting
+- Export to CSV via save function
+
+#### Progress Dialog (QDialog)
+- Modal dialog blocking main window input
+- QProgressBar or text-based progress indicator
+- Real-time metrics display (iteration, fitness, elapsed time)
+- QTextEdit for progress logs
+- Cancel button (sets cancellation flag)
+- Updates viewport with best result in real-time
+- Closes on completion or cancellation
 
 ## Infrastructure Layer
 
@@ -233,10 +305,50 @@ conf/
     └── config.yaml         # Logger hierarchy and levels
 ```
 
+**Hybrid Configuration Approach:**
+
+1. **Hydra for Application Defaults** (version controlled)
+   - Shape default parameters
+   - Generator default parameters
+   - Quality evaluator criteria
+   - UI settings (colors, resolution)
+   - Logging configuration
+   - Stored in `conf/` directory
+
+2. **QSettings for User Preferences** (not version controlled)
+   - Window geometry and state
+   - Recent files list
+   - Last used shape/generator types
+   - User-modified parameter values
+   - UI preferences (panel sizes, etc.)
+   - Stored in platform-specific location
+
 **Configuration Loading:**
 - Hydra loads YAML → Dataclass (defaults)
 - Dataclass → Pydantic models for UI validation
+- QSettings overrides with user preferences
 - Same Pydantic models used for UI parameter panels
+
+**Implementation Pattern:**
+```python
+class AppConfig:
+    def __init__(self):
+        # Load defaults from Hydra
+        self.defaults = self._load_hydra_config()
+        
+        # Load user preferences from QSettings
+        self.settings = QSettings("RailingGenerator", "RailingApp")
+    
+    def get_parameter(self, key: str, default=None):
+        """Get parameter, preferring user setting over default"""
+        if self.settings.contains(key):
+            return self.settings.value(key)
+        return self.defaults.get(key, default)
+    
+    def set_user_preference(self, key: str, value):
+        """Save user preference"""
+        self.settings.setValue(key, value)
+```
 
 ### Geometry Operations (Feature-Specific)
 
@@ -319,57 +431,238 @@ User clicks Save/Save As → File dialog → Create ZIP archive:
 
 ## Error Handling
 
+### Error Categories
+
 **Validation Errors:**
+- Invalid parameters (negative dimensions, out of range values)
 - Pydantic raises ValidationError with field-specific messages
-- UI displays inline error feedback in parameter panel
+- Display: Red highlighting in parameter panel + tooltip with error message
+- Recovery: User corrects input, validation happens in real-time
 
 **Generation Errors:**
-- No valid arrangement found → Error message in progress dialog
-- User adjusts parameters and retries
+- No valid arrangement found within iteration/time limits
+- Display: Error message in progress dialog with details
+- Recovery: User adjusts parameters (increase limits, relax constraints) and retries
 
 **File I/O Errors:**
-- Cannot read/write files → Modal error dialog
-- User chooses different location or checks permissions
+- Cannot read/write files (permissions, disk space, corrupted files)
+- Invalid ZIP structure or JSON schema on load
+- Display: Modal error dialog with specific error details
+- Recovery: Choose different location, check permissions, or verify file integrity
+
+**Unexpected Errors:**
+- Bugs, crashes, unhandled exceptions
+- Display: Generic error dialog with stack trace
+- Recovery: Log details to file, suggest restart, provide bug report option
+
+### Error Display Strategy
+
+- **Validation**: Inline feedback (immediate, non-blocking)
+- **Operations**: Progress dialog or modal (contextual, blocking during operation)
+- **Critical**: Modal dialog with details (blocking, requires acknowledgment)
+- **All errors**: Logged with stack traces to log file for debugging
+
 
 ## Performance Considerations
 
+### Generation Performance
 
-**UI Responsiveness:**
-- Generator runs in QThread (moveToThread pattern)
-- Signals for progress updates (max every 100ms)
-- UI remains responsive during generation
+**Target:** < 60 seconds for 1000 iterations with typical parameters
+
+
+### UI Responsiveness
+
+**Threading Strategy:**
+- Generator runs in separate QThread (moveToThread pattern)
+- Generator emits signals for progress updates
+- UI connects to signals and updates accordingly
+- Signals are thread-safe (Qt handles cross-thread communication)
+- Cancel via atomic flag checked by generator
+
+**Signal Throttling:**
+- Emit progress signals max every 100ms
+- Use QTimer for throttling if needed
+- Batch viewport updates to reduce redraws
+
+### Memory Management
+
+**Considerations:**
+- Only store best arrangement during generation (discard failed attempts)
+- Clear viewport scene when loading new project
+- Use QGraphicsScene.clear() to remove all items
+- Lazy rendering: only render visible items when possible
+
+### QGraphicsView Optimizations
+
+**Rendering Performance:**
+- `setViewportUpdateMode(QGraphicsView.MinimalViewportUpdate)` - Update only changed regions
+- `setItemIndexMethod(QGraphicsScene.NoIndex)` - For static scenes (no item queries)
+- `setCacheMode(QGraphicsItem.DeviceCoordinateCache)` - Cache rendered items
+- `setRenderHint(QPainter.Antialiasing, False)` - Faster rendering for many items (trade-off with quality)
+
+**Scene Management:**
+- Use `itemsBoundingRect()` for view fitting
+- Defer enumeration rendering until toggled on
+- Group related items for batch operations
 
 ## Testing Strategy
 
-**Unit Tests:**
-- Rod class (geometry, serialization, BOM)
-- Shape implementations (boundary, validation, BOM)
-- Generator logic (arrangement generation, layer organization)
-- Quality evaluator (fitness calculations, hole identification)
+### Unit Tests
 
-**Integration Tests:**
-- Shape + Generator integration
-- Generator + Evaluator integration
-- Application controller workflows
-- End-to-end save/load cycle
+**Domain Layer:**
+- Rod class: geometry operations, serialization (`model_dump`, `model_dump_json`), BOM generation, computed fields
+- Shape implementations: boundary calculation, frame rod generation, parameter validation, Shapely geometry correctness
+- Generator logic: arrangement generation, layer organization, constraint enforcement, Shapely operations
+- Quality evaluator: fitness calculations, individual criterion scores, hole identification using `polygonize()`
 
-**UI Tests:**
-- Parameter panel updates on type selection
-- Viewport rendering accuracy
-- BOM table calculations
-- Progress dialog behavior
+**Infrastructure Layer:**
+- File I/O: save/load operations, ZIP structure validation, JSON schema validation
+- DXF export: layer organization, entity creation, coordinate accuracy
+- Configuration loading: Hydra config parsing, Pydantic validation, default value loading
+
+### Integration Tests
+
+**Cross-Layer:**
+- Shape + Generator integration: valid arrangements for different shapes
+- Generator + Evaluator integration: fitness scoring, arrangement acceptance
+- Application controller workflows: complete user workflows (create, generate, save)
+- End-to-end save/load cycle: data integrity, round-trip accuracy
+
+### UI Tests (pytest-qt)
+
+**Presentation Layer:**
+- Parameter panel: updates on type selection, validation display, dynamic widget visibility
+- Viewport rendering: accurate geometry display, zoom/pan functionality, highlighting
+- BOM table: correct calculations, totals accuracy, selection behavior
+- Progress dialog: signal handling, cancellation, real-time updates
+
+**Testing with pytest-qt:**
+```python
+def test_generation_progress(qtbot):
+    generator = RandomGenerator(evaluator)
+    
+    # Wait for signal with timeout
+    with qtbot.waitSignal(generator.progress_updated, timeout=1000):
+        generator.generate(shape, params)
+    
+    assert generator.best_fitness > 0
+
+def test_viewport_rendering(qtbot, main_window):
+    # Simulate user interaction
+    qtbot.mouseClick(main_window.update_shape_button, Qt.LeftButton)
+    
+    # Wait for rendering
+    qtbot.wait(100)
+    
+    # Verify viewport content
+    assert main_window.viewport.scene().items()
+```
+
+### Test Data
+
+- Predefined shape configurations (valid and invalid)
+- Known-good infill arrangements for regression testing
+- Edge cases: minimum/maximum parameters, boundary conditions
+- Invalid inputs for validation testing
+- Performance benchmarks for generation speed
 
 ## Dependencies
 
+**Runtime Dependencies:**
 - PySide6 (UI framework)
+- PySide6-stubs (type stubs for mypy)
 - pydantic (parameter validation and data models)
 - shapely (geometry operations)
-- hydra-core (configuration)
+- hydra-core (configuration management)
 - omegaconf (config objects)
-- rich (logging)
-- typer (CLI)
-- numpy (when shapely is not enough)
+- rich (logging with color)
+- typer (CLI interface)
+- numpy (advanced numerical operations when Shapely is insufficient)
 - ezdxf (DXF export)
+
+**Development Dependencies:**
+- mypy (type checking)
+- ruff (formatting and linting)
+- pytest (testing framework)
+- pytest-qt (Qt/PySide6 testing)
+- pytest-cov (coverage reporting)
+
+## Deployment
+
+### Package Structure
+
+```
+railing-generator/
+├── src/
+│   └── railing_generator/
+│       ├── __main__.py          # Entry point
+│       ├── app.py               # Application setup
+│       ├── domain/              # Business logic
+│       ├── application/         # Orchestration
+│       ├── presentation/        # UI layer
+│       ├── infrastructure/      # External services
+│       └── resources/           # Optional: icons, images
+│           ├── icons/
+│           └── resources.qrc
+├── conf/                        # Hydra configs
+├── tests/                       # Test files
+├── pyproject.toml              # Project metadata
+└── README.md                   # Documentation
+```
+
+### Entry Point
+
+**Command-line interface:**
+```python
+# src/railing_generator/__main__.py
+import sys
+from PySide6.QtWidgets import QApplication
+from railing_generator.app import main
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    main_window = main()
+    main_window.show()
+    sys.exit(app.exec())
+```
+
+**CLI Options:**
+- `-d, --debug`: Enable debug logging
+- `-v, --verbose`: Log to stdout in addition to file
+- `--config-path`: Custom config directory (override default `conf/`)
+
+### Deployment Options
+
+1. **pyside6-deploy** (recommended for PySide6 apps):
+   - Creates standalone executables
+   - Handles Qt dependencies automatically
+   - Generates `pysidedeploy.spec` config file
+
+2. **PyInstaller/Nuitka**:
+   - More control over packaging
+   - Requires manual Qt plugin configuration
+   - Good for advanced customization
+
+3. **Python Package** (pip installable):
+   - Distribute via PyPI or private repository
+   - Users install with `pip install railing-generator`
+   - Requires Python environment on target system
+
+### Development Workflow
+
+```bash
+# Development with debug logging and console output
+uv run railing-generator --debug --verbose
+
+# Type checking (validates Qt types and Signal/Slot signatures)
+uv run mypy src/
+
+# Testing (includes pytest-qt for GUI testing)
+uv run pytest
+
+# Production (clean GUI without console output)
+railing-generator
+```
 
 ## Future Enhancements
 
