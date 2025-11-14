@@ -169,13 +169,68 @@ Unified representation for frame and infill rods.
 - `is_acceptable(arrangement, shape, params)` → bool (checks if arrangement meets minimum criteria)
 
 **Evaluation Process:**
-1. Identify all holes using Shapely `polygonize()` from rod arrangement
+1. Identify all holes by combining frame and infill rod geometries into a line network, then use Shapely `polygonize()` to extract enclosed polygons (holes)
 2. Calculate hole areas using `Polygon.area`
-3. Calculate incircle radii using `Polygon.minimum_rotated_rectangle`
+3. Calculate incircle radii (approximate using `Polygon.minimum_rotated_rectangle` or inscribed circle algorithms)
 4. Analyze rod angles and anchor spacing
 5. Compute individual criterion scores (0-1, where 1 = perfect)
 6. Combine using configured weights
 7. Reject if any hole exceeds max area
+
+**How Hole Identification Works (Complex Case with Crossing Rods):**
+
+`polygonize()` has a critical limitation: it only works when lines meet at **endpoints**, not when they cross in the middle. Since infill rods can cross each other (different layers), we need preprocessing to create a "noded" network.
+
+**The Problem:**
+- When two lines cross, there may not be a node (vertex) at the intersection point
+- This is called a "non-noded intersection"
+- `polygonize()` fails to recognize these crossings and produces incorrect or missing polygons
+
+**The Solution - Use `shapely.node()`:**
+
+Shapely 2.0+ provides the `node()` function which adds nodes at all intersection points:
+
+```python
+import shapely
+from shapely.ops import polygonize
+
+def find_holes(frame_rods, infill_rods):
+    # Combine all rod geometries
+    all_rods = [rod.geometry for rod in (frame_rods + infill_rods)]
+    
+    # Combine to a single GeometryCollection
+    collection = shapely.GeometryCollection(all_rods)
+    
+    # Add nodes at all intersection points (creates "noded" network)
+    noded = shapely.node(collection)
+    
+    # Now polygonize can correctly identify all enclosed polygons
+    holes = list(polygonize(noded.geoms))
+    
+    return holes
+```
+
+**How `shapely.node()` works:**
+1. Takes a GeometryCollection of linestrings
+2. Finds all intersection points where lines cross
+3. Splits each line at intersection points, adding explicit nodes
+4. Returns a new GeometryCollection with the noded (split) lines
+5. The result can be properly processed by `polygonize()`
+
+**Example:**
+```
+Before noding:              After noding:
+Rod A: ────────            Rod A: ───┼───  (split into 2 segments)
+Rod B:    │                Rod B:    │     (split into 2 segments)
+          │                          │
+```
+
+**Requirements:**
+- Shapely 2.0 or newer (for `shapely.node()` function)
+- All infill rods must be anchored to the frame to form closed polygons
+
+**Reference:** This approach is used by QGIS for polygonization and is documented at:
+https://martinfleischmann.net/fixing-missing-geometries-in-a-polygonized-network/
 
 **Criteria Details:**
 - **Hole Uniformity** (weight: 0.3): Prefer similar hole areas across all holes
@@ -359,7 +414,7 @@ This application uses Shapely extensively for geometric calculations:
 - `LineString.intersects(other)` - Check if rods cross (same layer constraint)
 - `Point.distance(other)` - Measure anchor spacing for quality evaluation
 - `Polygon.area` - Calculate hole areas for quality criteria
-- `polygonize(lines)` - Identify holes from rod arrangement network
+- `polygonize(lines)` - Extract enclosed polygons (holes) from a network of lines
 
 **Example Usage:**
 ```python
@@ -376,10 +431,38 @@ rod2 = LineString([(20, 0), (20, 100)])
 crosses = rod1.intersects(rod2)  # False
 
 # Find holes for quality evaluation
-all_lines = frame_rods + infill_rods
-holes = list(polygonize([rod.geometry for rod in all_lines]))
+import shapely
+from shapely.ops import polygonize
+
+# Combine all rod geometries (frame + infill) into one collection
+all_rod_geometries = [rod.geometry for rod in (frame_rods + infill_rods)]
+
+# IMPORTANT: Since rods can cross each other (different layers), we need to
+# create a "noded" network where lines are split at intersection points
+collection = shapely.GeometryCollection(all_rod_geometries)
+
+# shapely.node() adds nodes at all intersection points, splitting lines
+noded = shapely.node(collection)
+
+# Now polygonize() can correctly identify all enclosed polygons (holes)
+holes = list(polygonize(noded.geoms))
+
+# Calculate areas of all holes
 hole_areas = [hole.area for hole in holes]
+
+# Example: Rectangular frame + 3 vertical rods + 2 diagonal crossing rods
+# After noding splits at crossings, polygonize() returns all enclosed polygons
 ```
+
+**Important Notes on Hole Identification:**
+- `polygonize()` requires lines to meet at endpoints, not cross in the middle
+- Since rods can cross (different layers), preprocessing with `shapely.node()` is required
+- `shapely.node()` creates a "noded" network by splitting lines at intersection points
+- Requires Shapely 2.0 or newer
+- The frame boundary must be a closed loop (connected lines)
+- Infill rods must be anchored to the frame to form closed holes
+- This is a complex geometric operation that may require testing and refinement
+- Consider edge cases: very small holes, nearly-parallel rods, numerical precision issues
 
 ### File Management
 
@@ -572,7 +655,7 @@ def test_viewport_rendering(qtbot, main_window):
 - PySide6 (UI framework)
 - PySide6-stubs (type stubs for mypy)
 - pydantic (parameter validation and data models)
-- shapely (geometry operations)
+- shapely >= 2.0 (geometry operations, requires 2.0+ for `shapely.node()`)
 - hydra-core (configuration management)
 - omegaconf (config objects)
 - rich (logging with color)
