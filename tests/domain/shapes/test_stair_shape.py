@@ -414,3 +414,46 @@ class TestStairShapeExactGeometry:
 
         # Verify the boundary is valid
         assert boundary.is_valid
+
+    def test_boundary_independent_of_rod_order(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+        """Test that boundary calculation is independent of rod order."""
+        import random
+
+        params = StairShapeParameters(
+            post_length_cm=100.0,
+            stair_width_cm=120.0,
+            stair_height_cm=80.0,
+            num_steps=4,
+            frame_weight_per_meter_kg_m=0.5,
+        )
+        shape = StairShape(params)
+
+        # Get boundary with normal rod order
+        boundary_normal = shape.get_boundary()
+        assert boundary_normal.is_valid
+        normal_area = boundary_normal.area
+        normal_coords = set(boundary_normal.exterior.coords)
+
+        # Save the original get_frame_rods method
+        original_get_frame_rods = shape.get_frame_rods
+
+        # Create a wrapper that shuffles the rod order
+        def shuffled_get_frame_rods():  # type: ignore[no-untyped-def]
+            rods = original_get_frame_rods()
+            shuffled_rods = rods.copy()
+            random.shuffle(shuffled_rods)
+            return shuffled_rods
+
+        # Monkeypatch the method to return shuffled rods
+        monkeypatch.setattr(shape, "get_frame_rods", shuffled_get_frame_rods)
+
+        # Get boundary with shuffled rod order
+        boundary_shuffled = shape.get_boundary()
+
+        # Verify the boundary is still valid and identical
+        assert boundary_shuffled.is_valid
+        assert boundary_shuffled.area == pytest.approx(normal_area)
+
+        # Verify the coordinates are the same (order may differ, so use set comparison)
+        shuffled_coords = set(boundary_shuffled.exterior.coords)
+        assert shuffled_coords == normal_coords

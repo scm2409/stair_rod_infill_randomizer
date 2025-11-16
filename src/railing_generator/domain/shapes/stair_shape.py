@@ -2,8 +2,10 @@
 
 from dataclasses import dataclass
 
+import shapely
 from pydantic import BaseModel, Field, computed_field
 from shapely.geometry import LineString, Polygon
+from shapely.ops import polygonize
 
 from railing_generator.domain.rod import Rod
 
@@ -78,6 +80,7 @@ class StairShape:
         Get the boundary polygon of the stair shape.
 
         Derives the boundary from the frame rods geometry (single source of truth).
+        Uses shapely.polygonize which is independent of rod order.
 
         Returns:
             Shapely Polygon defining the frame boundary
@@ -85,23 +88,24 @@ class StairShape:
         # Get frame rods (single source of truth for geometry)
         frame_rods = self.get_frame_rods()
 
-        # Extract all coordinates from frame rod geometries
-        coords = []
-        for rod in frame_rods:
-            rod_coords = list(rod.geometry.coords)
-            # Add all coordinates except the last one (to avoid duplicates at connections)
-            coords.extend(rod_coords[:-1])
+        # Extract geometries from all frame rods
+        geometries = [rod.geometry for rod in frame_rods]
 
-        # Add the last coordinate to close the polygon
-        if frame_rods:
-            last_rod_coords = list(frame_rods[-1].geometry.coords)
-            coords.append(last_rod_coords[-1])
+        # Create a geometry collection and node it (add nodes at intersections)
+        collection = shapely.GeometryCollection(geometries)
+        noded = shapely.node(collection)
 
-        # Close the polygon (ensure first and last are the same)
-        if coords and coords[0] != coords[-1]:
-            coords.append(coords[0])
+        # Polygonize to get the boundary polygon (order-independent)
+        polygons = list(polygonize(noded.geoms))
 
-        return Polygon(coords)
+        # Should result in exactly one polygon (the frame boundary)
+        if len(polygons) != 1:
+            raise ValueError(
+                f"Expected exactly 1 polygon from frame rods, got {len(polygons)}. "
+                "Frame rods may not form a closed boundary."
+            )
+
+        return polygons[0]
 
     def get_frame_rods(self) -> list[Rod]:
         """
