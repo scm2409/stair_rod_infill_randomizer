@@ -4,11 +4,8 @@ import sys
 from pathlib import Path
 
 import typer
-from PySide6.QtWidgets import QApplication
 
-from railing_generator.infrastructure.logging_config import setup_logging
-
-app = typer.Typer()
+app = typer.Typer(help="Railing Infill Generator - Desktop application for generating rod arrangements")
 
 
 @app.command()
@@ -19,12 +16,20 @@ def main(
         Path("conf"), "--config-path", help="Custom config directory"
     ),
 ) -> None:
-    """Launch the Railing Infill Generator application."""
-    # Set up logging first
-    setup_logging(debug=debug, verbose=verbose)
-
-    # Import here to avoid circular dependencies and ensure logging is configured
+    """
+    Launch the Railing Infill Generator application.
+    
+    This desktop application generates rod arrangements for railing frames
+    with support for multiple shapes and generation algorithms.
+    """
+    # Import here to avoid loading Qt and other heavy dependencies for --help
+    from PySide6.QtWidgets import QApplication
+    
     from railing_generator.app import create_main_window
+    from railing_generator.infrastructure.logging_config import setup_logging
+
+    # Set up logging
+    setup_logging(debug=debug, verbose=verbose)
 
     # Create Qt application
     qt_app = QApplication(sys.argv)
