@@ -72,7 +72,58 @@ Build thin vertical slices through all layers:
     - Write test to verify panel and shape switching
     - _Requirements: 5, 6, 7_
 
-### Phase 3: First Infill Generation (See rods being generated!)
+### Phase 3: Implement Central State Management (Foundation for all features!)
+
+- [ ] 3.5 Implement RailingProjectModel and ApplicationController
+  - [ ] 3.5.1 Create RailingProjectModel class
+    - Create RailingProjectModel inheriting from QObject
+    - Define all state fields (shape type, parameters, RailingFrame, generator type, parameters, RailingInfill, file path, modified flag, UI state)
+    - Define all signals with proper naming (railing_shape_type_changed, railing_frame_updated, railing_infill_updated, etc.)
+    - Implement property getters for all state fields
+    - Write unit tests for model initialization
+    - _Requirements: 7, 8.2, 8.2.2_
+  
+  - [ ] 3.5.2 Implement state setter methods with signal emissions
+    - Implement set_railing_shape_type() - clears frame, emits signals
+    - Implement set_railing_shape_parameters() - marks modified, emits signal
+    - Implement set_railing_frame() - clears infill, marks modified, emits signals
+    - Implement set_generator_type() - marks modified, emits signal
+    - Implement set_generator_parameters() - marks modified, emits signal
+    - Implement set_railing_infill() - marks modified, emits signal
+    - Implement set_project_file_path() - emits signal
+    - Implement mark_project_saved() - clears modified flag, emits signal
+    - Implement set_enumeration_visible() - emits signal
+    - Write unit tests for each setter (verify signal emissions and state dependencies)
+    - _Requirements: 7, 8.2, 8.2.2_
+  
+  - [ ] 3.5.3 Implement utility methods
+    - Implement reset_to_defaults() - clears all state, emits all signals
+    - Implement has_railing_frame() - checks if frame exists
+    - Implement has_railing_infill() - checks if infill exists
+    - Write unit tests for utility methods
+    - _Requirements: 8.2.2_
+  
+  - [ ] 3.5.4 Create basic ApplicationController
+    - Create ApplicationController class that takes RailingProjectModel in constructor
+    - Implement update_railing_shape(shape_type, parameters) - creates RailingShape, generates frame, updates model
+    - Implement create_new_project() - calls model.reset_to_defaults()
+    - Create RailingShapeFactory to instantiate shapes from type string
+    - Write unit tests for controller methods (verify model is updated correctly)
+    - _Requirements: 4, 7, 8.2.2_
+  
+  - [ ] 3.5.5 Refactor existing code to use RailingProjectModel and ApplicationController
+    - Create RailingProjectModel and ApplicationController instances in main application
+    - Connect ViewportWidget to model signals (railing_frame_updated, railing_infill_updated)
+    - Update ViewportWidget to observe model instead of direct calls
+    - Connect MainWindow to model signals (project_file_path_changed, project_modified_changed)
+    - Update window title logic to observe model
+    - Update "Update Shape" button to call controller.update_railing_shape()
+    - Remove direct state management from UI components
+    - **VISUAL MILESTONE**: Existing features now use central state management! 🎉
+    - Write integration tests (controller updates model, model notifies UI)
+    - _Requirements: 7, 8.2.2_
+
+### Phase 4: First Infill Generation (See rods being generated!)
 
 - [ ] 4. Implement simple random generator (without quality evaluation)
   - [ ] 4.1 Create RailingInfill class
@@ -105,7 +156,7 @@ Build thin vertical slices through all layers:
     - Write test to verify progress dialog
     - _Requirements: 9.1, 9.1.1_
 
-### Phase 4: Improve Quality (See better results!)
+### Phase 5: Improve Quality (See better results!)
 
 - [ ] 5. Add quality evaluation to improve results
   - [ ] 5.1 Implement hole identification
@@ -132,7 +183,7 @@ Build thin vertical slices through all layers:
     - Write integration tests
     - _Requirements: 1.1, 6.2, 6.3, 9.1.1_
 
-### Phase 5: Add Parameter Controls (Fine-tune what you see!)
+### Phase 6: Add Parameter Controls (Fine-tune what you see!)
 
 - [ ] 6. Add full parameter controls
   - [ ] 6.1 Implement dynamic parameter forms
@@ -150,7 +201,7 @@ Build thin vertical slices through all layers:
     - Write tests for validation display
     - _Requirements: 5, 9.2_
 
-### Phase 6: Add BOM Table (See the parts list!)
+### Phase 7: Add BOM Table (See the parts list!)
 
 - [ ] 7. Implement BOM table
   - [ ] 7.1 Create BOM Table widget
@@ -172,14 +223,16 @@ Build thin vertical slices through all layers:
     - Write test for selection
     - _Requirements: 8.1_
 
-### Phase 7: Add Save/Load (Preserve what you created!)
+### Phase 8: Add Save/Load (Preserve what you created!)
 
 - [ ] 8. Implement project persistence
-  - [ ] 8.1 Implement Application Controller
-    - Create ApplicationController class
-    - Implement project state management
-    - Write tests for controller and state
-    - _Requirements: 7, 8.2, 8.2.2, 9_
+  - [ ] 8.1 Extend ApplicationController for save/load
+    - Implement save_project(file_path) - serializes model state to .rig.zip
+    - Implement load_project(file_path) - deserializes and restores model state
+    - Implement _serialize_project_state() - converts model to dict
+    - Implement _deserialize_project_state() - restores model from dict
+    - Write unit tests for serialization/deserialization
+    - _Requirements: 8.2, 8.2.2_
   
   - [ ] 8.2 Implement save functionality
     - Serialize to .rig.zip archive
@@ -200,7 +253,7 @@ Build thin vertical slices through all layers:
     - Write tests for menu actions
     - _Requirements: 8.2, 8.2.1, 8.2.2_
 
-### Phase 8: Add Export and Polish
+### Phase 9: Add Export and Polish
 
 - [ ] 9. Add export and final features
   - [ ] 9.1 Implement DXF export
@@ -228,7 +281,7 @@ Build thin vertical slices through all layers:
     - Write integration tests for complete workflows
     - _Requirements: All_
 
-### Phase 9: Optional Advanced Features
+### Phase 10: Optional Advanced Features
 
 - [ ]* 10. Advanced UI testing with pytest-qt
   - [ ]* 10.1 Write UI tests for parameter panel
@@ -241,14 +294,15 @@ Build thin vertical slices through all layers:
 1. ✅ Empty window with viewport (Task 2.2)
 2. 🎯 First stair shape visible (Task 2.4)
 3. 🎯 Switch between shapes (Task 3.3)
-4. 🎯 First random infill (Task 4.3)
-5. 🎯 Generation progress (Task 4.4)
-6. 🎯 Quality improving (Task 5.4)
-7. 🎯 Adjust parameters (Task 6.1)
-8. 🎯 Parts list (Task 7.2)
-9. 🎯 Highlight parts (Task 7.3)
-10. 🎯 Save/load designs (Task 8.3)
-11. 🎯 Rod numbers (Task 9.2)
+4. 🎯 Central state management integrated (Task 3.5.4)
+5. 🎯 First random infill (Task 4.3)
+6. 🎯 Generation progress (Task 4.4)
+7. 🎯 Quality improving (Task 5.4)
+8. 🎯 Adjust parameters (Task 6.1)
+9. 🎯 Parts list (Task 7.2)
+10. 🎯 Highlight parts (Task 7.3)
+11. 🎯 Save/load designs (Task 8.3)
+12. 🎯 Rod numbers (Task 9.2)
 
 ## Notes
 

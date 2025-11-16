@@ -333,27 +333,175 @@ https://martinfleischmann.net/fixing-missing-geometries-in-a-polygonized-network
 
 ## Application Layer
 
-### Application Controller
+### Application State Management
 
-Orchestrates application workflows.
+The application uses a **central model pattern** with Qt's signal/slot mechanism to manage runtime state and synchronize UI components.
+
+#### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│           RailingProjectModel (QObject)                      │
+│  • Stores all runtime state (single source of truth)        │
+│  • Emits signals when state changes                          │
+│  • No dependencies on UI components                          │
+└──────────────────────────────────────────────────────────────┘
+                            ↓ signals (observer pattern)
+        ┌───────────────────┼────────────────────┬─────────────┐
+        ↓                   ↓                    ↓             ↓
+┌───────────────┐  ┌────────────────┐  ┌──────────────┐  ┌─────────────┐
+│ ViewportWidget│  │ BOMTableModel  │  │ ParameterPanel│  │ MainWindow  │
+│ (observer)    │  │ (observer)     │  │ (observer)    │  │ (observer)  │
+└───────────────┘  └────────────────┘  └──────────────┘  └─────────────┘
+```
+
+#### RailingProjectModel
+
+Central state model inheriting from `QObject` for signal/slot support.
+
+**State Storage:**
+- Railing shape type and parameters
+- Current RailingFrame (immutable reference)
+- Generator type and parameters
+- Current RailingInfill (immutable reference)
+- Project file path and modified flag
+- UI state (enumeration visibility, etc.)
+
+**Signals (Past Tense Naming):**
+- `railing_shape_type_changed(str)` - Shape type selected
+- `railing_shape_parameters_changed(object)` - Parameters modified
+- `railing_frame_updated(object)` - New frame generated or cleared
+- `generator_type_changed(str)` - Generator type selected
+- `generator_parameters_changed(object)` - Parameters modified
+- `railing_infill_updated(object)` - New infill generated or cleared
+- `project_file_path_changed(object)` - File path changed
+- `project_modified_changed(bool)` - Dirty flag changed
+- `enumeration_visibility_changed(bool)` - Enumeration toggled
 
 **Key Methods:**
-- `create_new_project()` - Reset to defaults
-- `update_shape(type, params)` - Create new shape
-- `generate_infill(type, params)` - Start generation in background thread
+- `set_railing_frame(frame)` - Update frame, emit signal, clear infill, mark modified
+- `set_railing_infill(infill)` - Update infill, emit signal, mark modified
+- `mark_project_saved()` - Clear modified flag, emit signal
+- `reset_to_defaults()` - Clear all state, emit all signals
+
+**State Dependencies:**
+- Changing shape type clears RailingFrame
+- Changing RailingFrame clears RailingInfill
+- Any state change marks project as modified
+
+#### Observer Pattern
+
+UI components connect to model signals in their constructors:
+
+```python
+# ViewportWidget observes frame and infill changes
+project_model.railing_frame_updated.connect(self._on_railing_frame_updated)
+project_model.railing_infill_updated.connect(self._on_railing_infill_updated)
+
+# BOMTableModel observes frame or infill (depending on table type)
+project_model.railing_frame_updated.connect(self._on_railing_frame_updated)
+
+# MainWindow observes project state for title and menu updates
+project_model.project_file_path_changed.connect(self._update_window_title)
+project_model.project_modified_changed.connect(self._update_window_title)
+```
+
+**Observer Responsibilities:**
+- ViewportWidget: Render frame/infill geometry when signals received
+- BOMTableModel: Update table data using `beginResetModel()`/`endResetModel()`
+- ParameterPanel: Show/hide parameter widgets based on type changes
+- MainWindow: Update title with filename and asterisk, enable/disable menu actions
+
+#### Integration with ApplicationController
+
+ApplicationController orchestrates workflows and updates the model:
+
+**Workflow Pattern:**
+1. Controller receives user action (e.g., "Update Shape" button clicked)
+2. Controller creates domain objects (RailingShape, RailingFrame)
+3. Controller updates model via setter methods
+4. Model emits signals
+5. UI observers receive signals and update themselves
+
+**Example Flow:**
+```
+User clicks "Update Shape"
+  → ApplicationController.update_railing_shape()
+    → Create RailingShape instance
+    → Call railing_shape.generate_frame()
+    → Call project_model.set_railing_frame(frame)
+      → Model emits railing_frame_updated signal
+        → ViewportWidget receives signal, renders frame
+        → BOMTableModel receives signal, updates table
+```
+
+**Controller Responsibilities:**
+- Create domain objects (shapes, generators)
+- Orchestrate background threads for generation
+- Serialize/deserialize project state for save/load
+- Update model, never update UI directly
+
+#### Thread Safety
+
+Qt signals/slots are thread-safe across thread boundaries (queued connections):
+
+**Background Generation:**
+- Generator runs in QThread
+- Generator emits `progress_updated` and `generation_completed` signals
+- Signals automatically queued to main thread
+- ApplicationController receives signal in main thread
+- Controller updates RailingProjectModel in main thread
+- Model emits signals to UI observers in main thread
+
+**Cancellation:**
+- Atomic boolean flag checked by generator
+- No direct thread communication needed
+
+#### Signal Naming Conventions
+
+**Past Tense (State Changed):**
+- `railing_frame_updated` - Frame was updated
+- `railing_infill_updated` - Infill was updated
+- `project_modified_changed` - Modified flag changed
+
+**Full Names:**
+- Use `railing_frame_updated` not `frame_updated`
+- Use `railing_infill_updated` not `infill_changed`
+- Consistent with domain terminology
+
+#### Design Rationale
+
+**Why Central Model:**
+- Single source of truth prevents state inconsistencies
+- UI components don't need references to each other
+- Easy to add new observers (just connect signals)
+- Clear data flow: Controller → Model → Observers
+- Testable (mock model, verify signals)
+
+**Why QObject (not QAbstractItemModel):**
+- QAbstractItemModel is for table/tree/list data (rows/columns)
+- QObject is for application-level state
+- Simpler API for non-tabular data
+- BOMTableModel uses QAbstractTableModel for table data separately
+
+### ApplicationController
+
+Orchestrates application workflows and updates RailingProjectModel.
+
+**Key Methods:**
+- `create_new_project()` - Reset model to defaults
+- `update_railing_shape(type, params)` - Generate frame, update model
+- `generate_railing_infill(type, params)` - Generate infill in background, update model
 - `cancel_generation()` - Cancel ongoing generation
-- `save_project(path)` - Save to .rig.zip
-- `load_project(path)` - Load from .rig.zip
-- `export_dxf(path)` - Export to DXF
+- `save_project(path)` - Serialize model state to .rig.zip
+- `load_project(path)` - Deserialize and restore model state
+- `export_dxf(path)` - Export current model state to DXF
 
-### Project State
-
-**Components:**
-- Shape type and parameters
-- Shape instance
-- Generator type and parameters
-- Infill result (if generated)
-- File path and modified flag
+**Relationship with Model:**
+- Controller updates model (via setter methods)
+- Model emits signals to observers
+- Controller does NOT directly update UI components
+- UI components observe model, not controller
 
 ## Presentation Layer
 
