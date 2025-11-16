@@ -38,11 +38,44 @@ This document defines the technical standards and tooling requirements for all P
 
 ## Testing
 
+### Testing Philosophy
+
+**CRITICAL:** Tests must be integrated with implementation tasks, not separate.
+
+- **Every implementation task MUST include at least one test**
+- Tests should be written immediately after (or alongside) the implementation
+- Never create standalone "testing tasks" - tests are part of implementation
+- Follow implementation-first approach: implement feature, then write tests
+
+### Testing Framework
+
 - Use `pytest` as the testing framework
-- Place test files in `tests/` directory
+- Place test files in `tests/` directory mirroring `src/` structure
 - Support fixtures and parameterized tests
 - Include pytest as a development dependency
 - Report test results with pass/fail status and coverage information
+
+### Test Coverage Requirements
+
+- **Unit tests**: Test individual functions, classes, and methods in isolation
+- **Integration tests**: Test interactions between components
+- **UI tests** (optional): Use pytest-qt for PySide6 GUI testing (can be deferred)
+
+### Test Organization
+
+```
+tests/
+├── domain/
+│   ├── test_models.py
+│   ├── test_shapes.py
+│   └── test_generators.py
+├── application/
+│   └── test_controller.py
+├── infrastructure/
+│   └── test_logging_config.py
+└── integration/
+    └── test_workflows.py
+```
 
 ## Project Structure
 
@@ -64,6 +97,7 @@ project-root/
 │   └── [feature]/       # Config groups organized by feature
 ├── .venv/               # Virtual environment (not in git)
 ├── .gitignore           # Python-specific exclusions
+├── temp/                # This is for humans only, ignore in git and AI should also never ever read or update it
 ├── pyproject.toml       # Project metadata and dependencies
 └── README.md            # Project documentation
 ```
@@ -208,12 +242,6 @@ max_angle_deviation_deg: 30.0
 min_anchor_distance_cm: 10.0
 max_duration_sec: 60.0
 ```
-
-**Benefits:**
-- Self-documenting code
-- Prevents unit confusion errors
-- No need for comments explaining units
-- Type checkers can't catch unit errors, naming convention helps
 
 ## Data Validation and Models
 
@@ -396,11 +424,6 @@ conf/
     └── option_b.yaml
 ```
 
-### Configuration Override Priority (highest to lowest):
-1. Command-line overrides (e.g., `python app.py feature=option_a`)
-2. Config group selections in main config
-3. Defaults in config files
-
 ## Development Dependencies
 
 Separate development dependencies from runtime dependencies in `pyproject.toml`:
@@ -470,12 +493,82 @@ python_files = ["test_*.py"]
 
 ## Workflow
 
+### Initial Setup
+
 1. Initialize project with `uv init`
 2. Set up `.venv` with `uv venv`
 3. Install dependencies with `uv pip install -e ".[dev]"`
-4. Run type checking with `uv run mypy src/`
-5. Format code with `uv run ruff format .`
-6. Lint code with `uv run ruff check .`
-7. Run tests with `uv run pytest`
+
+### Task Workflow (Before Starting and After Completing Each Task)
+
+**CRITICAL:** Follow this workflow for every task:
+
+#### Before Starting a Task:
+
+1. **Record baseline coverage**:
+   ```bash
+   uv run pytest --cov=railing_generator --cov-report=term-missing
+   ```
+   - Note the **TOTAL coverage percentage** (e.g., "51%")
+   - Add this as a note to the task: "Starting coverage: 51%"
+   - This is your baseline to maintain or improve
+
+#### During Development:
+
+Run these checks after every code change:
+
+1. **Type checking**: `uv run mypy src/`
+   - Ensures type correctness and catches type errors early
+   - Must pass with no errors before proceeding
+
+2. **Linting**: `uv run ruff check .`
+   - Checks code quality, style violations, and common anti-patterns
+   - Must pass with no errors before proceeding
+
+3. **Formatting**: `uv run ruff format .`
+   - Automatically formats code to consistent style
+   - Run before committing code
+
+4. **Testing with coverage**: `uv run pytest --cov=railing_generator --cov-report=term-missing`
+   - Runs all tests to verify functionality
+   - Shows coverage report with missing lines
+   - Check that coverage is maintained or improved
+
+#### Before Completing a Task:
+
+1. **Verify coverage requirement**:
+   - Run: `uv run pytest --cov=railing_generator --cov-report=term-missing`
+   - Check the **TOTAL coverage percentage**
+   - **REQUIREMENT**: New coverage MUST be >= baseline coverage
+   - If coverage dropped, add more tests to cover the new code
+   - Add final coverage as note: "Ending coverage: 55%"
+
+2. **All checks must pass**:
+   - ✅ mypy: No type errors
+   - ✅ ruff: No linting issues
+   - ✅ pytest: All tests passing
+   - ✅ coverage: >= baseline coverage
+
+**Example Task Notes:**
+```
+Task 2.1: Implement Rod class
+- Starting coverage: 51%
+- Ending coverage: 58% ✅ (improved)
+```
+
+### Quick Check Command
+
+Run all checks in sequence:
+```bash
+uv run mypy src/ && uv run ruff check . && uv run pytest --cov=railing_generator --cov-report=term-missing
+```
+
+### Coverage Report
+
+After running tests with coverage, you'll see:
+- Overall coverage percentage
+- Per-file coverage
+- Line numbers that are not covered (missing)
+- Use this to identify untested code paths
 
 Note: `uv run` automatically uses the project's virtual environment, so no manual activation is needed.

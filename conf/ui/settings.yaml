@@ -1,0 +1,18 @@
+# UI settings and appearance
+
+# Colors (RGB hex format)
+colors:
+  frame: "#2C3E50"        # Dark blue-gray for frame
+  infill_layer_1: "#E74C3C"  # Red for layer 1
+  infill_layer_2: "#3498DB"  # Blue for layer 2
+  infill_layer_3: "#2ECC71"  # Green for layer 3
+  infill_layer_4: "#F39C12"  # Orange for layer 4
+  infill_layer_5: "#9B59B6"  # Purple for layer 5
+  highlight: "#F1C40F"    # Yellow for highlighted parts
+  background: "#ECF0F1"   # Light gray background
+
+# Export settings
+export:
+  png_resolution_dpi: 300
+  png_width_px: 1920
+  png_height_px: 1080

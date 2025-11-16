@@ -1,0 +1,11 @@
+# Quality evaluation criteria weights for Random Generator
+
+# Criterion weights (should sum to 1.0 for normalized scoring)
+hole_uniformity_weight: 0.3
+incircle_uniformity_weight: 0.2
+angle_distribution_weight: 0.2
+anchor_spacing_horizontal_weight: 0.15  # Weight for top/bottom frame elements
+anchor_spacing_vertical_weight: 0.15    # Weight for post frame elements
+
+# Maximum allowed hole area (cm²) - arrangements exceeding this are rejected
+max_hole_area_cm2: 500.0

@@ -1,0 +1,23 @@
+# Logging configuration
+
+# Logger hierarchy and levels
+# Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+root:
+  level: INFO
+
+loggers:
+  railing_generator.ui:
+    level: INFO
+  
+  railing_generator.domain.shapes:
+    level: INFO
+  
+  railing_generator.domain.generators:
+    level: DEBUG  # More verbose for generation debugging
+  
+  railing_generator.domain.evaluator:
+    level: DEBUG  # More verbose for quality evaluation debugging
+  
+  railing_generator.application:
+    level: INFO

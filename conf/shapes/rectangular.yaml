@@ -1,0 +1,5 @@
+# Default parameters for rectangular railing frames
+
+width_cm: 200.0
+height_cm: 100.0
+frame_weight_per_meter_kg_m: 0.5

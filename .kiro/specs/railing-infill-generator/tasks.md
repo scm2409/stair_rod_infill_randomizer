@@ -4,12 +4,14 @@ This document outlines the implementation tasks for the Railing Infill Generator
 
 ## Task List
 
-- [ ] 1. Set up project structure and core infrastructure
+- [x] 1. Set up project structure and core infrastructure
   - Create project directory structure following layered architecture (domain, application, presentation, infrastructure)
   - Set up `pyproject.toml` with all dependencies (PySide6, pydantic, shapely>=2.0, hydra-core, etc.)
   - Create basic entry point (`__main__.py`) and application setup (`app.py`)
   - Set up Hydra configuration structure in `conf/` directory
   - Configure logging with RichHandler and hierarchical loggers
+  - Write test for logging configuration (verify log file creation, console output, log levels)
+  - **Coverage: Starting 0% → Ending 51%** ✅
   - _Requirements: 10, 11_
 
 - [ ] 2. Implement core domain models with tests
@@ -30,7 +32,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
 - [ ] 3. Implement Shape system with extensibility and tests
   - [ ] 3.1 Create Shape base class and interface
     - Define abstract Shape class with `get_boundary()` and `get_frame_rods()` methods
-    - Add `get_frame_lines()` helper method
+    - Write test to verify abstract methods cannot be instantiated directly
     - _Requirements: 4_
   - [ ] 3.2 Implement StairShape with tests
     - Create StairShapeDefaults dataclass for Hydra config
@@ -54,6 +56,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
   - [ ] 3.5 Create Hydra configuration files for shapes
     - Create `conf/shapes/stair.yaml` with default values
     - Create `conf/shapes/rectangular.yaml` with default values
+    - Write test to verify config files can be loaded and parsed correctly
     - _Requirements: 10_
 
 - [ ] 4. Implement Quality Evaluator for Random Generator with tests
@@ -79,6 +82,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - _Requirements: 6.2, 6.2.1_
   - [ ] 4.4 Create Hydra configuration for evaluator
     - Create `conf/evaluator/criteria.yaml` with weights and thresholds
+    - Write test to verify config file can be loaded and weights sum correctly
     - _Requirements: 6.2, 10_
 
 - [ ] 5. Implement Generator system with extensibility and tests
@@ -86,6 +90,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Define abstract Generator class inheriting from QObject
     - Define signals: progress_updated, best_result_updated, generation_completed, generation_failed
     - Implement cancellation support with `_cancelled` flag
+    - Write test to verify signals are defined correctly and cancellation flag works
     - _Requirements: 4.1, 9.1_
   - [ ] 5.2 Implement RandomGenerator with tests
     - Create RandomGeneratorDefaults dataclass for Hydra config
@@ -109,6 +114,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - _Requirements: 4.1_
   - [ ] 5.4 Create Hydra configuration for generators
     - Create `conf/generators/random.yaml` with default parameters
+    - Write test to verify config file can be loaded and parameters are valid
     - _Requirements: 6.1.1, 10_
 
 - [ ] 6. Implement Application Controller and State Management with tests
@@ -137,6 +143,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Implement moveToThread pattern for background generation
     - Connect signals between worker, generator, and UI
     - Handle thread lifecycle (start, quit, wait)
+    - Write test to verify worker can be moved to thread and signals work correctly
     - _Requirements: 9.1_
 
 - [ ] 7. Implement Presentation Layer - Main Window
@@ -146,6 +153,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Create central widget with splitter layout
     - Create status bar with operation status and stats
     - Implement window title with filename and modified indicator
+    - Write test to verify window can be created and has correct structure
     - _Requirements: 7, 8.2.2_
   - [ ] 7.2 Implement File menu actions
     - Implement New Project action
@@ -154,10 +162,12 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Implement Save As action with file dialog
     - Implement Export to DXF action
     - Implement Quit action with unsaved changes warning
+    - Write test to verify menu actions are created and connected
     - _Requirements: 8.2, 8.2.1, 8.2.2_
   - [ ] 7.3 Implement View menu actions
     - Implement Toggle Enumeration action
     - Implement Fit to View action
+    - Write test to verify view actions work correctly
     - _Requirements: 7.3_
 
 - [ ] 8. Implement Presentation Layer - Parameter Panel
@@ -168,6 +178,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Add QComboBox for generator type selection
     - Add "Update Shape" button
     - Add "Generate Infill" button
+    - Write test to verify panel can be created with correct widgets
     - _Requirements: 5, 6, 6.1, 7_
   - [ ] 8.2 Implement dynamic parameter forms
     - Create shape parameter form widgets (QDoubleSpinBox, QSpinBox)
@@ -175,11 +186,13 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Show/hide widgets based on selected type
     - Display unit suffixes (cm, kg, °)
     - Load default values from Hydra config
+    - Write test to verify widgets show/hide correctly on type change
     - _Requirements: 5, 6, 6.1, 10_
   - [ ] 8.3 Implement parameter validation and error display
     - Connect to Pydantic validation
     - Display inline error messages for invalid inputs
     - Disable buttons during operations
+    - Write test to verify validation errors are displayed correctly
     - _Requirements: 5, 9.2_
 
 - [ ] 9. Implement Presentation Layer - Viewport
@@ -188,16 +201,19 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Implement zoom with mouse wheel (centered on cursor)
     - Implement pan with mouse drag
     - Set up performance optimizations (viewport update mode, caching)
+    - Write test to verify viewport can be created and basic operations work
     - _Requirements: 7, 7.2_
   - [ ] 9.2 Implement frame rendering
     - Render frame rods as QGraphicsLineItem objects
     - Use distinct color for frame
     - Update on shape changes
+    - Write test to verify frame rods are rendered correctly
     - _Requirements: 7, 7.1_
   - [ ] 9.3 Implement infill rendering
     - Render infill rods as QGraphicsLineItem objects
     - Use layer-specific colors
     - Update on generation completion and best result updates
+    - Write test to verify infill rods are rendered with correct colors
     - _Requirements: 7, 9.1.1_
   - [ ] 9.4 Implement rod enumeration display
     - Create enumeration markers (circles for infill, squares for frame)
@@ -205,10 +221,12 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Draw dashed anchor lines connecting markers to rods
     - Position markers outside frame to minimize obstruction
     - Toggle visibility based on View menu action
+    - Write test to verify enumeration markers are created correctly
     - _Requirements: 7.3_
   - [ ] 9.5 Implement part highlighting
     - Highlight selected rod when BOM table row is selected
     - Use distinct visual style for highlighted parts
+    - Write test to verify highlighting works correctly
     - _Requirements: 8.1_
 
 - [ ] 10. Implement Presentation Layer - BOM Table
@@ -217,21 +235,25 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Add two tabs: Frame Parts, Infill Parts
     - Set up columns: ID, Length (cm), Start Angle (°), End Angle (°), Weight (kg)
     - Enable column sorting
+    - Write test to verify table structure is created correctly
     - _Requirements: 8_
   - [ ] 10.2 Implement BOM data population
     - Populate frame parts table from shape frame rods
     - Populate infill parts table from generation result
     - Use Rod.to_bom_entry() method
     - Update on shape changes and generation completion
+    - Write test to verify data is populated correctly from rods
     - _Requirements: 8_
   - [ ] 10.3 Implement BOM totals calculation
     - Calculate and display per-tab totals (sum length, sum weight)
     - Calculate and display combined totals
     - Update totals when data changes
+    - Write test to verify totals are calculated correctly
     - _Requirements: 8_
   - [ ] 10.4 Implement BOM row selection
     - Connect row selection to viewport highlighting
     - Emit signals when selection changes
+    - Write test to verify selection signals are emitted correctly
     - _Requirements: 8.1_
 
 - [ ] 11. Implement Presentation Layer - Progress Dialog
@@ -241,6 +263,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Add metrics display (iteration, fitness, elapsed time)
     - Add QTextEdit for progress logs
     - Add Cancel button
+    - Write test to verify dialog can be created with correct widgets
     - _Requirements: 9.1, 9.1.1_
   - [ ] 11.2 Connect to generation signals
     - Connect to progress_updated signal for metrics updates
@@ -249,6 +272,7 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Connect to generation_failed signal to show error
     - Connect Cancel button to cancel_generation()
     - Throttle updates to max every 100ms
+    - Write test to verify signals are connected and throttling works
     - _Requirements: 9.1, 9.1.1_
 
 - [ ] 12. Implement Infrastructure Layer - File I/O with tests
@@ -282,25 +306,29 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Create main `conf/config.yaml`
     - Register all dataclass configs with ConfigStore
     - Implement Hydra initialization in app.py
+    - Write test to verify Hydra can load all config files correctly
     - _Requirements: 10_
   - [ ] 13.2 Implement QSettings for user preferences
     - Create hybrid config system (Hydra + QSettings)
     - Save/load window geometry and state
     - Save/load last used types and parameters
     - Implement preference override logic
+    - Write test to verify QSettings save/load works correctly
     - _Requirements: 8.2.2_
   - [ ] 13.3 Create UI settings configuration
     - Create `conf/ui/settings.yaml` with colors and PNG resolution
+    - Write test to verify UI settings can be loaded
     - _Requirements: 7, 10_
 
-- [ ] 14. Implement Infrastructure Layer - Logging
-  - [ ] 14.1 Set up logging system
+- [x] 14. Implement Infrastructure Layer - Logging
+  - [x] 14.1 Set up logging system
     - Configure RichHandler for console output
     - Configure file handler with date-based filenames
     - Set up hierarchical logger structure
     - Implement --verbose flag for console logging
+    - Write tests for logging configuration (COMPLETED)
     - _Requirements: 11_
-  - [ ] 14.2 Create logging configuration
+  - [x] 14.2 Create logging configuration
     - Create `conf/logging/config.yaml` with logger hierarchy and levels
     - _Requirements: 11_
 
@@ -309,22 +337,25 @@ This document outlines the implementation tasks for the Railing Infill Generator
     - Connect ApplicationController to UI components
     - Connect all signals and slots
     - Ensure proper event flow through all layers
-    - Test complete workflows (create, generate, save, load)
+    - Write integration tests for complete workflows (create, generate, save, load)
     - _Requirements: All_
   - [ ] 15.2 Implement error handling
     - Add try-catch blocks for validation errors
     - Add error dialogs for file I/O errors
     - Add error handling for generation failures
     - Log all errors with stack traces
+    - Write tests to verify error handling works correctly
     - _Requirements: All_
-  - [ ] 15.3 Add CLI support
+  - [x] 15.3 Add CLI support
     - Implement Typer CLI with --debug and --verbose flags
     - Support --config-path for custom config directory
+    - (COMPLETED in Task 1)
     - _Requirements: 11_
   - [ ] 15.4 Performance optimization
     - Verify QGraphicsView optimizations are applied
     - Test with large rod counts (100+ rods)
     - Optimize signal throttling if needed
+    - Write performance tests to verify optimization targets are met
     - _Requirements: 9.1_
 
 - [ ]* 16. Additional UI testing with pytest-qt
@@ -352,18 +383,47 @@ This document outlines the implementation tasks for the Railing Infill Generator
 ## Notes
 
 - Tasks marked with `*` are optional (advanced UI testing with pytest-qt)
-- Core unit and integration tests are included with each implementation task
+- **EVERY task includes at least one test** - tests are part of implementation, not separate tasks
 - Each task should be completed and tested before moving to the next
 - Tests should be written immediately after (or alongside) the implementation
 - All code should be integrated as it's developed (no orphaned code)
 - Follow the Python standards defined in `.kiro/steering/python-standards.md`
 - Refer to `.kiro/specs/railing-infill-generator/design.md` for detailed implementation guidance
 
+### Task Workflow (CRITICAL)
+
+#### Before Starting a Task:
+1. Run: `uv run pytest --cov=railing_generator --cov-report=term-missing`
+2. Note the TOTAL coverage % (e.g., "Starting coverage: 51%")
+3. This is your baseline - you must maintain or improve it
+
+#### During Development:
+```bash
+# Quick check after every code change
+uv run mypy src/ && uv run ruff check . && uv run pytest --cov=railing_generator --cov-report=term-missing
+```
+
+#### Before Completing a Task:
+1. Run coverage again
+2. **REQUIREMENT**: New coverage MUST be >= baseline coverage
+3. If coverage dropped, add more tests
+4. Note final coverage (e.g., "Ending coverage: 58%")
+5. All checks must pass: mypy ✅ ruff ✅ pytest ✅ coverage ✅
+
+**Example:**
+```
+Task 2.1: Implement Rod class
+- Starting coverage: 51%
+- Ending coverage: 58% ✅
+```
+
 ## Testing Approach
 
 This plan follows an **implementation-first with immediate testing** approach:
-- Core functionality is implemented first
-- Unit tests are written immediately after implementation
+- **Every task includes at least one test** to verify the implementation
+- Core functionality is implemented first, then immediately tested
+- Unit tests verify individual components work correctly
 - Integration tests verify component interactions
 - Only advanced UI tests with pytest-qt are marked as optional
 - This ensures code quality while maintaining development momentum
+- Tests are never standalone tasks - they are always part of the implementation task

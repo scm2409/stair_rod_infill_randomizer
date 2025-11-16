@@ -1,0 +1,13 @@
+# Main configuration file for Railing Infill Generator
+
+defaults:
+  - shapes: stair
+  - generators: random
+  - evaluator: criteria
+  - ui: settings
+  - logging: config
+
+# Application settings
+app:
+  name: "Railing Infill Generator"
+  version: "0.1.0"
