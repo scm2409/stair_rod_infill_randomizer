@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QPen, QWheelEvent
 from PySide6.QtWidgets import QGraphicsItemGroup, QGraphicsScene, QGraphicsView
 
-from railing_generator.domain.shapes.shape_interface import Shape
+from railing_generator.domain.railing_frame import RailingFrame
 
 
 class ViewportWidget(QGraphicsView):
@@ -45,7 +45,7 @@ class ViewportWidget(QGraphicsView):
         self._current_zoom = 1.0
 
         # Graphics item groups for different elements (allows selective update/remove)
-        self._frame_group: QGraphicsItemGroup | None = None
+        self._railing_frame_group: QGraphicsItemGroup | None = None
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         """
@@ -94,42 +94,41 @@ class ViewportWidget(QGraphicsView):
         if scene is not None:
             scene.clear()
 
-    def set_shape(self, shape: Shape) -> None:
+    def set_railing_frame(self, railing_frame: RailingFrame) -> None:
         """
-        Set the shape to display (replaces existing frame).
+        Set the railing frame to display (replaces existing frame).
 
         Args:
-            shape: Shape object inheriting from Shape ABC
+            railing_frame: Immutable RailingFrame containing frame rods and boundary
         """
         scene = self.scene()
         if scene is None:
             return
 
         # Remove existing frame group if present
-        if self._frame_group is not None:
-            scene.removeItem(self._frame_group)
-            self._frame_group = None
+        if self._railing_frame_group is not None:
+            scene.removeItem(self._railing_frame_group)
+            self._railing_frame_group = None
 
         # Create new frame group
-        self._frame_group = QGraphicsItemGroup()
-        scene.addItem(self._frame_group)
+        self._railing_frame_group = QGraphicsItemGroup()
+        scene.addItem(self._railing_frame_group)
 
         # Frame pen (blue, 2px width)
         frame_pen = QPen(Qt.GlobalColor.blue, 2)
 
-        # Get frame rods from shape and render them
-        frame_rods = shape.get_frame_rods()
-        for rod in frame_rods:
+        # Render frame rods
+        for rod in railing_frame.rods:
             coords = list(rod.geometry.coords)
             if len(coords) >= 2:
                 x1, y1 = coords[0]
                 x2, y2 = coords[1]
                 line = scene.addLine(x1, y1, x2, y2, frame_pen)
-                self._frame_group.addToGroup(line)
+                self._railing_frame_group.addToGroup(line)
 
-    def clear_frame(self) -> None:
-        """Remove the frame from the viewport."""
+    def clear_railing_frame(self) -> None:
+        """Remove the railing frame from the viewport."""
         scene = self.scene()
-        if scene is not None and self._frame_group is not None:
-            scene.removeItem(self._frame_group)
-            self._frame_group = None
+        if scene is not None and self._railing_frame_group is not None:
+            scene.removeItem(self._railing_frame_group)
+            self._railing_frame_group = None

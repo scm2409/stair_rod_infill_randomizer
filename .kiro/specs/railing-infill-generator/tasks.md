@@ -33,16 +33,17 @@ Build thin vertical slices through all layers:
     - **VISUAL MILESTONE**: Empty window with working viewport ✅
     - _Requirements: 7, 7.2_
   
-  - [x] 2.3 Implement StairShape (first shape to visualize!)
-    - Create StairShapeDefaults dataclass
-    - Create StairShapeParameters Pydantic model
-    - Implement `get_boundary()` and `get_frame_rods()`
-    - Write unit tests for StairShape
+  - [x] 2.3 Implement StaircaseRailingShape (first shape to visualize!)
+    - Create StaircaseRailingShapeDefaults dataclass
+    - Create StaircaseRailingShapeParameters Pydantic model
+    - Create RailingFrame immutable container
+    - Implement `generate_frame()` returning RailingFrame
+    - Write unit tests for StaircaseRailingShape and RailingFrame
     - _Requirements: 2, 4, 5_
   
   - [x] 2.4 Connect shape to viewport rendering
-    - Implement frame rendering in viewport (render rods as lines)
-    - Hard-code a StairShape instance for now
+    - Implement `set_railing_frame()` in viewport (render rods as lines)
+    - Hard-code a StaircaseRailingShape instance for now
     - **VISUAL MILESTONE**: See your first stair shape! 🎉
     - Write test to verify frame rendering
     - _Requirements: 7, 7.1_
@@ -50,17 +51,17 @@ Build thin vertical slices through all layers:
 ### Phase 2: Add Shape Selection (Choose and see different shapes!)
 
 - [ ] 3. Add shape selection UI
-  - [ ] 3.1 Implement RectangularShape
-    - Create RectangularShapeDefaults dataclass
-    - Create RectangularShapeParameters Pydantic model  
-    - Implement `get_boundary()` and `get_frame_rods()`
-    - Write unit tests for RectangularShape
+  - [ ] 3.1 Implement RectangularRailingShape
+    - Create RectangularRailingShapeDefaults dataclass
+    - Create RectangularRailingShapeParameters Pydantic model  
+    - Implement `generate_frame()` returning RailingFrame
+    - Write unit tests for RectangularRailingShape
     - _Requirements: 3, 4, 5_
   
-  - [ ] 3.2 Create Shape factory and base class
-    - Define abstract Shape base class
+  - [ ] 3.2 Create RailingShape factory and base class
+    - RailingShape ABC already exists
     - Implement factory to create shapes from type string
-    - Write tests for factory and base class
+    - Write tests for factory
     - _Requirements: 4_
   
   - [ ] 3.3 Add parameter panel for shape selection
@@ -74,8 +75,9 @@ Build thin vertical slices through all layers:
 ### Phase 3: First Infill Generation (See rods being generated!)
 
 - [ ] 4. Implement simple random generator (without quality evaluation)
-  - [ ] 4.1 Create InfillResult class
-    - Define fields: rods (list), fitness_score (optional), iteration_count (optional)
+  - [ ] 4.1 Create RailingInfill class
+    - Define immutable container with fields: rods (list), fitness_score (optional), iteration_count (optional), duration_sec (optional)
+    - Make frozen (immutable)
     - Write unit tests
     - _Requirements: 1, 6.2, 9_
   
@@ -84,13 +86,14 @@ Build thin vertical slices through all layers:
     - Implement RandomGenerator with simple random placement
     - No quality evaluation yet - just generate random valid arrangements
     - Respect basic constraints (no crossings in same layer, within boundary)
+    - Accept RailingFrame as input, return RailingInfill
     - Write unit tests for generator
     - _Requirements: 1, 4.1, 6.1, 9_
   
   - [ ] 4.3 Add generator UI and connect to viewport
     - Add generator type dropdown to parameter panel
     - Add "Generate Infill" button
-    - Implement infill rendering in viewport (with layer colors)
+    - Implement `set_railing_infill()` in viewport (with layer colors)
     - **VISUAL MILESTONE**: See your first random infill! 🎉
     - Write test to verify infill rendering
     - _Requirements: 6.1, 7, 9_

@@ -2,7 +2,43 @@
 
 ## Overview
 
-The Railing Infill Generator is a desktop application that generates rod arrangements for railing frames. Users define a railing frame shape (stair or rectangular), configure generation parameters, and the application generates infill patterns using various generation algorithms. The design emphasizes extensibility, allowing new shapes and generation algorithms to be added without modifying existing code.
+The Railing Infill Generator is a desktop application that generates rod arrangements for railing frames. Users define a railing frame shape (staircase or rectangular), configure generation parameters, and the application generates infill patterns using various generation algorithms. The design emphasizes extensibility, allowing new shapes and generation algorithms to be added without modifying existing code.
+
+## Naming Convention
+
+This section maps requirements terminology (natural English) to implementation class names (Python code).
+
+### Requirements → Implementation Mapping
+
+| Requirements Term | Implementation Class | Purpose |
+|-------------------|---------------------|---------|
+| Shape Type | `RailingShape` (ABC) | Abstract base class for shape configurations |
+| Staircase Shape | `StaircaseRailingShape` | Concrete shape for stairs |
+| Rectangular Shape | `RectangularRailingShape` | Concrete shape for rectangles |
+| Railing Frame | `RailingFrame` | Immutable container for frame rods + boundary |
+| Railing Infill | `RailingInfill` | Immutable container for infill rods |
+| Rod | `Rod` | Physical bar element |
+
+### Class Naming Pattern
+
+- **Base classes**: `RailingXxx` (e.g., `RailingShape`, `RailingFrame`, `RailingInfill`)
+- **Concrete shapes**: `XxxRailingShape` (e.g., `StaircaseRailingShape`, `RectangularRailingShape`)
+- **Parameters**: `XxxRailingShapeParameters` (Pydantic models)
+- **Defaults**: `XxxRailingShapeDefaults` (dataclasses for Hydra)
+
+### Key Methods
+
+- `RailingShape.generate_frame() -> RailingFrame` - Generate frame from configuration
+- `Generator.generate(frame, params) -> RailingInfill` - Generate infill within frame
+- `ViewportWidget.set_railing_frame(frame)` - Display frame
+- `ViewportWidget.set_railing_infill(infill)` - Display infill
+
+### Rationale
+
+- **Railing prefix**: Avoids naming conflicts, makes domain clear
+- **Staircase vs Stair**: More specific (staircase = multiple steps, stair = single step)
+- **Frame/Infill separation**: Clear distinction between boundary and interior
+- **Immutable containers**: Frame and Infill are data, not configuration
 
 ### Key Design Goals
 
@@ -60,26 +96,56 @@ See the steering document for general patterns. Feature-specific implementations
 
 ### 1. Shape System
 
-Shapes define the railing frame boundary where infill rods can be anchored.
+The shape system consists of configuration classes (`RailingShape` subclasses) that generate immutable frame data (`RailingFrame`).
+
+**Architecture:**
+```
+RailingShape (configuration) → generate_frame() → RailingFrame (immutable data)
+                                                        ↓
+                                                   Viewport renders
+```
 
 **Shape Types:**
-- **Stair Shape**: Two vertical posts + angled handrail + stepped bottom
-- **Rectangular Shape**: Simple rectangular frame
+- **StaircaseRailingShape**: Two vertical posts + angled handrail + stepped bottom
+- **RectangularRailingShape**: Simple rectangular frame
 - **Future**: Curved, custom polygon shapes
 
-**Shape Interface:**
-- `get_boundary()` → Shapely Polygon defining frame boundary
-- `get_frame_rods()` → List of Rod objects (layer = 0)
+**RailingShape Interface (ABC):**
+```python
+class RailingShape(ABC):
+    @abstractmethod
+    def generate_frame(self) -> RailingFrame:
+        """Generate immutable frame containing rods and boundary."""
+        ...
+```
+
+**RailingFrame (Immutable Container):**
+```python
+class RailingFrame(BaseModel):
+    rods: list[Rod]              # Frame rods (layer 0)
+    boundary: Polygon            # Frame boundary polygon
+    # Computed properties:
+    total_length_cm: float
+    total_weight_kg: float
+    rod_count: int
+    
+    model_config = {"frozen": True}  # Immutable
+```
 
 **Parameters** (Pydantic models for UI validation):
-- StairShapeParameters: post_length_cm, stair_height_cm, num_steps, frame_weight_per_meter_kg_m
-- RectangularShapeParameters: width_cm, height_cm, frame_weight_per_meter_kg_m
+- `StaircaseRailingShapeParameters`: post_length_cm, stair_width_cm, stair_height_cm, num_steps, frame_weight_per_meter_kg_m
+- `RectangularRailingShapeParameters`: width_cm, height_cm, frame_weight_per_meter_kg_m
 - Initialized with defaults from Hydra config (dataclass)
 - Pydantic validation errors displayed in UI
 
 ### 2. Generator System
 
-Generators create infill rod arrangements within a shape boundary.
+Generators create infill rod arrangements within a frame boundary, producing immutable `RailingInfill` containers.
+
+**Architecture:**
+```
+Generator + RailingFrame + Parameters → generate() → RailingInfill (immutable data)
+```
 
 **Generator Types:**
 - **Random Generator**: Iterative random placement with fitness evaluation
@@ -93,11 +159,32 @@ Generators create infill rod arrangements within a shape boundary.
 5. Keep best arrangement, repeat until acceptable or limit reached
 
 **Generator Interface:**
-- `generate(shape, params)` → InfillResult
-- Signals: `progress_updated`, `best_result_updated`, `generation_completed`, `generation_failed`
+```python
+class Generator(QObject, ABC):
+    progress_updated = Signal(dict)
+    best_result_updated = Signal(object)  # RailingInfill
+    generation_completed = Signal(object)  # RailingInfill
+    generation_failed = Signal(str)
+    
+    @abstractmethod
+    def generate(self, frame: RailingFrame, params: BaseModel) -> RailingInfill:
+        """Generate infill within the given frame."""
+        ...
+```
+
+**RailingInfill (Immutable Container):**
+```python
+class RailingInfill(BaseModel):
+    rods: list[Rod]                    # Infill rods (layer ≥ 1)
+    fitness_score: float | None        # Optional fitness score
+    iteration_count: int | None        # Optional iteration count
+    duration_sec: float | None         # Optional generation duration
+    
+    model_config = {"frozen": True}    # Immutable
+```
 
 **Parameters** (Pydantic models for UI validation):
-- RandomGeneratorParameters: num_rods, max_rod_length_cm, max_angle_deviation_deg, num_layers, min_anchor_distance_cm, max_iterations, max_duration_sec
+- `RandomGeneratorParameters`: num_rods, max_rod_length_cm, max_angle_deviation_deg, num_layers, min_anchor_distance_cm, max_iterations, max_duration_sec
 - Initialized with defaults from Hydra config (dataclass)
 - Pydantic validation errors displayed in UI
 
@@ -772,8 +859,8 @@ from shapely.geometry import Polygon, LineString
 
 # Configuration defaults (dataclass for Hydra)
 @dataclass
-class StairShapeDefaults:
-    """Default values loaded from Hydra YAML config (conf/shapes/stair.yaml)"""
+class StaircaseRailingShapeDefaults:
+    """Default values loaded from Hydra YAML config (conf/shapes/staircase.yaml)"""
     post_length_cm: float = 150.0
     stair_width_cm: float = 280.0
     stair_height_cm: float = 280.0
@@ -781,14 +868,14 @@ class StairShapeDefaults:
     frame_weight_per_meter_kg_m: float = 0.5
 
 @dataclass
-class RectangularShapeDefaults:
+class RectangularRailingShapeDefaults:
     """Default values loaded from Hydra YAML config (conf/shapes/rectangular.yaml)"""
     width_cm: float = 200.0
     height_cm: float = 100.0
     frame_weight_per_meter_kg_m: float = 0.5
 
 # Parameter models (Pydantic for UI validation)
-class StairShapeParameters(BaseModel):
+class StaircaseRailingShapeParameters(BaseModel):
     """Runtime parameters with Pydantic validation for UI"""
     post_length_cm: float = Field(gt=0, description="Post length in cm")
     stair_width_cm: float = Field(gt=0, description="Stair width (horizontal distance) in cm")
@@ -804,7 +891,7 @@ class StairShapeParameters(BaseModel):
         return v
     
     @classmethod
-    def from_defaults(cls, defaults: StairShapeDefaults) -> "StairShapeParameters":
+    def from_defaults(cls, defaults: StaircaseRailingShapeDefaults) -> "StaircaseRailingShapeParameters":
         """Create parameters from config defaults"""
         return cls(
             post_length_cm=defaults.post_length_cm,
@@ -814,14 +901,14 @@ class StairShapeParameters(BaseModel):
             frame_weight_per_meter_kg_m=defaults.frame_weight_per_meter_kg_m
         )
 
-class RectangularShapeParameters(BaseModel):
+class RectangularRailingShapeParameters(BaseModel):
     """Runtime parameters with Pydantic validation for UI"""
     width_cm: float = Field(gt=0, description="Width in cm")
     height_cm: float = Field(gt=0, description="Height in cm")
     frame_weight_per_meter_kg_m: float = Field(gt=0, description="Frame weight per meter")
     
     @classmethod
-    def from_defaults(cls, defaults: RectangularShapeDefaults) -> "RectangularShapeParameters":
+    def from_defaults(cls, defaults: RectangularRailingShapeDefaults) -> "RectangularRailingShapeParameters":
         """Create parameters from config defaults"""
         return cls(
             width_cm=defaults.width_cm,
@@ -829,41 +916,27 @@ class RectangularShapeParameters(BaseModel):
             frame_weight_per_meter_kg_m=defaults.frame_weight_per_meter_kg_m
         )
 
-class Shape(ABC):
-    """Abstract base class for all railing frame shapes"""
+class RailingShape(ABC):
+    """Abstract base class for all railing frame shape configurations"""
     
     def __init__(self, params: BaseModel):  # Accepts Pydantic model
         """
-        Initialize shape with validated parameters.
+        Initialize shape configuration with validated parameters.
         Parameters are Pydantic models validated before passing here.
         """
         self.params = params
     
     @abstractmethod
-    def get_boundary(self) -> Polygon:
-        """Returns the boundary polygon of the shape"""
+    def generate_frame(self) -> RailingFrame:
+        """Generate immutable RailingFrame containing rods and boundary"""
         pass
-    
-    @abstractmethod
-    def get_frame_rods(self) -> List[Rod]:
-        """
-        Returns frame rods (layer = 0)
-        Rod geometry can be accessed via rod.geometry for anchor operations
-        """
-        pass
-    
-    def get_frame_lines(self) -> List[LineString]:
-        """
-        Returns frame as list of LineStrings for anchor point selection.
-        Used by generators to select random anchor points along frame.
-        """
-        return [rod.geometry for rod in self.get_frame_rods()]
 
 # Usage in UI:
 # 1. Load defaults from Hydra config (dataclass)
 # 2. Create Pydantic parameter model from defaults
 # 3. User modifies in UI, Pydantic validates
-# 4. Pass validated Pydantic model to Shape constructor
+# 4. Pass validated Pydantic model to RailingShape constructor
+# 5. Call generate_frame() to get immutable RailingFrame
 ```
 
 ### Generator Interface (Feature-Specific Implementation)
@@ -916,8 +989,8 @@ class RandomGeneratorParameters(BaseModel):
 class Generator(QObject, ABC):
     """Abstract base class for all infill generators"""
     progress_updated = Signal(dict)  # {"iteration": int, "best_fitness": float, "elapsed_sec": float}
-    best_result_updated = Signal(object)  # InfillResult
-    generation_completed = Signal(object)  # InfillResult
+    best_result_updated = Signal(object)  # RailingInfill
+    generation_completed = Signal(object)  # RailingInfill
     generation_failed = Signal(str)  # error message
     
     def __init__(self):
@@ -925,9 +998,9 @@ class Generator(QObject, ABC):
         self._cancelled = False
     
     @abstractmethod
-    def generate(self, shape: Shape, params: BaseModel) -> InfillResult:
+    def generate(self, frame: RailingFrame, params: BaseModel) -> RailingInfill:
         """
-        Generate infill arrangement for the given shape.
+        Generate infill arrangement within the given frame.
         Emits signals during generation for progress updates.
         """
         pass

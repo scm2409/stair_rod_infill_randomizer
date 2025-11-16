@@ -1,19 +1,18 @@
-"""Stair-shaped railing frame implementation."""
+"""Staircase-shaped railing frame implementation."""
 
 from dataclasses import dataclass
 
-import shapely
 from pydantic import BaseModel, Field, computed_field
-from shapely.geometry import LineString, Polygon
-from shapely.ops import polygonize
+from shapely.geometry import LineString
 
+from railing_generator.domain.railing_frame import RailingFrame
 from railing_generator.domain.rod import Rod
-from railing_generator.domain.shapes.shape_interface import Shape
+from railing_generator.domain.shapes.railing_shape import RailingShape
 
 
 @dataclass
-class StairShapeDefaults:
-    """Default values for stair shape parameters (loaded from Hydra config)."""
+class StaircaseRailingShapeDefaults:
+    """Default values for staircase shape parameters (loaded from Hydra config)."""
 
     post_length_cm: float = 150.0
     stair_width_cm: float = 280.0
@@ -22,8 +21,8 @@ class StairShapeDefaults:
     frame_weight_per_meter_kg_m: float = 0.5
 
 
-class StairShapeParameters(BaseModel):
-    """Runtime parameters for stair shape with Pydantic validation."""
+class StaircaseRailingShapeParameters(BaseModel):
+    """Runtime parameters for staircase shape with Pydantic validation."""
 
     post_length_cm: float = Field(gt=0, description="Post length in cm")
     stair_width_cm: float = Field(gt=0, description="Stair width (horizontal distance) in cm")
@@ -44,7 +43,7 @@ class StairShapeParameters(BaseModel):
         return self.stair_height_cm / self.num_steps
 
     @classmethod
-    def from_defaults(cls, defaults: StairShapeDefaults) -> "StairShapeParameters":
+    def from_defaults(cls, defaults: StaircaseRailingShapeDefaults) -> "StaircaseRailingShapeParameters":
         """Create parameters from config defaults."""
         return cls(
             post_length_cm=defaults.post_length_cm,
@@ -55,9 +54,12 @@ class StairShapeParameters(BaseModel):
         )
 
 
-class StairShape(Shape):
+class StaircaseRailingShape(RailingShape):
     """
-    Stair-shaped railing frame.
+    Staircase-shaped railing frame configuration.
+
+    This class represents the configuration for a staircase-shaped railing frame.
+    It generates an immutable RailingFrame containing the frame rods and boundary.
 
     Geometry:
     - Two vertical posts of equal length on left and right
@@ -67,48 +69,29 @@ class StairShape(Shape):
     - Stepped bottom boundary following stair steps
     """
 
-    def __init__(self, params: StairShapeParameters):
+    def __init__(self, params: StaircaseRailingShapeParameters):
         """
-        Initialize stair shape with validated parameters.
+        Initialize staircase shape configuration with validated parameters.
 
         Args:
-            params: Validated stair shape parameters
+            params: Validated staircase shape parameters
         """
         self.params = params
 
-    def get_boundary(self) -> Polygon:
+    def generate_frame(self) -> RailingFrame:
         """
-        Get the boundary polygon of the stair shape.
+        Generate the railing frame for this configuration.
 
-        Derives the boundary from the frame rods geometry (single source of truth).
-        Uses shapely.polygonize which is independent of rod order.
+        Creates frame rods and returns them as an immutable RailingFrame.
+        The boundary is automatically computed from the rods.
 
         Returns:
-            Shapely Polygon defining the frame boundary
+            Immutable RailingFrame containing frame rods (boundary computed automatically)
         """
-        # Get frame rods (single source of truth for geometry)
-        frame_rods = self.get_frame_rods()
+        frame_rods = self._generate_frame_rods()
+        return RailingFrame(rods=frame_rods)
 
-        # Extract geometries from all frame rods
-        geometries = [rod.geometry for rod in frame_rods]
-
-        # Create a geometry collection and node it (add nodes at intersections)
-        collection = shapely.GeometryCollection(geometries)
-        noded = shapely.node(collection)
-
-        # Polygonize to get the boundary polygon (order-independent)
-        polygons = list(polygonize(noded.geoms))
-
-        # Should result in exactly one polygon (the frame boundary)
-        if len(polygons) != 1:
-            raise ValueError(
-                f"Expected exactly 1 polygon from frame rods, got {len(polygons)}. "
-                "Frame rods may not form a closed boundary."
-            )
-
-        return polygons[0]
-
-    def get_frame_rods(self) -> list[Rod]:
+    def _generate_frame_rods(self) -> list[Rod]:
         """
         Get frame rods (layer 0) for the stair shape.
 

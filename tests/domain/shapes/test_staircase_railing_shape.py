@@ -1,22 +1,22 @@
-"""Tests for StairShape."""
+"""Tests for StaircaseRailingShape."""
 
 import pytest
 from pydantic import ValidationError
 from shapely.geometry import Polygon
 
-from railing_generator.domain.shapes.stair_shape import (
-    StairShape,
-    StairShapeDefaults,
-    StairShapeParameters,
+from railing_generator.domain.shapes.staircase_railing_shape import (
+    StaircaseRailingShape,
+    StaircaseRailingShapeDefaults,
+    StaircaseRailingShapeParameters,
 )
 
 
-class TestStairShapeDefaults:
-    """Test StairShapeDefaults dataclass."""
+class TestStaircaseRailingShapeDefaults:
+    """Test StaircaseRailingShapeDefaults dataclass."""
 
     def test_create_defaults(self) -> None:
         """Test creating defaults with default values."""
-        defaults = StairShapeDefaults()
+        defaults = StaircaseRailingShapeDefaults()
 
         assert defaults.post_length_cm == 150.0
         assert defaults.stair_width_cm == 280.0
@@ -26,7 +26,7 @@ class TestStairShapeDefaults:
 
     def test_create_defaults_with_custom_values(self) -> None:
         """Test creating defaults with custom values."""
-        defaults = StairShapeDefaults(
+        defaults = StaircaseRailingShapeDefaults(
             post_length_cm=200.0,
             stair_width_cm=250.0,
             stair_height_cm=300.0,
@@ -41,12 +41,12 @@ class TestStairShapeDefaults:
         assert defaults.frame_weight_per_meter_kg_m == 0.7
 
 
-class TestStairShapeParameters:
-    """Test StairShapeParameters Pydantic model."""
+class TestStaircaseRailingShapeParameters:
+    """Test StaircaseRailingShapeParameters Pydantic model."""
 
     def test_create_valid_parameters(self) -> None:
         """Test creating valid parameters."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
@@ -62,7 +62,7 @@ class TestStairShapeParameters:
 
     def test_from_defaults(self) -> None:
         """Test creating parameters from defaults."""
-        defaults = StairShapeDefaults(
+        defaults = StaircaseRailingShapeDefaults(
             post_length_cm=200.0,
             stair_width_cm=250.0,
             stair_height_cm=300.0,
@@ -70,7 +70,7 @@ class TestStairShapeParameters:
             frame_weight_per_meter_kg_m=0.6,
         )
 
-        params = StairShapeParameters.from_defaults(defaults)
+        params = StaircaseRailingShapeParameters.from_defaults(defaults)
 
         assert params.post_length_cm == 200.0
         assert params.stair_width_cm == 250.0
@@ -81,7 +81,7 @@ class TestStairShapeParameters:
     def test_post_length_must_be_positive(self) -> None:
         """Test that post_length_cm must be positive."""
         with pytest.raises(ValidationError) as exc_info:
-            StairShapeParameters(
+            StaircaseRailingShapeParameters(
                 post_length_cm=0.0,
                 stair_width_cm=280.0,
                 stair_height_cm=280.0,
@@ -95,7 +95,7 @@ class TestStairShapeParameters:
     def test_stair_width_must_be_positive(self) -> None:
         """Test that stair_width_cm must be positive."""
         with pytest.raises(ValidationError) as exc_info:
-            StairShapeParameters(
+            StaircaseRailingShapeParameters(
                 post_length_cm=150.0,
                 stair_width_cm=0.0,
                 stair_height_cm=280.0,
@@ -109,7 +109,7 @@ class TestStairShapeParameters:
     def test_stair_height_must_be_positive(self) -> None:
         """Test that stair_height_cm must be positive."""
         with pytest.raises(ValidationError) as exc_info:
-            StairShapeParameters(
+            StaircaseRailingShapeParameters(
                 post_length_cm=150.0,
                 stair_width_cm=280.0,
                 stair_height_cm=-10.0,
@@ -123,7 +123,7 @@ class TestStairShapeParameters:
     def test_num_steps_minimum(self) -> None:
         """Test that num_steps must be at least 1."""
         with pytest.raises(ValidationError) as exc_info:
-            StairShapeParameters(
+            StaircaseRailingShapeParameters(
                 post_length_cm=150.0,
                 stair_width_cm=280.0,
                 stair_height_cm=280.0,
@@ -137,7 +137,7 @@ class TestStairShapeParameters:
     def test_num_steps_maximum(self) -> None:
         """Test that num_steps cannot exceed 50."""
         with pytest.raises(ValidationError) as exc_info:
-            StairShapeParameters(
+            StaircaseRailingShapeParameters(
                 post_length_cm=150.0,
                 stair_width_cm=280.0,
                 stair_height_cm=280.0,
@@ -151,7 +151,7 @@ class TestStairShapeParameters:
     def test_frame_weight_must_be_positive(self) -> None:
         """Test that frame_weight_per_meter_kg_m must be positive."""
         with pytest.raises(ValidationError) as exc_info:
-            StairShapeParameters(
+            StaircaseRailingShapeParameters(
                 post_length_cm=150.0,
                 stair_width_cm=280.0,
                 stair_height_cm=280.0,
@@ -164,7 +164,7 @@ class TestStairShapeParameters:
 
     def test_step_width_calculated(self) -> None:
         """Test that step_width_cm is calculated correctly."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=100.0,
             stair_width_cm=120.0,
             stair_height_cm=80.0,
@@ -176,7 +176,7 @@ class TestStairShapeParameters:
 
     def test_step_height_calculated(self) -> None:
         """Test that step_height_cm is calculated correctly."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=100.0,
             stair_width_cm=120.0,
             stair_height_cm=80.0,
@@ -188,7 +188,7 @@ class TestStairShapeParameters:
 
     def test_step_dimensions_with_different_values(self) -> None:
         """Test step dimensions with different parameter values."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
@@ -200,12 +200,12 @@ class TestStairShapeParameters:
         assert params.step_height_cm == pytest.approx(28.0)
 
 
-class TestStairShapeCreation:
-    """Test StairShape creation."""
+class TestStaircaseRailingShapeCreation:
+    """Test StaircaseRailingShape creation."""
 
     def test_create_stair_shape(self) -> None:
         """Test creating a stair shape."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
@@ -213,60 +213,60 @@ class TestStairShapeCreation:
             frame_weight_per_meter_kg_m=0.5,
         )
 
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
         assert shape.params == params
 
 
-class TestStairShapeBoundary:
-    """Test StairShape boundary calculation."""
+class TestStaircaseRailingShapeBoundary:
+    """Test StaircaseRailingShape boundary calculation."""
 
     def test_get_boundary_returns_polygon(self) -> None:
-        """Test that get_boundary returns a Polygon."""
-        params = StairShapeParameters(
+        """Test that generate_frame returns a frame with valid boundary."""
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
             num_steps=10,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        boundary = shape.get_boundary()
+        railing_frame = shape.generate_frame()
 
-        assert isinstance(boundary, Polygon)
-        assert boundary.is_valid
+        assert isinstance(railing_frame.boundary, Polygon)
+        assert railing_frame.boundary.is_valid
 
     def test_boundary_is_closed(self) -> None:
         """Test that boundary polygon is closed."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
             num_steps=10,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        boundary = shape.get_boundary()
+        railing_frame = shape.generate_frame()
 
         # First and last coordinates should be the same
-        coords = list(boundary.exterior.coords)
+        coords = list(railing_frame.boundary.exterior.coords)
         assert coords[0] == coords[-1]
 
     def test_boundary_corners(self) -> None:
         """Test that boundary has correct corner points."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=100.0,
             stair_width_cm=200.0,
             stair_height_cm=200.0,
             num_steps=5,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        boundary = shape.get_boundary()
-        coords = list(boundary.exterior.coords)
+        railing_frame = shape.generate_frame()
+        coords = list(railing_frame.boundary.exterior.coords)
 
         # Check key corners
         assert (0.0, 0.0) in coords  # Bottom-left (base of left post)
@@ -279,73 +279,73 @@ class TestStairShapeBoundary:
         assert (200.0, 200.0) in coords  # Bottom of right post
 
 
-class TestStairShapeFrameRods:
-    """Test StairShape frame rod generation."""
+class TestStaircaseRailingShapeFrameRods:
+    """Test StaircaseRailingShape frame rod generation."""
 
     def test_get_frame_rods_returns_list(self) -> None:
-        """Test that get_frame_rods returns a list."""
-        params = StairShapeParameters(
+        """Test that generate_frame returns a frame with rods."""
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
             num_steps=10,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        rods = shape.get_frame_rods()
+        railing_frame = shape.generate_frame()
 
-        assert isinstance(rods, list)
-        assert len(rods) > 0
+        assert isinstance(railing_frame.rods, list)
+        assert len(railing_frame.rods) > 0
 
     def test_frame_rods_have_layer_zero(self) -> None:
         """Test that all frame rods have layer 0."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
             num_steps=10,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        rods = shape.get_frame_rods()
+        railing_frame = shape.generate_frame()
 
-        assert all(rod.layer == 0 for rod in rods)
+        assert all(rod.layer == 0 for rod in railing_frame.rods)
 
     def test_frame_rods_have_correct_weight(self) -> None:
         """Test that frame rods have correct weight per meter."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=150.0,
             stair_width_cm=280.0,
             stair_height_cm=280.0,
             num_steps=10,
             frame_weight_per_meter_kg_m=0.7,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        rods = shape.get_frame_rods()
+        railing_frame = shape.generate_frame()
 
-        assert all(rod.weight_kg_m == 0.7 for rod in rods)
+        assert all(rod.weight_kg_m == 0.7 for rod in railing_frame.rods)
 
     def test_frame_has_posts_and_handrail(self) -> None:
         """Test that frame includes posts and handrail."""
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=100.0,
             stair_width_cm=200.0,
             stair_height_cm=200.0,
             num_steps=5,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        rods = shape.get_frame_rods()
+        railing_frame = shape.generate_frame()
 
         # Should have at least: left post, handrail, right post, and step segments
-        assert len(rods) >= 3
+        assert len(railing_frame.rods) >= 3
 
 
-class TestStairShapeExactGeometry:
+class TestStaircaseRailingShapeExactGeometry:
     """Test exact geometry coordinates for a simple staircase."""
 
     def test_simple_staircase_exact_coordinates(self) -> None:
@@ -372,18 +372,18 @@ class TestStairShapeExactGeometry:
            - Riser: (30, 20) -> (30, 0) [vertical down]
            - Step 1 (lowest): (30, 0) -> (0, 0) [horizontal, closes loop]
         """
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=100.0,
             stair_width_cm=120.0,
             stair_height_cm=80.0,
             num_steps=4,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
-        # Get boundary from the single source of truth
-        boundary = shape.get_boundary()
-        coords = list(boundary.exterior.coords)
+        # Get stair frame and boundary from the single source of truth
+        railing_frame = shape.generate_frame()
+        coords = list(railing_frame.boundary.exterior.coords)
 
         # Expected coordinates in order (counterclockwise)
         expected_coords = [
@@ -413,47 +413,47 @@ class TestStairShapeExactGeometry:
             )
 
         # Verify the boundary is valid
-        assert boundary.is_valid
+        assert railing_frame.boundary.is_valid
 
     def test_boundary_independent_of_rod_order(self, monkeypatch) -> None:  # type: ignore[no-untyped-def]
         """Test that boundary calculation is independent of rod order."""
         import random
 
-        params = StairShapeParameters(
+        params = StaircaseRailingShapeParameters(
             post_length_cm=100.0,
             stair_width_cm=120.0,
             stair_height_cm=80.0,
             num_steps=4,
             frame_weight_per_meter_kg_m=0.5,
         )
-        shape = StairShape(params)
+        shape = StaircaseRailingShape(params)
 
         # Get boundary with normal rod order
-        boundary_normal = shape.get_boundary()
-        assert boundary_normal.is_valid
-        normal_area = boundary_normal.area
-        normal_coords = set(boundary_normal.exterior.coords)
+        railing_frame_normal = shape.generate_frame()
+        assert railing_frame_normal.boundary.is_valid
+        normal_area = railing_frame_normal.boundary.area
+        normal_coords = set(railing_frame_normal.boundary.exterior.coords)
 
-        # Save the original get_frame_rods method
-        original_get_frame_rods = shape.get_frame_rods
+        # Save the original _generate_frame_rods method
+        original_generate_frame_rods = shape._generate_frame_rods
 
         # Create a wrapper that shuffles the rod order
-        def shuffled_get_frame_rods():  # type: ignore[no-untyped-def]
-            rods = original_get_frame_rods()
+        def shuffled_generate_frame_rods():  # type: ignore[no-untyped-def]
+            rods = original_generate_frame_rods()
             shuffled_rods = rods.copy()
             random.shuffle(shuffled_rods)
             return shuffled_rods
 
         # Monkeypatch the method to return shuffled rods
-        monkeypatch.setattr(shape, "get_frame_rods", shuffled_get_frame_rods)
+        monkeypatch.setattr(shape, "_generate_frame_rods", shuffled_generate_frame_rods)
 
         # Get boundary with shuffled rod order
-        boundary_shuffled = shape.get_boundary()
+        railing_frame_shuffled = shape.generate_frame()
 
         # Verify the boundary is still valid and identical
-        assert boundary_shuffled.is_valid
-        assert boundary_shuffled.area == pytest.approx(normal_area)
+        assert railing_frame_shuffled.boundary.is_valid
+        assert railing_frame_shuffled.boundary.area == pytest.approx(normal_area)
 
         # Verify the coordinates are the same (order may differ, so use set comparison)
-        shuffled_coords = set(boundary_shuffled.exterior.coords)
+        shuffled_coords = set(railing_frame_shuffled.boundary.exterior.coords)
         assert shuffled_coords == normal_coords
