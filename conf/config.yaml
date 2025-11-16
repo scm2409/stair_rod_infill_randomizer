@@ -10,4 +10,3 @@ defaults:
 # Application settings
 app:
   name: "Railing Infill Generator"
-  version: "0.1.0"

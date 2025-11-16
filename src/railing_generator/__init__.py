@@ -1,3 +1,5 @@
 """Railing Infill Generator - Desktop application for generating rod arrangements."""
 
-__version__ = "0.1.0"
+import importlib.metadata
+
+__version__ = importlib.metadata.version("railing-infill-generator")
