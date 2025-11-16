@@ -25,7 +25,7 @@ Build thin vertical slices through all layers:
     - Write unit tests for Rod class
     - _Requirements: 1, 5, 6, 8_
   
-  - [ ] 2.2 Create basic Main Window with viewport
+  - [x] 2.2 Create basic Main Window with viewport
     - Create MainWindow class (QMainWindow) with menu bar
     - Create ViewportWidget (QGraphicsView/QGraphicsScene)
     - Implement zoom and pan
