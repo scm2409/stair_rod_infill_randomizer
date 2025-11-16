@@ -12,6 +12,25 @@ Technical standards and tooling requirements for Python development in this work
 - Type hints mandatory in all modules
 - Include type stubs for dependencies
 
+## Type Hints
+
+**CRITICAL**: Avoid using `Any` type hint.
+
+- The `Any` type hint defeats the purpose of type checking and must be avoided
+- Only use `Any` as a last resort when no stricter type is possible
+
+### Protocols vs Abstract Base Classes
+
+**When to use Protocols**:
+- Prefer Protocols for library boundaries and tests where you don't control the concrete types
+- Use when you want structural subtyping (duck typing with type safety)
+- Ideal for defining interfaces that external code will implement
+
+**When to use ABCs (Abstract Base Classes)**:
+- Prefer ABCs when you want to share base behavior and guard against incomplete implementations at runtime
+- Use when you control all implementations and want to enforce a contract
+
+
 ## Dependency Management
 
 - Use `uv` for package management (not pip)

@@ -8,6 +8,7 @@ from shapely.geometry import LineString, Polygon
 from shapely.ops import polygonize
 
 from railing_generator.domain.rod import Rod
+from railing_generator.domain.shapes.shape_interface import Shape
 
 
 @dataclass
@@ -54,7 +55,7 @@ class StairShapeParameters(BaseModel):
         )
 
 
-class StairShape:
+class StairShape(Shape):
     """
     Stair-shaped railing frame.
 
