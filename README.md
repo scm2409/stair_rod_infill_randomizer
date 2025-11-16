@@ -2,6 +2,8 @@
 
 Desktop application for generating rod arrangements for railing frames.
 
+> **Note:** This is my first project written using Kiro AI. It's primarily a learning exercise and test project to explore AI-assisted development. The project may never reach a fully functional stage.
+
 ## Features
 
 - Multiple railing frame shapes (stair, rectangular)
