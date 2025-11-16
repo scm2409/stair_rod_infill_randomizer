@@ -26,6 +26,24 @@ Technical standards and tooling requirements for Python development in this work
 - **Formatting**: `uv run ruff format .` - auto-format all files
 - Configure via `pyproject.toml`
 
+### Mypy Type Ignore Policy
+
+**CRITICAL**: Before adding any `# type: ignore` comment, you MUST ask the user for approval.
+
+**Exceptions** (pre-approved, no need to ask):
+1. **Pydantic `@computed_field` with `@property`**: Use `# type: ignore[prop-decorator]`
+   ```python
+   @computed_field  # type: ignore[prop-decorator]
+   @property
+   def computed_value(self) -> float:
+       return self.some_calculation()
+   ```
+   - This is a known Pydantic/mypy compatibility issue
+   - Always use the specific `[prop-decorator]` code, not the broader `[misc]`
+   - Reference: https://docs.pydantic.dev/2.0/usage/computed_fields/
+
+**For all other cases**: Research the issue, propose a solution, and wait for user approval before adding `# type: ignore`.
+
 ## Testing
 
 **CRITICAL**: Tests are part of implementation, not separate tasks.

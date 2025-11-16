@@ -18,8 +18,8 @@ Build thin vertical slices through all layers:
   - ✅ COMPLETED
   - _Requirements: 10, 11_
 
-- [ ] 2. Create minimal UI skeleton to see shapes
-  - [ ] 2.1 Implement Rod class (Pydantic BaseModel) - needed for shapes
+- [-] 2. Create minimal UI skeleton to see shapes
+  - [x] 2.1 Implement Rod class (Pydantic BaseModel) - needed for shapes
     - Define fields: geometry (LineString), start_cut_angle_deg, end_cut_angle_deg, weight_kg_m, layer
     - Implement computed fields: length_cm, weight_kg, start_point, end_point
     - Write unit tests for Rod class
