@@ -33,7 +33,7 @@ Build thin vertical slices through all layers:
     - **VISUAL MILESTONE**: Empty window with working viewport ✅
     - _Requirements: 7, 7.2_
   
-  - [ ] 2.3 Implement StairShape (first shape to visualize!)
+  - [x] 2.3 Implement StairShape (first shape to visualize!)
     - Create StairShapeDefaults dataclass
     - Create StairShapeParameters Pydantic model
     - Implement `get_boundary()` and `get_frame_rods()`

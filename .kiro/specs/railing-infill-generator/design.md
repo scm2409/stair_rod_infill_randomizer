@@ -775,6 +775,7 @@ from shapely.geometry import Polygon, LineString
 class StairShapeDefaults:
     """Default values loaded from Hydra YAML config (conf/shapes/stair.yaml)"""
     post_length_cm: float = 150.0
+    stair_width_cm: float = 280.0
     stair_height_cm: float = 280.0
     num_steps: int = 10
     frame_weight_per_meter_kg_m: float = 0.5
@@ -790,11 +791,12 @@ class RectangularShapeDefaults:
 class StairShapeParameters(BaseModel):
     """Runtime parameters with Pydantic validation for UI"""
     post_length_cm: float = Field(gt=0, description="Post length in cm")
-    stair_height_cm: float = Field(gt=0, description="Stair height in cm")
+    stair_width_cm: float = Field(gt=0, description="Stair width (horizontal distance) in cm")
+    stair_height_cm: float = Field(gt=0, description="Stair height (vertical distance) in cm")
     num_steps: int = Field(ge=1, le=50, description="Number of steps")
     frame_weight_per_meter_kg_m: float = Field(gt=0, description="Frame weight per meter")
     
-    @field_validator('post_length_cm', 'stair_height_cm')
+    @field_validator('post_length_cm', 'stair_width_cm', 'stair_height_cm')
     @classmethod
     def validate_positive(cls, v: float) -> float:
         if v <= 0:
@@ -806,6 +808,7 @@ class StairShapeParameters(BaseModel):
         """Create parameters from config defaults"""
         return cls(
             post_length_cm=defaults.post_length_cm,
+            stair_width_cm=defaults.stair_width_cm,
             stair_height_cm=defaults.stair_height_cm,
             num_steps=defaults.num_steps,
             frame_weight_per_meter_kg_m=defaults.frame_weight_per_meter_kg_m

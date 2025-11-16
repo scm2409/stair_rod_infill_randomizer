@@ -57,13 +57,14 @@ This document specifies the requirements for a railing infill generator applicat
 
 1. THE Railing Frame SHALL support stair shape type as a configuration option
 2. THE Railing Frame SHALL accept post length parameter for the vertical posts
-3. THE Railing Frame SHALL accept stair height parameter for the vertical distance between first and second post
-4. THE Railing Frame SHALL accept number of steps parameter
-5. THE Railing Frame SHALL define the frame with two vertical posts of equal length on left and right sides
-6. THE Railing Frame SHALL connect the top of the posts with a straight line representing the handrail
-7. THE Railing Frame SHALL define the bottom boundary following the stair steps rather than a straight line
-8. THE Railing Frame SHALL validate stair parameters for geometric consistency
-9. THE Generator SHALL generate rod arrangements that fit within the stair-shaped boundary
+3. THE Railing Frame SHALL accept stair width parameter for the horizontal distance between the two posts
+4. THE Railing Frame SHALL accept stair height parameter for the vertical distance between the base of the first post and the base of the second post
+5. THE Railing Frame SHALL accept number of steps parameter
+6. THE Railing Frame SHALL define the frame with two vertical posts of equal length on left and right sides
+7. THE Railing Frame SHALL connect the top of the posts with an angled line representing the handrail
+8. THE Railing Frame SHALL define the bottom boundary following the stair steps rather than a straight line
+9. THE Railing Frame SHALL validate stair parameters for geometric consistency
+10. THE Generator SHALL generate rod arrangements that fit within the stair-shaped boundary
 
 ### Requirement 3
 
