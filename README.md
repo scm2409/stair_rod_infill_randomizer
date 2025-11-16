@@ -51,8 +51,8 @@ uv run railing-generator --config-path /path/to/conf
 **IMPORTANT:** Run these checks after every code change:
 
 ```bash
-# 1. Type checking (must pass)
-uv run mypy src/
+# 1. Type checking (must pass) - checks both src/ and tests/
+uv run mypy
 
 # 2. Linting (must pass)
 uv run ruff check .
@@ -67,7 +67,7 @@ uv run pytest --cov=railing_generator --cov-report=term-missing
 ### Quick Check (All at Once)
 
 ```bash
-uv run mypy src/ && uv run ruff check . && uv run pytest --cov=railing_generator --cov-report=term-missing
+uv run mypy && uv run ruff check . && uv run pytest --cov=railing_generator --cov-report=term-missing
 ```
 
 ### Additional Commands

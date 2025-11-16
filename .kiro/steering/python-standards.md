@@ -40,7 +40,7 @@ Technical standards and tooling requirements for Python development in this work
 
 ## Code Quality Tools
 
-- **Type checking**: `uv run mypy src/` - strict mode, must pass with zero errors
+- **Type checking**: `uv run mypy` - strict mode, checks both src/ and tests/, must pass with zero errors
 - **Linting**: `uv run ruff check .` - must pass before committing
 - **Formatting**: `uv run ruff format .` - auto-format all files
 - Configure via `pyproject.toml`
@@ -346,7 +346,7 @@ uv pip install -e ".[dev]"
 #### During Development
 Run after each change:
 ```bash
-uv run mypy src/              # Must pass
+uv run mypy                   # Must pass (checks src/ and tests/)
 uv run ruff check .           # Must pass
 uv run ruff format .          # Auto-format
 uv run pytest --cov=railing_generator --cov-report=term-missing
@@ -357,4 +357,4 @@ uv run pytest --cov=railing_generator --cov-report=term-missing
 2. All checks pass: mypy ✅ ruff ✅ pytest ✅ coverage ✅
 3. Note final coverage (e.g., "Ending: 58%")
 
-**Quick check**: `uv run mypy src/ && uv run ruff check . && uv run pytest --cov=railing_generator --cov-report=term-missing`
+**Quick check**: `uv run mypy && uv run ruff check . && uv run pytest --cov=railing_generator --cov-report=term-missing`
