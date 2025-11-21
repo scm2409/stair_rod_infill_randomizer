@@ -1,1 +1,1 @@
-"""Shape tests."""
+"""Tests for domain shapes."""

@@ -83,7 +83,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for utility methods
     - _Requirements: 8.2.2_
   
-  - [ ] 3.4 Create basic ApplicationController
+  - [x] 3.4 Create basic ApplicationController
     - Create ApplicationController class that takes RailingProjectModel in constructor
     - Implement update_railing_shape(shape_type, parameters) - creates RailingShape, generates frame, updates model
     - Implement create_new_project() - calls model.reset_to_defaults()
