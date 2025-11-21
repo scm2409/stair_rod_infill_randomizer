@@ -2,16 +2,20 @@
 
 from dataclasses import dataclass
 
-from pydantic import BaseModel, Field, computed_field
+from pydantic import Field, computed_field
 from shapely.geometry import LineString
 
 from railing_generator.domain.railing_frame import RailingFrame
 from railing_generator.domain.rod import Rod
 from railing_generator.domain.shapes.railing_shape import RailingShape
+from railing_generator.domain.shapes.railing_shape_parameters import (
+    RailingShapeDefaults,
+    RailingShapeParameters,
+)
 
 
 @dataclass
-class StaircaseRailingShapeDefaults:
+class StaircaseRailingShapeDefaults(RailingShapeDefaults):
     """Default values for staircase shape parameters (loaded from Hydra config)."""
 
     post_length_cm: float = 150.0
@@ -21,7 +25,7 @@ class StaircaseRailingShapeDefaults:
     frame_weight_per_meter_kg_m: float = 0.5
 
 
-class StaircaseRailingShapeParameters(BaseModel):
+class StaircaseRailingShapeParameters(RailingShapeParameters):
     """Runtime parameters for staircase shape with Pydantic validation."""
 
     post_length_cm: float = Field(gt=0, description="Post length in cm")

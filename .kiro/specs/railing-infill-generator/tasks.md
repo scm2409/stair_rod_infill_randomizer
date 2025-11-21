@@ -55,7 +55,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 ### Phase 3: Implement Central State Management (Foundation for all features!)
 
 - [ ] 3. Implement RailingProjectModel and ApplicationController
-  - [ ] 3.1 Create RailingProjectModel class
+  - [x] 3.1 Create RailingProjectModel class
     - Create RailingProjectModel inheriting from QObject
     - Define all state fields (shape type, parameters, RailingFrame, generator type, parameters, RailingInfill, file path, modified flag, UI state)
     - Define all signals with proper naming (railing_shape_type_changed, railing_frame_updated, railing_infill_updated, etc.)
@@ -63,7 +63,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for model initialization
     - _Requirements: 7, 8.2, 8.2.2_
   
-  - [ ] 3.2 Implement state setter methods with signal emissions
+  - [x] 3.2 Implement state setter methods with signal emissions
     - Implement set_railing_shape_type() - clears frame, emits signals
     - Implement set_railing_shape_parameters() - marks modified, emits signal
     - Implement set_railing_frame() - clears infill, marks modified, emits signals
@@ -76,7 +76,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for each setter (verify signal emissions and state dependencies)
     - _Requirements: 7, 8.2, 8.2.2_
   
-  - [ ] 3.3 Implement utility methods
+  - [x] 3.3 Implement utility methods
     - Implement reset_to_defaults() - clears all state, emits all signals
     - Implement has_railing_frame() - checks if frame exists
     - Implement has_railing_infill() - checks if infill exists

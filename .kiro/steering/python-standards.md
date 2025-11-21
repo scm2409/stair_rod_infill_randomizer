@@ -19,6 +19,29 @@ Technical standards and tooling requirements for Python development in this work
 - The `Any` type hint defeats the purpose of type checking and must be avoided
 - Only use `Any` as a last resort when no stricter type is possible
 
+### TODO Comments for Future Tasks
+
+**CRITICAL**: When implementing code that depends on classes/features from future tasks:
+
+1. **Add TODO comments** with this exact pattern:
+   ```python
+   # TODO(Task X.Y): Description of what needs to be implemented
+   # Example: TODO(Task 4.1): Replace BaseModel with RectangularRailingShapeParameters when implemented
+   ```
+
+2. **Before writing tests** for a task, search for all TODOs with current task number:
+   ```bash
+   grep -r "TODO(Task X.Y)" src/
+   ```
+
+3. **Implement all TODOs** for the current task before writing tests
+
+4. **Remove the TODO comment** after implementation
+
+**Pattern**: `TODO(Task X.Y): <description>`
+- X.Y = task number from tasks.md
+- Description = what needs to be done
+
 ### Protocols vs Abstract Base Classes
 
 **When to use Protocols**:
@@ -110,6 +133,26 @@ project-root/
 - `temp/` is for humans only - AI must ignore completely
 - Exclude from git: `.venv/`, `__pycache__/`, `*.pyc`, Hydra outputs
 
+### __init__.py Files
+
+**CRITICAL**: Keep `__init__.py` files minimal.
+
+**Default pattern** (preferred):
+```python
+"""Package description."""
+```
+
+**Only add exports when necessary**:
+- When following established Python best practices
+
+**If adding exports, document why**
+
+**Never add**:
+- Complex logic
+- Initialization code
+- Side effects
+- Imports just for convenience
+
 ## Architecture
 
 ### Layered Architecture
@@ -177,6 +220,30 @@ thread.start()
 - Always include `-d`/`--debug` flag to control log level
 
 ## Naming Conventions
+
+**CRITICAL**: Avoid generic names - use specific, descriptive names.
+
+### General Naming Rules
+
+- **Never use generic names** when a more specific name exists
+- **Prefer longer, descriptive names** over short, ambiguous ones
+- **Use domain-specific terminology** consistently throughout the codebase
+
+**Examples of generic vs specific names**:
+
+❌ **Too Generic**:
+```python
+generator_type: str  # What kind of generator?
+enumeration_visible: bool  # Enumeration of what?
+parameters: BaseModel  # Parameters for what?
+```
+
+✅ **Specific and Clear**:
+```python
+infill_generator_type: str  # Clearly an infill generator
+rod_annotation_visible: bool  # Clearly annotating rods
+infill_generator_parameters: InfillGeneratorParameters  # Clearly for infill generation
+```
 
 **CRITICAL**: Always append unit suffix to physical quantities.
 
