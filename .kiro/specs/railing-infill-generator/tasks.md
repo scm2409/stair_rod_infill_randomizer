@@ -106,7 +106,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 ### Phase 4: Add Shape Selection (Choose and see different shapes!)
 
 - [ ] 4. Add shape selection UI
-  - [ ] 4.1 Implement RectangularRailingShape
+  - [x] 4.1 Implement RectangularRailingShape
     - Create RectangularRailingShapeDefaults dataclass
     - Create RectangularRailingShapeParameters Pydantic model  
     - Implement `generate_frame()` returning RailingFrame
