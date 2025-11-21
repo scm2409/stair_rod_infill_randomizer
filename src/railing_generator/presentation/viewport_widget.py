@@ -4,6 +4,10 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QPen, QWheelEvent
 from PySide6.QtWidgets import QGraphicsItemGroup, QGraphicsScene, QGraphicsView
 
+from railing_generator.application.railing_project_model import (
+    RailingInfill,
+    RailingProjectModel,
+)
 from railing_generator.domain.railing_frame import RailingFrame
 
 
@@ -15,11 +19,20 @@ class ViewportWidget(QGraphicsView):
     - Zoom with mouse wheel (centered on cursor)
     - Pan with mouse drag
     - Hardware-accelerated rendering
+    - Observes RailingProjectModel for automatic updates
     """
 
-    def __init__(self) -> None:
-        """Initialize the viewport widget."""
+    def __init__(self, project_model: RailingProjectModel) -> None:
+        """
+        Initialize the viewport widget.
+
+        Args:
+            project_model: The central state model to observe
+        """
         super().__init__()
+
+        # Store reference to model
+        self.project_model = project_model
 
         # Create scene
         scene = QGraphicsScene()
@@ -46,6 +59,40 @@ class ViewportWidget(QGraphicsView):
 
         # Graphics item groups for different elements (allows selective update/remove)
         self._railing_frame_group: QGraphicsItemGroup | None = None
+        self._railing_infill_group: QGraphicsItemGroup | None = None
+
+        # Connect to model signals for automatic updates
+        self._connect_model_signals()
+
+    def _connect_model_signals(self) -> None:
+        """Connect to model signals for observing state changes."""
+        # Connect to frame and infill updates
+        self.project_model.railing_frame_updated.connect(self._on_railing_frame_updated)
+        self.project_model.railing_infill_updated.connect(self._on_railing_infill_updated)
+
+    def _on_railing_frame_updated(self, frame: RailingFrame | None) -> None:
+        """
+        Handle railing frame updates from the model.
+
+        Args:
+            frame: The new railing frame, or None to clear
+        """
+        if frame is None:
+            self.clear_railing_frame()
+        else:
+            self.set_railing_frame(frame)
+
+    def _on_railing_infill_updated(self, infill: RailingInfill | None) -> None:
+        """
+        Handle railing infill updates from the model.
+
+        Args:
+            infill: The new railing infill, or None to clear
+        """
+        if infill is None:
+            self.clear_railing_infill()
+        else:
+            self.set_railing_infill(infill)
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         """
@@ -132,3 +179,57 @@ class ViewportWidget(QGraphicsView):
         if scene is not None and self._railing_frame_group is not None:
             scene.removeItem(self._railing_frame_group)
             self._railing_frame_group = None
+
+    def set_railing_infill(self, railing_infill: RailingInfill) -> None:
+        """
+        Set the railing infill to display (replaces existing infill).
+
+        Args:
+            railing_infill: Immutable RailingInfill containing infill rods
+        """
+        scene = self.scene()
+        if scene is None:
+            return
+
+        # Remove existing infill group if present
+        if self._railing_infill_group is not None:
+            scene.removeItem(self._railing_infill_group)
+            self._railing_infill_group = None
+
+        # Create new infill group
+        self._railing_infill_group = QGraphicsItemGroup()
+        scene.addItem(self._railing_infill_group)
+
+        # Define colors for different layers
+        layer_colors = [
+            Qt.GlobalColor.red,      # Layer 1
+            Qt.GlobalColor.green,    # Layer 2
+            Qt.GlobalColor.magenta,  # Layer 3
+            Qt.GlobalColor.cyan,     # Layer 4
+            Qt.GlobalColor.yellow,   # Layer 5
+        ]
+
+        # Render infill rods with layer-specific colors
+        for rod in railing_infill.rods:
+            # Get color for this layer (default to red if layer exceeds color list)
+            layer_index = rod.layer - 1  # Layer 1 -> index 0
+            if 0 <= layer_index < len(layer_colors):
+                color = layer_colors[layer_index]
+            else:
+                color = Qt.GlobalColor.red
+
+            infill_pen = QPen(color, 1.5)
+
+            coords = list(rod.geometry.coords)
+            if len(coords) >= 2:
+                x1, y1 = coords[0]
+                x2, y2 = coords[1]
+                line = scene.addLine(x1, y1, x2, y2, infill_pen)
+                self._railing_infill_group.addToGroup(line)
+
+    def clear_railing_infill(self) -> None:
+        """Remove the railing infill from the viewport."""
+        scene = self.scene()
+        if scene is not None and self._railing_infill_group is not None:
+            scene.removeItem(self._railing_infill_group)
+            self._railing_infill_group = None

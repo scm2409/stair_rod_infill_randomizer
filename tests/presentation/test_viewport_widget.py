@@ -2,13 +2,20 @@
 
 import pytest
 
+from railing_generator.application.railing_project_model import RailingProjectModel
 from railing_generator.presentation.viewport_widget import ViewportWidget
 
 
 @pytest.fixture
-def viewport(qtbot):  # type: ignore[no-untyped-def]
+def project_model() -> RailingProjectModel:
+    """Create a RailingProjectModel for testing."""
+    return RailingProjectModel()
+
+
+@pytest.fixture
+def viewport(qtbot, project_model: RailingProjectModel):  # type: ignore[no-untyped-def]
     """Create a ViewportWidget for testing."""
-    widget = ViewportWidget()
+    widget = ViewportWidget(project_model)
     qtbot.addWidget(widget)
     return widget
 

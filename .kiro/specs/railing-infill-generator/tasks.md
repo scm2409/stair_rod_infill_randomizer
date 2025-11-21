@@ -54,7 +54,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 
 ### Phase 3: Implement Central State Management (Foundation for all features!)
 
-- [ ] 3. Implement RailingProjectModel and ApplicationController
+- [x] 3. Implement RailingProjectModel and ApplicationController
   - [x] 3.1 Create RailingProjectModel class
     - Create RailingProjectModel inheriting from QObject
     - Define all state fields (shape type, parameters, RailingFrame, generator type, parameters, RailingInfill, file path, modified flag, UI state)
@@ -91,7 +91,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for controller methods (verify model is updated correctly)
     - _Requirements: 4, 7, 8.2.2_
   
-  - [ ] 3.5 Refactor existing code to use RailingProjectModel and ApplicationController
+  - [x] 3.5 Refactor existing code to use RailingProjectModel and ApplicationController
     - Create RailingProjectModel and ApplicationController instances in main application
     - Connect ViewportWidget to model signals (railing_frame_updated, railing_infill_updated)
     - Update ViewportWidget to observe model instead of direct calls

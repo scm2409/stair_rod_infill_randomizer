@@ -3,8 +3,9 @@
 import logging
 from pathlib import Path
 
+from railing_generator.application.application_controller import ApplicationController
+from railing_generator.application.railing_project_model import RailingProjectModel
 from railing_generator.domain.shapes.staircase_railing_shape import (
-    StaircaseRailingShape,
     StaircaseRailingShapeParameters,
 )
 from railing_generator.presentation.main_window import MainWindow
@@ -26,8 +27,15 @@ def create_main_window(config_path: Path) -> MainWindow:
     logger.debug(f"Using config path: {config_path}")
 
     # TODO: Load Hydra configuration
-    # Create main window
-    window = MainWindow()
+
+    # Create central state model
+    project_model = RailingProjectModel()
+
+    # Create application controller
+    controller = ApplicationController(project_model)
+
+    # Create main window with model and controller
+    window = MainWindow(project_model, controller)
 
     # TEMPORARY: Hard-code a StaircaseRailingShape for demonstration
     # This will be replaced with UI-driven shape creation
@@ -38,13 +46,13 @@ def create_main_window(config_path: Path) -> MainWindow:
         num_steps=9,
         frame_weight_per_meter_kg_m=0.5,
     )
-    shape = StaircaseRailingShape(params)
-    railing_frame = shape.generate_frame()
 
-    # Set the railing frame and fit view
-    window.viewport.set_railing_frame(railing_frame)
+    # Use controller to update the shape (which will update model and notify observers)
+    controller.update_railing_shape("staircase", params)
+
+    # Fit view after frame is rendered
     window.viewport.fit_in_view()
-    logger.info(f"Rendered RailingFrame with {railing_frame.rod_count} frame rods")
+    logger.info(f"Rendered RailingFrame with {project_model.railing_frame.rod_count if project_model.railing_frame else 0} frame rods")
 
     logger.info("Main window created successfully")
     return window

@@ -2,13 +2,27 @@
 
 import pytest
 
+from railing_generator.application.application_controller import ApplicationController
+from railing_generator.application.railing_project_model import RailingProjectModel
 from railing_generator.presentation.main_window import MainWindow
 
 
 @pytest.fixture
-def main_window(qtbot):  # type: ignore[no-untyped-def]
+def project_model() -> RailingProjectModel:
+    """Create a RailingProjectModel for testing."""
+    return RailingProjectModel()
+
+
+@pytest.fixture
+def controller(project_model: RailingProjectModel) -> ApplicationController:
+    """Create an ApplicationController for testing."""
+    return ApplicationController(project_model)
+
+
+@pytest.fixture
+def main_window(qtbot, project_model: RailingProjectModel, controller: ApplicationController):  # type: ignore[no-untyped-def]
     """Create a MainWindow for testing."""
-    window = MainWindow()
+    window = MainWindow(project_model, controller)
     qtbot.addWidget(window)
     return window
 
@@ -82,31 +96,52 @@ class TestMainWindowMenus:
 
 
 class TestMainWindowTitleUpdate:
-    """Test window title update functionality."""
+    """Test window title update functionality via model."""
 
-    def test_update_title_with_filename(self, main_window: MainWindow) -> None:
-        """Test updating window title with a filename."""
-        main_window.update_window_title("project.rig.zip", modified=False)
+    def test_update_title_with_filename(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test updating window title with a filename via model."""
+        from pathlib import Path
+
+        # Update model with file path (not modified)
+        project_model.set_project_file_path(Path("project.rig.zip"))
+        project_model.mark_project_saved()
 
         assert "project.rig.zip" in main_window.windowTitle()
         assert "Railing Infill Generator" in main_window.windowTitle()
         assert "*" not in main_window.windowTitle().split(" - ")[0]
 
-    def test_update_title_with_modified_flag(self, main_window: MainWindow) -> None:
-        """Test updating window title with modified flag."""
-        main_window.update_window_title("project.rig.zip", modified=True)
+    def test_update_title_with_modified_flag(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test updating window title with modified flag via model."""
+        from pathlib import Path
+
+        # Update model with file path
+        project_model.set_project_file_path(Path("project.rig.zip"))
+        # Mark as modified
+        project_model._mark_modified()
 
         assert "project.rig.zip*" in main_window.windowTitle()
 
-    def test_update_title_untitled(self, main_window: MainWindow) -> None:
-        """Test updating window title with no filename."""
-        main_window.update_window_title(None, modified=True)
+    def test_update_title_untitled(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test updating window title with no filename via model."""
+        # Model starts with no file path and modified=False
+        # Mark as modified
+        project_model._mark_modified()
 
         assert "Untitled*" in main_window.windowTitle()
 
-    def test_update_title_untitled_not_modified(self, main_window: MainWindow) -> None:
-        """Test updating window title with no filename and not modified."""
-        main_window.update_window_title(None, modified=False)
+    def test_update_title_untitled_not_modified(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test updating window title with no filename and not modified via model."""
+        # Model starts with no file path
+        # Mark as saved (not modified)
+        project_model.mark_project_saved()
 
         title = main_window.windowTitle()
         assert "Untitled" in title
