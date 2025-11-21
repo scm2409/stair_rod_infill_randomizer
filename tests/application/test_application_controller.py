@@ -1,5 +1,7 @@
 """Tests for ApplicationController."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 
 from railing_generator.application.application_controller import ApplicationController
@@ -9,12 +11,15 @@ from railing_generator.domain.shapes.staircase_railing_shape import (
     StaircaseRailingShapeParameters,
 )
 
+if TYPE_CHECKING:
+    from pytestqt.qtbot import QtBot
+
 
 class TestApplicationController:
     """Test suite for ApplicationController."""
 
     @pytest.fixture
-    def project_model(self, qtbot) -> RailingProjectModel:  # type: ignore[no-untyped-def]
+    def project_model(self, qtbot: "QtBot") -> RailingProjectModel:
         """Create a RailingProjectModel for testing."""
         return RailingProjectModel()
 
@@ -29,7 +34,7 @@ class TestApplicationController:
         assert controller.project_model is project_model
 
     def test_create_new_project(
-        self, qtbot, controller: ApplicationController, project_model: RailingProjectModel  # type: ignore[no-untyped-def]
+        self, qtbot: "QtBot", controller: ApplicationController, project_model: RailingProjectModel
     ) -> None:
         """Test creating a new project resets the model."""
         # Arrange - Set some state in the model
@@ -57,7 +62,7 @@ class TestApplicationController:
         assert project_model.project_modified is False
 
     def test_update_railing_shape_updates_model(
-        self, qtbot, controller: ApplicationController, project_model: RailingProjectModel  # type: ignore[no-untyped-def]
+        self, qtbot: "QtBot", controller: ApplicationController, project_model: RailingProjectModel
     ) -> None:
         """Test that update_railing_shape updates the model correctly."""
         # Arrange
@@ -80,7 +85,7 @@ class TestApplicationController:
         assert project_model.project_modified is True
 
     def test_update_railing_shape_emits_signals(
-        self, qtbot, controller: ApplicationController, project_model: RailingProjectModel  # type: ignore[no-untyped-def]
+        self, qtbot: "QtBot", controller: ApplicationController, project_model: RailingProjectModel
     ) -> None:
         """Test that update_railing_shape emits the expected signals."""
         # Arrange
@@ -129,7 +134,7 @@ class TestApplicationController:
         assert isinstance(final_frame, RailingFrame)
 
     def test_update_railing_shape_generates_valid_frame(
-        self, qtbot, controller: ApplicationController, project_model: RailingProjectModel  # type: ignore[no-untyped-def]
+        self, qtbot: "QtBot", controller: ApplicationController, project_model: RailingProjectModel
     ) -> None:
         """Test that update_railing_shape generates a valid frame with rods."""
         # Arrange
@@ -153,7 +158,7 @@ class TestApplicationController:
         assert not frame.boundary.is_empty
 
     def test_update_railing_shape_with_invalid_type_raises_error(
-        self, qtbot, controller: ApplicationController  # type: ignore[no-untyped-def]
+        self, qtbot: "QtBot", controller: ApplicationController
     ) -> None:
         """Test that update_railing_shape with invalid type raises ValueError."""
         # Arrange
@@ -170,7 +175,7 @@ class TestApplicationController:
             controller.update_railing_shape("invalid_type", params)
 
     def test_update_railing_shape_clears_infill(
-        self, qtbot, controller: ApplicationController, project_model: RailingProjectModel  # type: ignore[no-untyped-def]
+        self, qtbot: "QtBot", controller: ApplicationController, project_model: RailingProjectModel
     ) -> None:
         """Test that updating shape clears any existing infill."""
         # Arrange - Set up initial shape and mock infill

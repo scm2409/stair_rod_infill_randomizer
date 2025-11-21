@@ -3,6 +3,10 @@
 import pytest
 
 from railing_generator.domain.shapes.railing_shape_factory import RailingShapeFactory
+from railing_generator.domain.shapes.rectangular_railing_shape import (
+    RectangularRailingShape,
+    RectangularRailingShapeParameters,
+)
 from railing_generator.domain.shapes.staircase_railing_shape import (
     StaircaseRailingShape,
     StaircaseRailingShapeParameters,
@@ -61,6 +65,37 @@ class TestRailingShapeFactory:
         with pytest.raises(ValueError, match="requires StaircaseRailingShapeParameters"):
             RailingShapeFactory.create_shape("staircase", params)  # type: ignore[arg-type]
 
+    def test_create_rectangular_shape(self) -> None:
+        """Test creating a rectangular shape from factory."""
+        # Arrange
+        params = RectangularRailingShapeParameters(
+            width_cm=200.0,
+            height_cm=100.0,
+            frame_weight_per_meter_kg_m=0.5,
+        )
+
+        # Act
+        shape = RailingShapeFactory.create_shape("rectangular", params)
+
+        # Assert
+        assert isinstance(shape, RectangularRailingShape)
+        assert shape.params == params
+
+    def test_create_rectangular_shape_with_mismatched_parameters(self) -> None:
+        """Test that creating rectangular shape with wrong parameter type raises ValueError."""
+        # Arrange - Use staircase parameters for rectangular shape
+        params = StaircaseRailingShapeParameters(
+            post_length_cm=150.0,
+            stair_width_cm=280.0,
+            stair_height_cm=280.0,
+            num_steps=10,
+            frame_weight_per_meter_kg_m=0.5,
+        )
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="requires RectangularRailingShapeParameters"):
+            RailingShapeFactory.create_shape("rectangular", params)
+
     def test_get_available_shape_types(self) -> None:
         """Test getting list of available shape types."""
         # Act
@@ -69,7 +104,8 @@ class TestRailingShapeFactory:
         # Assert
         assert isinstance(types, list)
         assert "staircase" in types
-        assert len(types) >= 1  # At least staircase should be available
+        assert "rectangular" in types
+        assert len(types) >= 2  # At least staircase and rectangular should be available
 
     def test_create_shape_with_registered_but_unhandled_type(self) -> None:
         """Test that factory raises error for registered but unhandled shape types."""
@@ -99,7 +135,7 @@ class TestRailingShapeFactory:
 
             # Act & Assert
             with pytest.raises(ValueError, match="Unhandled shape type: 'mock'"):
-                RailingShapeFactory.create_shape("mock", params)  # type: ignore[arg-type]
+                RailingShapeFactory.create_shape("mock", params)
 
         finally:
             # Restore original registry

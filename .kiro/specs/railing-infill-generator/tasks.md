@@ -113,7 +113,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for RectangularRailingShape
     - _Requirements: 3, 4, 5_
   
-  - [ ] 4.2 Create RailingShape factory and base class
+  - [x] 4.2 Create RailingShape factory and base class
     - RailingShape ABC already exists
     - Implement factory to create shapes from type string
     - Write tests for factory

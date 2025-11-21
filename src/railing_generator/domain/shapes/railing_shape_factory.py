@@ -2,6 +2,10 @@
 
 from railing_generator.domain.shapes.railing_shape import RailingShape
 from railing_generator.domain.shapes.railing_shape_parameters import RailingShapeParameters
+from railing_generator.domain.shapes.rectangular_railing_shape import (
+    RectangularRailingShape,
+    RectangularRailingShapeParameters,
+)
 from railing_generator.domain.shapes.staircase_railing_shape import (
     StaircaseRailingShape,
     StaircaseRailingShapeParameters,
@@ -19,7 +23,7 @@ class RailingShapeFactory:
     # Map of shape type identifiers to shape classes
     _SHAPE_REGISTRY: dict[str, type[RailingShape]] = {
         "staircase": StaircaseRailingShape,
-        # TODO(Task 4.1): Add RectangularRailingShape when implemented
+        "rectangular": RectangularRailingShape,
     }
 
     @classmethod
@@ -51,7 +55,13 @@ class RailingShapeFactory:
                     f"got {type(parameters).__name__}"
                 )
             return StaircaseRailingShape(parameters)
-        # TODO(Task 4.1): Add validation for RectangularRailingShape parameters
+        elif shape_type == "rectangular":
+            if not isinstance(parameters, RectangularRailingShapeParameters):
+                raise ValueError(
+                    f"Shape type 'rectangular' requires RectangularRailingShapeParameters, "
+                    f"got {type(parameters).__name__}"
+                )
+            return RectangularRailingShape(parameters)
 
         # This should never be reached if all shape types are handled above
         raise ValueError(f"Unhandled shape type: '{shape_type}'")
