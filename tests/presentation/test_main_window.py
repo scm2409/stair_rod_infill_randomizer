@@ -35,9 +35,13 @@ class TestMainWindowCreation:
         assert main_window is not None
 
     def test_window_has_viewport(self, main_window: MainWindow) -> None:
-        """Test that main window has a viewport as central widget."""
+        """Test that main window has a viewport."""
         assert main_window.viewport is not None
-        assert main_window.centralWidget() == main_window.viewport
+        assert main_window.centralWidget() is not None
+
+    def test_window_has_parameter_panel(self, main_window: MainWindow) -> None:
+        """Test that main window has a parameter panel."""
+        assert main_window.parameter_panel is not None
 
     def test_window_has_menu_bar(self, main_window: MainWindow) -> None:
         """Test that main window has a menu bar."""

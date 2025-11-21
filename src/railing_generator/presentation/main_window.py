@@ -1,9 +1,10 @@
 """Main application window."""
 
-from PySide6.QtWidgets import QMainWindow, QMenuBar
+from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QMenuBar, QWidget
 
 from railing_generator.application.application_controller import ApplicationController
 from railing_generator.application.railing_project_model import RailingProjectModel
+from railing_generator.presentation.parameter_panel import ParameterPanel
 from railing_generator.presentation.viewport_widget import ViewportWidget
 
 
@@ -39,9 +40,21 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Untitled* - Railing Infill Generator")
         self.resize(1200, 800)
 
-        # Create viewport as central widget (pass model for observation)
+        # Create central widget with layout
+        central_widget = QWidget()
+        layout = QHBoxLayout(central_widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create parameter panel (left side)
+        self.parameter_panel = ParameterPanel(project_model, controller)
+        self.parameter_panel.setMaximumWidth(350)
+        layout.addWidget(self.parameter_panel)
+
+        # Create viewport (right side, pass model for observation)
         self.viewport = ViewportWidget(project_model)
-        self.setCentralWidget(self.viewport)
+        layout.addWidget(self.viewport, stretch=1)
+
+        self.setCentralWidget(central_widget)
 
         # Create menu bar
         self._create_menu_bar()

@@ -1,6 +1,7 @@
 # Default parameters for stair-shaped railing frames
 
 post_length_cm: 150.0
-stair_height_cm: 280.0
+stair_width_cm: 280.0
+stair_height_cm: 160.0
 num_steps: 10
 frame_weight_per_meter_kg_m: 0.5
