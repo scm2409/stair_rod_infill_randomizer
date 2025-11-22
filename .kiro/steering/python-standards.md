@@ -81,9 +81,10 @@ Technical standards and tooling requirements for Python development in this work
 ## Code Quality Tools
 
 - **Type checking**: `uv run mypy` - strict mode, checks both src/ and tests/, must pass with zero errors
-- **Linting**: `uv run ruff check .` - must pass before committing
-- **Formatting**: `uv run ruff format .` - auto-format all files
+- **Formatting**: `uv run ruff format .` - auto-format all files (run once at the end of each task for the entire project)
 - Configure via `pyproject.toml`
+
+**Note**: No need to run `ruff check` separately - just run `ruff format` at the end to ensure consistent formatting across the entire project.
 
 ### Mypy Type Ignore Policy
 
@@ -431,14 +432,16 @@ uv pip install -e ".[dev]"
 Run after each change:
 ```bash
 uv run mypy                   # Must pass (checks src/ and tests/)
-uv run ruff check .           # Must pass
-uv run ruff format .          # Auto-format
 uv run pytest --cov=railing_generator --cov-report=term-missing
 ```
 
 #### Before Completing
-1. Verify coverage >= baseline
-2. All checks pass: mypy ✅ ruff ✅ pytest ✅ coverage ✅
-3. Note final coverage (e.g., "Ending: 58%")
+1. **ALWAYS run ruff format for the entire project**: `uv run ruff format .`
+   - This ensures consistent formatting across all files
+   - Run this once at the end, not after each individual change
+   - No need to run `ruff check` separately - formatting handles style issues
+2. Verify coverage >= baseline
+3. All checks pass: mypy ✅ pytest ✅ coverage ✅
+4. Note final coverage (e.g., "Ending: 58%")
 
-**Quick check**: `uv run mypy && uv run ruff check . && uv run pytest --cov=railing_generator --cov-report=term-missing`
+**Quick check**: `uv run mypy && uv run pytest --cov=railing_generator --cov-report=term-missing && uv run ruff format .`

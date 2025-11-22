@@ -199,10 +199,10 @@ class RandomGenerator(Generator):
                     continue
 
                 # Check if rod is within boundary
-                if not frame.boundary.contains(rod_geometry):
-                    # Allow if rod is on the boundary
-                    if not frame.boundary.touches(rod_geometry):
-                        continue
+                # Use 'within' to ensure the rod is completely inside or on the boundary
+                # This is stricter than 'contains' and ensures no part extends outside
+                if not rod_geometry.within(frame.boundary):
+                    continue
 
                 # Check angle deviation from vertical
                 dx = anchor2.x - anchor1.x

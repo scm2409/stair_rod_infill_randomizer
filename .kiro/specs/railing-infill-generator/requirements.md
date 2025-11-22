@@ -63,9 +63,11 @@ This document specifies the requirements for a railing infill generator applicat
 3. THE Generator SHALL accept a number of layers parameter with a default value of two layers
 4. THE Generator SHALL ensure rods within the same layer do not cross each other
 5. THE Generator SHALL allow rods in different layers to cross each other
-6. THE Generator SHALL ensure rods remain within the railing frame boundaries
-7. THE Generator SHALL produce different arrangements on each generation request
-8. THE Generator SHALL calculate the positions and dimensions for all rods in the infill
+6. THE Generator SHALL ensure rods remain completely within the railing frame boundaries
+7. THE Generator SHALL reject any rod that extends outside the frame boundary polygon
+8. THE Generator SHALL ensure all points along each rod geometry are contained within or touching the frame boundary
+9. THE Generator SHALL produce different arrangements on each generation request
+10. THE Generator SHALL calculate the positions and dimensions for all rods in the infill
 
 ### Requirement 1.1
 
