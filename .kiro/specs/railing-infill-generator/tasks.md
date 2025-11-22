@@ -145,7 +145,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for generator
     - _Requirements: 1, 4.1, 6.1, 9_
   
-  - [ ] 5.3 Add generator UI and connect to viewport
+  - [x] 5.3 Add generator UI and connect to viewport
     - Add generator type dropdown to parameter panel
     - Add "Generate Infill" button
     - Implement `set_railing_infill()` in viewport (with layer colors)

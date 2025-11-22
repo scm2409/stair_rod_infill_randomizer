@@ -27,6 +27,9 @@ class RandomGenerator(Generator):
     - Rods are anchored to the frame
     """
 
+    # Define the parameter type for this generator
+    PARAMETER_TYPE = RandomGeneratorParameters
+
     def generate(
         self, frame: RailingFrame, params: InfillGeneratorParameters
     ) -> RailingInfill:
@@ -44,6 +47,14 @@ class RandomGenerator(Generator):
             ValueError: If parameters are not RandomGeneratorParameters
             RuntimeError: If generation fails
         """
+        # Validate and narrow parameter type (runtime check for type safety)
+        if not isinstance(params, RandomGeneratorParameters):
+            raise ValueError(
+                f"RandomGenerator requires RandomGeneratorParameters, "
+                f"got {type(params).__name__}"
+            )
+        # After isinstance check, mypy knows params is RandomGeneratorParameters
+        # No explicit cast needed - type narrowing handles it
 
         # Reset cancellation flag
         self.reset_cancellation()

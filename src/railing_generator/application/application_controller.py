@@ -1,6 +1,10 @@
 """Application controller for orchestrating workflows and updating the model."""
 
 from railing_generator.application.railing_project_model import RailingProjectModel
+from railing_generator.domain.infill_generators.generator_factory import GeneratorFactory
+from railing_generator.domain.infill_generators.generator_parameters import (
+    InfillGeneratorParameters,
+)
 from railing_generator.domain.shapes.railing_shape_factory import RailingShapeFactory
 from railing_generator.domain.shapes.railing_shape_parameters import RailingShapeParameters
 
@@ -65,3 +69,48 @@ class ApplicationController:
 
         # Update model with the generated frame
         self.project_model.set_railing_frame(frame)
+
+    def generate_infill(
+        self, generator_type: str, parameters: InfillGeneratorParameters
+    ) -> None:
+        """
+        Generate infill for the current railing frame.
+
+        This method:
+        1. Validates that a frame exists
+        2. Creates a Generator instance from the type and parameters
+        3. Generates the RailingInfill
+        4. Updates the model with the new infill
+
+        The model will emit signals to notify observers (e.g., viewport).
+
+        Note: This is a simplified synchronous version. Task 5.4 will add
+        background threading and progress dialog.
+
+        Args:
+            generator_type: The generator type identifier (e.g., "random")
+            parameters: The validated generator parameters
+
+        Raises:
+            ValueError: If no frame exists, generator type is unknown, or parameters are invalid
+            RuntimeError: If generation fails
+        """
+        # Validate that a frame exists
+        if not self.project_model.has_railing_frame():
+            raise ValueError("Cannot generate infill: no railing frame exists")
+
+        # Get the current frame
+        frame = self.project_model.railing_frame
+
+        # Update model with generator type and parameters
+        self.project_model.set_infill_generator_type(generator_type)
+        self.project_model.set_infill_generator_parameters(parameters)
+
+        # Create generator instance
+        generator = GeneratorFactory.create_generator(generator_type, parameters)
+
+        # Generate infill (synchronous for now)
+        infill = generator.generate(frame, parameters)
+
+        # Update model with the generated infill
+        self.project_model.set_railing_infill(infill)

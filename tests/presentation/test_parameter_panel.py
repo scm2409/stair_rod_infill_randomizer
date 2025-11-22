@@ -63,8 +63,8 @@ class TestParameterPanel:
         # Check that current parameter widget is StaircaseParameterWidget
         from railing_generator.presentation.shape_parameter_widget import StaircaseParameterWidget
         
-        assert panel.current_param_widget is not None
-        assert isinstance(panel.current_param_widget, StaircaseParameterWidget)
+        assert panel.current_shape_param_widget is not None
+        assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
 
     def test_rectangular_parameters_displayed(self, panel: ParameterPanel) -> None:
         """Test that rectangular parameters are displayed when selected."""
@@ -83,8 +83,8 @@ class TestParameterPanel:
         # Check that current parameter widget is RectangularParameterWidget
         from railing_generator.presentation.shape_parameter_widget import RectangularParameterWidget
         
-        assert panel.current_param_widget is not None
-        assert isinstance(panel.current_param_widget, RectangularParameterWidget)
+        assert panel.current_shape_param_widget is not None
+        assert isinstance(panel.current_shape_param_widget, RectangularParameterWidget)
 
     def test_switching_shape_clears_old_parameters(self, panel: ParameterPanel) -> None:
         """Test that switching shape type clears old parameter widgets."""
@@ -94,7 +94,7 @@ class TestParameterPanel:
         )
         
         # Start with staircase
-        assert isinstance(panel.current_param_widget, StaircaseParameterWidget)
+        assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
         
         # Switch to rectangular
         rect_index = -1
@@ -105,7 +105,7 @@ class TestParameterPanel:
         panel.shape_type_combo.setCurrentIndex(rect_index)
         
         # Should now have rectangular widget
-        assert isinstance(panel.current_param_widget, RectangularParameterWidget)
+        assert isinstance(panel.current_shape_param_widget, RectangularParameterWidget)
 
     def test_update_shape_button_updates_model(
         self,
@@ -118,8 +118,8 @@ class TestParameterPanel:
         from PySide6.QtWidgets import QDoubleSpinBox, QSpinBox
         
         # Arrange - Set staircase parameters
-        assert isinstance(panel.current_param_widget, StaircaseParameterWidget)
-        widget = panel.current_param_widget
+        assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
+        widget = panel.current_shape_param_widget
         
         # Access widgets via field_widgets dictionary
         post_length = widget.field_widgets["post_length_cm"]
@@ -172,8 +172,8 @@ class TestParameterPanel:
         panel.shape_type_combo.setCurrentIndex(rect_index)
         
         # Set rectangular parameters
-        assert isinstance(panel.current_param_widget, RectangularParameterWidget)
-        widget = panel.current_param_widget
+        assert isinstance(panel.current_shape_param_widget, RectangularParameterWidget)
+        widget = panel.current_shape_param_widget
         
         width = widget.field_widgets["width_cm"]
         assert isinstance(width, QDoubleSpinBox)
@@ -204,8 +204,8 @@ class TestParameterPanel:
         from PySide6.QtWidgets import QDoubleSpinBox, QSpinBox
         
         # Check staircase defaults
-        assert isinstance(panel.current_param_widget, StaircaseParameterWidget)
-        widget = panel.current_param_widget
+        assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
+        widget = panel.current_shape_param_widget
         
         post_length = widget.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
@@ -233,8 +233,8 @@ class TestParameterPanel:
         from PySide6.QtWidgets import QDoubleSpinBox, QSpinBox
         
         # Check staircase parameter ranges
-        assert isinstance(panel.current_param_widget, StaircaseParameterWidget)
-        widget = panel.current_param_widget
+        assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
+        widget = panel.current_shape_param_widget
         
         post_length = widget.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)

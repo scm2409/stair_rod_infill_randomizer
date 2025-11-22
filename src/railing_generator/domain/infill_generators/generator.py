@@ -23,12 +23,18 @@ class Generator(QObject, metaclass=QObjectABCMeta):
     Generators create infill rod arrangements within a railing frame boundary.
     They emit signals during generation for progress updates and results.
 
+    Subclasses must define:
+        PARAMETER_TYPE: The specific InfillGeneratorParameters subclass this generator uses
+
     Signals:
         progress_updated: Emitted during generation with progress info dict
         best_result_updated: Emitted when a better result is found (RailingInfill)
         generation_completed: Emitted when generation completes successfully (RailingInfill)
         generation_failed: Emitted when generation fails (error message string)
     """
+
+    # Subclasses must define their parameter type
+    PARAMETER_TYPE: type[InfillGeneratorParameters]
 
     # Signals for generation progress and results
     progress_updated = Signal(dict)  # {"iteration": int, "best_fitness": float, "elapsed_sec": float}
