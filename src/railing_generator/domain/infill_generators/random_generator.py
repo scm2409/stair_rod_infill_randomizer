@@ -192,10 +192,11 @@ class RandomGenerator(Generator):
         frame_boundary = LineString(frame.boundary.exterior.coords)
         frame_length = frame_boundary.length
 
-        # Pre-generate anchor points with minimum distance constraint
-        # This is much more efficient than checking during rod generation
+        # Generate MORE anchor points than strictly needed (5x multiplier for better success rate)
+        # This gives us a larger pool to find valid rod pairs from
+        num_anchor_points = max(params.num_rods * 5, 20)
         anchor_points = self._generate_anchor_points(
-            frame_boundary, frame_length, params.num_rods * 2, params.min_anchor_distance_cm
+            frame_boundary, frame_length, num_anchor_points, params.min_anchor_distance_cm
         )
 
         if len(anchor_points) < params.num_rods * 2:
@@ -226,25 +227,33 @@ class RandomGenerator(Generator):
         # Generate rods by pairing anchor points
         rods: list[Rod] = []
 
+        # Track consecutive failures to detect when we should give up early
+        consecutive_failures = 0
+        max_consecutive_failures = 50
+
         for rod_attempt in range(params.num_rods):
             # Select layer with fewest rods to maintain even distribution
             layer = self._select_layer_for_even_distribution(rods_by_layer, layer_targets)
 
+            # Get list of available anchors once per rod attempt (more efficient)
+            available_anchors = [i for i in range(len(anchor_points)) if i not in used_anchors]
+
+            if len(available_anchors) < 2:
+                self.statistics.no_anchors_left += 1
+                break
+
             # Try to create a valid rod using available anchor points
-            max_attempts = 100
+            max_attempts = min(100, len(available_anchors) * (len(available_anchors) - 1) // 2)
             rod_created = False
 
-            for _ in range(max_attempts):
-                # Check if we have enough unused anchor points left
-                available_anchors = [i for i in range(len(anchor_points)) if i not in used_anchors]
-                if len(available_anchors) < 2:
-                    self.statistics.no_anchors_left += 1
+            for attempt in range(max_attempts):
+                # Early exit if we've had too many consecutive failures
+                if consecutive_failures >= max_consecutive_failures:
                     break
 
                 # Randomly select two different anchor points
-                anchor1_idx = random.choice(available_anchors)
-                available_anchors.remove(anchor1_idx)
-                anchor2_idx = random.choice(available_anchors)
+                # Use random.sample for efficiency (no need to remove and re-add)
+                anchor1_idx, anchor2_idx = random.sample(available_anchors, 2)
 
                 # Get the anchor points
                 anchor1 = Point(anchor_points[anchor1_idx])
@@ -254,16 +263,20 @@ class RandomGenerator(Generator):
                 rod_geometry = LineString([anchor1.coords[0], anchor2.coords[0]])
 
                 # Check length constraints
-                if rod_geometry.length < params.min_rod_length_cm:
+                rod_length = rod_geometry.length
+                if rod_length < params.min_rod_length_cm:
                     self.statistics.too_short += 1
+                    consecutive_failures += 1
                     continue
-                if rod_geometry.length > params.max_rod_length_cm:
+                if rod_length > params.max_rod_length_cm:
                     self.statistics.too_long += 1
+                    consecutive_failures += 1
                     continue
 
                 # Check if rod is within boundary
                 if not rod_geometry.within(frame.boundary):
                     self.statistics.outside_boundary += 1
+                    consecutive_failures += 1
                     continue
 
                 # Check angle deviation from vertical
@@ -277,6 +290,7 @@ class RandomGenerator(Generator):
 
                 if angle_deg > params.max_angle_deviation_deg:
                     self.statistics.angle_too_large += 1
+                    consecutive_failures += 1
                     continue
 
                 # Check for crossings with same-layer rods
@@ -288,6 +302,7 @@ class RandomGenerator(Generator):
 
                 if crosses_same_layer:
                     self.statistics.crosses_same_layer += 1
+                    consecutive_failures += 1
                     continue
 
                 # Create rod
@@ -307,7 +322,13 @@ class RandomGenerator(Generator):
                 used_anchors.add(anchor1_idx)
                 used_anchors.add(anchor2_idx)
 
+                # Reset consecutive failures on success
+                consecutive_failures = 0
                 rod_created = True
+                break
+
+            # If we failed to create a rod after all attempts, give up
+            if not rod_created:
                 break
 
         # Update statistics with final rod count

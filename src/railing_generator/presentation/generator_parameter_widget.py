@@ -82,16 +82,16 @@ class RandomGeneratorParameterWidget(QWidget):
 
         # Max iterations
         self.max_iterations_spin = QSpinBox()
-        self.max_iterations_spin.setRange(1, 10000)
+        self.max_iterations_spin.setRange(1, 1000000)
         self.max_iterations_spin.setValue(self.defaults.max_iterations)
         layout.addRow("Max Iterations:", self.max_iterations_spin)
 
         # Max duration
         self.max_duration_spin = QDoubleSpinBox()
-        self.max_duration_spin.setRange(0.1, 300.0)
+        self.max_duration_spin.setRange(1, 3600.0)
         self.max_duration_spin.setValue(self.defaults.max_duration_sec)
         self.max_duration_spin.setSuffix(" sec")
-        self.max_duration_spin.setDecimals(1)
+        self.max_duration_spin.setDecimals(0)
         layout.addRow("Max Duration:", self.max_duration_spin)
 
         # Infill weight per meter
