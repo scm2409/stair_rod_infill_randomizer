@@ -188,11 +188,13 @@ This document specifies the requirements for a railing infill generator applicat
 5. THE Generator SHALL accept a number of layers parameter with default value of two
 6. THE Generator SHALL accept a minimum distance between anchor points parameter
 7. THE Generator SHALL ensure infill rods connect to the frame at anchor points
-8. THE Generator SHALL respect the minimum distance constraint between consecutive anchor points on the frame
-9. THE Generator SHALL ensure generated infill rods meet the minimum length constraint
-10. THE Generator SHALL distribute infill rods evenly across all layers
-11. WHEN distributing rods across layers, THE Generator SHALL ensure the difference between the layer with the most rods and the layer with the fewest rods does not exceed thirty percent of the total number of rods
-12. THE UI Application SHALL provide input fields for all random generator parameters
+8. THE Generator SHALL respect the minimum distance constraint between all anchor points on the frame
+9. THE Generator SHALL enforce the minimum anchor distance globally across all rods in all layers
+10. WHEN placing a new rod anchor point, THE Generator SHALL ensure it maintains the minimum distance from all existing anchor points regardless of layer
+11. THE Generator SHALL ensure generated infill rods meet the minimum length constraint
+12. THE Generator SHALL distribute infill rods evenly across all layers
+13. WHEN distributing rods across layers, THE Generator SHALL ensure the difference between the layer with the most rods and the layer with the fewest rods does not exceed thirty percent of the total number of rods
+14. THE UI Application SHALL provide input fields for all random generator parameters
 13. THE UI Application SHALL load default values for all random generator parameters from configuration files
 
 ### Requirement 6.2

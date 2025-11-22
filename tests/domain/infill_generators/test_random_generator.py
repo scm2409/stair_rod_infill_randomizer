@@ -55,14 +55,14 @@ def simple_frame() -> RailingFrame:
 def simple_params() -> RandomGeneratorParameters:
     """Create simple parameters for testing."""
     return RandomGeneratorParameters(
-        num_rods=10,
-        min_rod_length_cm=30.0,
-        max_rod_length_cm=150.0,
-        max_angle_deviation_deg=30.0,
+        num_rods=5,
+        min_rod_length_cm=20.0,
+        max_rod_length_cm=180.0,
+        max_angle_deviation_deg=40.0,
         num_layers=2,
-        min_anchor_distance_cm=5.0,
-        max_iterations=100,
-        max_duration_sec=5.0,
+        min_anchor_distance_cm=10.0,
+        max_iterations=500,
+        max_duration_sec=10.0,
         infill_weight_per_meter_kg_m=0.3,
     )
 
@@ -93,8 +93,8 @@ def test_random_generator_generate_creates_rods(
     generator = RandomGenerator()
     infill = generator.generate(simple_frame, simple_params)
 
-    # Should generate at least some rods (at least 50% of requested)
-    assert len(infill.rods) >= simple_params.num_rods * 0.5
+    # Should generate ALL requested rods
+    assert len(infill.rods) == simple_params.num_rods
 
 
 def test_random_generator_rods_have_correct_layer(
@@ -242,6 +242,42 @@ def test_random_generator_rods_within_boundary(
         ), f"Rod end point outside boundary: {end_point}"
 
 
+def test_random_generator_global_anchor_distance(
+    simple_frame: RailingFrame, simple_params: RandomGeneratorParameters
+) -> None:
+    """
+    Test that minimum anchor distance is enforced globally across all layers.
+
+    Requirement 6.1.1.8: Respect minimum distance between all anchor points
+    Requirement 6.1.1.9: Enforce minimum distance globally across all layers
+    Requirement 6.1.1.10: New anchor maintains distance from all existing anchors
+    """
+    generator = RandomGenerator()
+    infill = generator.generate(simple_frame, simple_params)
+
+    # Collect all anchor points from all rods in all layers
+    all_anchors = []
+    for rod in infill.rods:
+        all_anchors.append(rod.start_point)
+        all_anchors.append(rod.end_point)
+
+    # Check that all anchor points maintain minimum distance from each other
+    min_distance = simple_params.min_anchor_distance_cm
+
+    for i, anchor1 in enumerate(all_anchors):
+        for j, anchor2 in enumerate(all_anchors):
+            if i >= j:  # Skip self-comparison and already-checked pairs
+                continue
+
+            distance = anchor1.distance(anchor2)
+
+            # Allow some tolerance for floating point precision
+            assert distance >= min_distance - 0.01, (
+                f"Anchor points too close: {distance:.2f} cm < {min_distance} cm "
+                f"(anchor {i} at {anchor1} and anchor {j} at {anchor2})"
+            )
+
+
 def test_random_generator_even_distribution_across_layers(
     simple_frame: RailingFrame,
 ) -> None:
@@ -254,23 +290,24 @@ def test_random_generator_even_distribution_across_layers(
     generator = RandomGenerator()
 
     # Test with different layer counts
+    # Use realistic parameters that are achievable with the frame size
     test_cases = [
-        (20, 2),  # 20 rods, 2 layers -> 10 per layer
-        (30, 3),  # 30 rods, 3 layers -> 10 per layer
-        (25, 2),  # 25 rods, 2 layers -> 13 and 12 (1 rod difference)
-        (50, 4),  # 50 rods, 4 layers -> 12-13 per layer
+        (4, 2),  # 4 rods, 2 layers -> 2 per layer
+        (6, 3),  # 6 rods, 3 layers -> 2 per layer
+        (6, 2),  # 6 rods, 2 layers -> 3 per layer
+        (8, 4),  # 8 rods, 4 layers -> 2 per layer
     ]
 
     for num_rods, num_layers in test_cases:
         params = RandomGeneratorParameters(
             num_rods=num_rods,
-            min_rod_length_cm=30.0,
-            max_rod_length_cm=150.0,
-            max_angle_deviation_deg=30.0,
+            min_rod_length_cm=20.0,
+            max_rod_length_cm=180.0,
+            max_angle_deviation_deg=40.0,
             num_layers=num_layers,
-            min_anchor_distance_cm=5.0,
-            max_iterations=100,
-            max_duration_sec=5.0,
+            min_anchor_distance_cm=10.0,
+            max_iterations=500,
+            max_duration_sec=10.0,
             infill_weight_per_meter_kg_m=0.3,
         )
 
