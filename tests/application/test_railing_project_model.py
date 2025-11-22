@@ -326,9 +326,7 @@ def test_reset_to_defaults_clears_all_state(
     enum_spy.assert_called_once_with(False)
 
 
-def test_has_railing_frame(
-    model: RailingProjectModel, sample_frame: RailingFrame
-) -> None:
+def test_has_railing_frame(model: RailingProjectModel, sample_frame: RailingFrame) -> None:
     """Test has_railing_frame utility method."""
     assert model.has_railing_frame() is False
 
@@ -339,9 +337,7 @@ def test_has_railing_frame(
     assert model.has_railing_frame() is False
 
 
-def test_has_railing_infill(
-    model: RailingProjectModel, sample_infill: RailingInfill
-) -> None:
+def test_has_railing_infill(model: RailingProjectModel, sample_infill: RailingInfill) -> None:
     """Test has_railing_infill utility method."""
     assert model.has_railing_infill() is False
 

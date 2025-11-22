@@ -1,4 +1,5 @@
 """Parameter widgets for infill generators."""
+
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
@@ -39,6 +40,14 @@ class RandomGeneratorParameterWidget(QWidget):
         self.num_rods_spin.setValue(self.defaults.num_rods)
         self.num_rods_spin.setSuffix(" rods")
         layout.addRow("Number of Rods:", self.num_rods_spin)
+
+        # Min rod length
+        self.min_rod_length_spin = QDoubleSpinBox()
+        self.min_rod_length_spin.setRange(1.0, 1000.0)
+        self.min_rod_length_spin.setValue(self.defaults.min_rod_length_cm)
+        self.min_rod_length_spin.setSuffix(" cm")
+        self.min_rod_length_spin.setDecimals(1)
+        layout.addRow("Min Rod Length:", self.min_rod_length_spin)
 
         # Max rod length
         self.max_rod_length_spin = QDoubleSpinBox()
@@ -102,6 +111,7 @@ class RandomGeneratorParameterWidget(QWidget):
         """
         return RandomGeneratorParameters(
             num_rods=self.num_rods_spin.value(),
+            min_rod_length_cm=self.min_rod_length_spin.value(),
             max_rod_length_cm=self.max_rod_length_spin.value(),
             max_angle_deviation_deg=self.max_angle_spin.value(),
             num_layers=self.num_layers_spin.value(),

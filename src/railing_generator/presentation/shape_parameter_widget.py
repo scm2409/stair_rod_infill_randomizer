@@ -200,19 +200,19 @@ class StaircaseParameterWidget(ShapeParameterWidget):
         post_length = self.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
         post_length.setValue(self._defaults.post_length_cm)
-        
+
         stair_width = self.field_widgets["stair_width_cm"]
         assert isinstance(stair_width, QDoubleSpinBox)
         stair_width.setValue(self._defaults.stair_width_cm)
-        
+
         stair_height = self.field_widgets["stair_height_cm"]
         assert isinstance(stair_height, QDoubleSpinBox)
         stair_height.setValue(self._defaults.stair_height_cm)
-        
+
         num_steps = self.field_widgets["num_steps"]
         assert isinstance(num_steps, QSpinBox)
         num_steps.setValue(self._defaults.num_steps)
-        
+
         frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         frame_weight.setValue(self._defaults.frame_weight_per_meter_kg_m)
@@ -229,19 +229,19 @@ class StaircaseParameterWidget(ShapeParameterWidget):
         """
         post_length = self.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
-        
+
         stair_width = self.field_widgets["stair_width_cm"]
         assert isinstance(stair_width, QDoubleSpinBox)
-        
+
         stair_height = self.field_widgets["stair_height_cm"]
         assert isinstance(stair_height, QDoubleSpinBox)
-        
+
         num_steps = self.field_widgets["num_steps"]
         assert isinstance(num_steps, QSpinBox)
-        
+
         frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
-        
+
         return StaircaseRailingShapeParameters(
             post_length_cm=post_length.value(),
             stair_width_cm=stair_width.value(),
@@ -288,11 +288,11 @@ class RectangularParameterWidget(ShapeParameterWidget):
         width = self.field_widgets["width_cm"]
         assert isinstance(width, QDoubleSpinBox)
         width.setValue(self._defaults.width_cm)
-        
+
         height = self.field_widgets["height_cm"]
         assert isinstance(height, QDoubleSpinBox)
         height.setValue(self._defaults.height_cm)
-        
+
         frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         frame_weight.setValue(self._defaults.frame_weight_per_meter_kg_m)
@@ -309,13 +309,13 @@ class RectangularParameterWidget(ShapeParameterWidget):
         """
         width = self.field_widgets["width_cm"]
         assert isinstance(width, QDoubleSpinBox)
-        
+
         height = self.field_widgets["height_cm"]
         assert isinstance(height, QDoubleSpinBox)
-        
+
         frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
-        
+
         return RectangularRailingShapeParameters(
             width_cm=width.value(),
             height_cm=height.value(),

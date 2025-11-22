@@ -1,4 +1,5 @@
 """Factory for creating infill generator instances."""
+
 from railing_generator.domain.infill_generators.generator import Generator
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
@@ -39,8 +40,7 @@ class GeneratorFactory:
         if generator_type not in cls._GENERATOR_TYPES:
             available = ", ".join(cls._GENERATOR_TYPES.keys())
             raise ValueError(
-                f"Unknown generator type: {generator_type}. "
-                f"Available types: {available}"
+                f"Unknown generator type: {generator_type}. Available types: {available}"
             )
 
         # Get generator class and its parameter type
@@ -84,8 +84,7 @@ class GeneratorFactory:
         if generator_type not in cls._GENERATOR_TYPES:
             available = ", ".join(cls._GENERATOR_TYPES.keys())
             raise ValueError(
-                f"Unknown generator type: {generator_type}. "
-                f"Available types: {available}"
+                f"Unknown generator type: {generator_type}. Available types: {available}"
             )
 
         # Get parameter type from the generator class

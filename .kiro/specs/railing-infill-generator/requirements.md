@@ -180,16 +180,18 @@ This document specifies the requirements for a railing infill generator applicat
 #### Acceptance Criteria
 
 1. THE Generator SHALL accept a number of infill rods parameter
-2. THE Generator SHALL accept a maximum infill rod length parameter
-3. THE Generator SHALL accept a maximum angle deviation from vertical parameter
-4. THE Generator SHALL accept a number of layers parameter with default value of two
-5. THE Generator SHALL accept a minimum distance between anchor points parameter
-6. THE Generator SHALL ensure infill rods connect to the frame at anchor points
-7. THE Generator SHALL respect the minimum distance constraint between consecutive anchor points on the frame
-8. THE Generator SHALL distribute infill rods evenly across all layers
-9. WHEN distributing rods across layers, THE Generator SHALL ensure the difference between the layer with the most rods and the layer with the fewest rods does not exceed thirty percent of the total number of rods
-10. THE UI Application SHALL provide input fields for all random generator parameters
-11. THE UI Application SHALL load default values for all random generator parameters from configuration files
+2. THE Generator SHALL accept a minimum infill rod length parameter with default value of fifty centimeters
+3. THE Generator SHALL accept a maximum infill rod length parameter
+4. THE Generator SHALL accept a maximum angle deviation from vertical parameter
+5. THE Generator SHALL accept a number of layers parameter with default value of two
+6. THE Generator SHALL accept a minimum distance between anchor points parameter
+7. THE Generator SHALL ensure infill rods connect to the frame at anchor points
+8. THE Generator SHALL respect the minimum distance constraint between consecutive anchor points on the frame
+9. THE Generator SHALL ensure generated infill rods meet the minimum length constraint
+10. THE Generator SHALL distribute infill rods evenly across all layers
+11. WHEN distributing rods across layers, THE Generator SHALL ensure the difference between the layer with the most rods and the layer with the fewest rods does not exceed thirty percent of the total number of rods
+12. THE UI Application SHALL provide input fields for all random generator parameters
+13. THE UI Application SHALL load default values for all random generator parameters from configuration files
 
 ### Requirement 6.2
 

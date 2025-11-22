@@ -1,4 +1,5 @@
 """Tests for Generator base class."""
+
 from PySide6.QtCore import QObject
 
 from railing_generator.domain.infill_generators.generator import Generator
@@ -12,9 +13,7 @@ from railing_generator.domain.railing_infill import RailingInfill
 class MockGenerator(Generator):
     """Mock generator for testing."""
 
-    def generate(
-        self, frame: RailingFrame, params: InfillGeneratorParameters
-    ) -> RailingInfill:
+    def generate(self, frame: RailingFrame, params: InfillGeneratorParameters) -> RailingInfill:
         """Mock generate method."""
         return RailingInfill(rods=[])
 

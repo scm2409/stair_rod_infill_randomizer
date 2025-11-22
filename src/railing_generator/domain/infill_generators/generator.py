@@ -1,4 +1,5 @@
 """Base class for infill generators."""
+
 from abc import ABCMeta, abstractmethod
 
 from PySide6.QtCore import QObject, Signal
@@ -37,7 +38,9 @@ class Generator(QObject, metaclass=QObjectABCMeta):
     PARAMETER_TYPE: type[InfillGeneratorParameters]
 
     # Signals for generation progress and results
-    progress_updated = Signal(dict)  # {"iteration": int, "best_fitness": float, "elapsed_sec": float}
+    progress_updated = Signal(
+        dict
+    )  # {"iteration": int, "best_fitness": float, "elapsed_sec": float}
     best_result_updated = Signal(object)  # RailingInfill
     generation_completed = Signal(object)  # RailingInfill
     generation_failed = Signal(str)  # error message
@@ -48,9 +51,7 @@ class Generator(QObject, metaclass=QObjectABCMeta):
         self._cancelled = False
 
     @abstractmethod
-    def generate(
-        self, frame: RailingFrame, params: InfillGeneratorParameters
-    ) -> RailingInfill:
+    def generate(self, frame: RailingFrame, params: InfillGeneratorParameters) -> RailingInfill:
         """
         Generate infill arrangement within the given frame.
 

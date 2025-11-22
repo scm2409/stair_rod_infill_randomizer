@@ -1,4 +1,5 @@
 """Railing infill model containing generated infill rods."""
+
 from pydantic import BaseModel, Field, computed_field
 from railing_generator.domain.rod import Rod
 
@@ -21,9 +22,7 @@ class RailingInfill(BaseModel):
     fitness_score: float | None = Field(
         default=None, description="Optional fitness score (higher = better)"
     )
-    iteration_count: int | None = Field(
-        default=None, ge=0, description="Optional iteration count"
-    )
+    iteration_count: int | None = Field(default=None, ge=0, description="Optional iteration count")
     duration_sec: float | None = Field(
         default=None, ge=0, description="Optional generation duration in seconds"
     )

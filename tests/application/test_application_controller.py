@@ -28,7 +28,9 @@ class TestApplicationController:
         """Create an ApplicationController for testing."""
         return ApplicationController(project_model)
 
-    def test_initialization(self, controller: ApplicationController, project_model: RailingProjectModel) -> None:
+    def test_initialization(
+        self, controller: ApplicationController, project_model: RailingProjectModel
+    ) -> None:
         """Test that controller is initialized with the project model."""
         # Assert
         assert controller.project_model is project_model

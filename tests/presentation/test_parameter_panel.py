@@ -59,10 +59,10 @@ class TestParameterPanel:
         """Test that staircase parameters are displayed initially."""
         # Select staircase (should already be selected)
         panel.shape_type_combo.setCurrentIndex(0)
-        
+
         # Check that current parameter widget is StaircaseParameterWidget
         from railing_generator.presentation.shape_parameter_widget import StaircaseParameterWidget
-        
+
         assert panel.current_shape_param_widget is not None
         assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
 
@@ -74,15 +74,15 @@ class TestParameterPanel:
             if panel.shape_type_combo.itemData(i) == "rectangular":
                 rect_index = i
                 break
-        
+
         assert rect_index >= 0
-        
+
         # Select rectangular
         panel.shape_type_combo.setCurrentIndex(rect_index)
-        
+
         # Check that current parameter widget is RectangularParameterWidget
         from railing_generator.presentation.shape_parameter_widget import RectangularParameterWidget
-        
+
         assert panel.current_shape_param_widget is not None
         assert isinstance(panel.current_shape_param_widget, RectangularParameterWidget)
 
@@ -92,10 +92,10 @@ class TestParameterPanel:
             RectangularParameterWidget,
             StaircaseParameterWidget,
         )
-        
+
         # Start with staircase
         assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
-        
+
         # Switch to rectangular
         rect_index = -1
         for i in range(panel.shape_type_combo.count()):
@@ -103,7 +103,7 @@ class TestParameterPanel:
                 rect_index = i
                 break
         panel.shape_type_combo.setCurrentIndex(rect_index)
-        
+
         # Should now have rectangular widget
         assert isinstance(panel.current_shape_param_widget, RectangularParameterWidget)
 
@@ -116,38 +116,38 @@ class TestParameterPanel:
         """Test that clicking Update Shape button updates the model."""
         from railing_generator.presentation.shape_parameter_widget import StaircaseParameterWidget
         from PySide6.QtWidgets import QDoubleSpinBox, QSpinBox
-        
+
         # Arrange - Set staircase parameters
         assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
         widget = panel.current_shape_param_widget
-        
+
         # Access widgets via field_widgets dictionary
         post_length = widget.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
         post_length.setValue(200.0)
-        
+
         stair_width = widget.field_widgets["stair_width_cm"]
         assert isinstance(stair_width, QDoubleSpinBox)
         stair_width.setValue(300.0)
-        
+
         stair_height = widget.field_widgets["stair_height_cm"]
         assert isinstance(stair_height, QDoubleSpinBox)
         stair_height.setValue(300.0)
-        
+
         num_steps = widget.field_widgets["num_steps"]
         assert isinstance(num_steps, QSpinBox)
         num_steps.setValue(12)
-        
+
         frame_weight = widget.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         frame_weight.setValue(0.6)
-        
+
         # Act - Click update button
         panel.update_shape_button.click()
-        
+
         # Wait for processing
         qtbot.wait(100)
-        
+
         # Assert - Model should be updated
         assert project_model.railing_shape_type == "staircase"
         assert project_model.railing_frame is not None
@@ -162,7 +162,7 @@ class TestParameterPanel:
         """Test that updating rectangular shape updates the model."""
         from railing_generator.presentation.shape_parameter_widget import RectangularParameterWidget
         from PySide6.QtWidgets import QDoubleSpinBox
-        
+
         # Arrange - Switch to rectangular
         rect_index = -1
         for i in range(panel.shape_type_combo.count()):
@@ -170,29 +170,29 @@ class TestParameterPanel:
                 rect_index = i
                 break
         panel.shape_type_combo.setCurrentIndex(rect_index)
-        
+
         # Set rectangular parameters
         assert isinstance(panel.current_shape_param_widget, RectangularParameterWidget)
         widget = panel.current_shape_param_widget
-        
+
         width = widget.field_widgets["width_cm"]
         assert isinstance(width, QDoubleSpinBox)
         width.setValue(250.0)
-        
+
         height = widget.field_widgets["height_cm"]
         assert isinstance(height, QDoubleSpinBox)
         height.setValue(120.0)
-        
+
         frame_weight = widget.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         frame_weight.setValue(0.7)
-        
+
         # Act - Click update button
         panel.update_shape_button.click()
-        
+
         # Wait for processing
         qtbot.wait(100)
-        
+
         # Assert - Model should be updated
         assert project_model.railing_shape_type == "rectangular"
         assert project_model.railing_frame is not None
@@ -202,27 +202,27 @@ class TestParameterPanel:
         """Test that default values are loaded from config."""
         from railing_generator.presentation.shape_parameter_widget import StaircaseParameterWidget
         from PySide6.QtWidgets import QDoubleSpinBox, QSpinBox
-        
+
         # Check staircase defaults
         assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
         widget = panel.current_shape_param_widget
-        
+
         post_length = widget.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
         assert post_length.value() == 150.0
-        
+
         stair_width = widget.field_widgets["stair_width_cm"]
         assert isinstance(stair_width, QDoubleSpinBox)
         assert stair_width.value() == 280.0
-        
+
         stair_height = widget.field_widgets["stair_height_cm"]
         assert isinstance(stair_height, QDoubleSpinBox)
         assert stair_height.value() == 280.0
-        
+
         num_steps = widget.field_widgets["num_steps"]
         assert isinstance(num_steps, QSpinBox)
         assert num_steps.value() == 10
-        
+
         frame_weight = widget.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         assert frame_weight.value() == 0.5
@@ -231,28 +231,28 @@ class TestParameterPanel:
         """Test that parameter spin boxes have appropriate ranges."""
         from railing_generator.presentation.shape_parameter_widget import StaircaseParameterWidget
         from PySide6.QtWidgets import QDoubleSpinBox, QSpinBox
-        
+
         # Check staircase parameter ranges
         assert isinstance(panel.current_shape_param_widget, StaircaseParameterWidget)
         widget = panel.current_shape_param_widget
-        
+
         post_length = widget.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
         assert post_length.minimum() > 0
-        
+
         stair_width = widget.field_widgets["stair_width_cm"]
         assert isinstance(stair_width, QDoubleSpinBox)
         assert stair_width.minimum() > 0
-        
+
         stair_height = widget.field_widgets["stair_height_cm"]
         assert isinstance(stair_height, QDoubleSpinBox)
         assert stair_height.minimum() > 0
-        
+
         num_steps = widget.field_widgets["num_steps"]
         assert isinstance(num_steps, QSpinBox)
         assert num_steps.minimum() >= 1
         assert num_steps.maximum() <= 50
-        
+
         frame_weight = widget.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         assert frame_weight.minimum() > 0

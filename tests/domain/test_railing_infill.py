@@ -1,4 +1,5 @@
 """Tests for RailingInfill class."""
+
 import pytest
 from shapely.geometry import LineString
 from railing_generator.domain.rod import Rod

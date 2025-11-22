@@ -200,11 +200,11 @@ class ViewportWidget(QGraphicsView):
 
         # Define colors for different layers
         layer_colors = [
-            Qt.GlobalColor.red,      # Layer 1
-            Qt.GlobalColor.green,    # Layer 2
+            Qt.GlobalColor.red,  # Layer 1
+            Qt.GlobalColor.green,  # Layer 2
             Qt.GlobalColor.magenta,  # Layer 3
-            Qt.GlobalColor.cyan,     # Layer 4
-            Qt.GlobalColor.yellow,   # Layer 5
+            Qt.GlobalColor.cyan,  # Layer 4
+            Qt.GlobalColor.yellow,  # Layer 5
         ]
 
         # Render infill rods with layer-specific colors

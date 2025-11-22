@@ -47,7 +47,9 @@ class StaircaseRailingShapeParameters(RailingShapeParameters):
         return self.stair_height_cm / self.num_steps
 
     @classmethod
-    def from_defaults(cls, defaults: StaircaseRailingShapeDefaults) -> "StaircaseRailingShapeParameters":
+    def from_defaults(
+        cls, defaults: StaircaseRailingShapeDefaults
+    ) -> "StaircaseRailingShapeParameters":
         """Create parameters from config defaults."""
         return cls(
             post_length_cm=defaults.post_length_cm,

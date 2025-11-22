@@ -33,23 +33,23 @@ class TestStaircaseParameterWidgetValidation:
     def test_get_parameters_with_valid_values(self, widget: StaircaseParameterWidget) -> None:
         """Test getting parameters with valid custom values."""
         from PySide6.QtWidgets import QDoubleSpinBox, QSpinBox
-        
+
         post_length = widget.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
         post_length.setValue(200.0)
-        
+
         stair_width = widget.field_widgets["stair_width_cm"]
         assert isinstance(stair_width, QDoubleSpinBox)
         stair_width.setValue(300.0)
-        
+
         stair_height = widget.field_widgets["stair_height_cm"]
         assert isinstance(stair_height, QDoubleSpinBox)
         stair_height.setValue(300.0)
-        
+
         num_steps = widget.field_widgets["num_steps"]
         assert isinstance(num_steps, QSpinBox)
         num_steps.setValue(12)
-        
+
         frame_weight = widget.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         frame_weight.setValue(0.6)
@@ -64,7 +64,7 @@ class TestStaircaseParameterWidgetValidation:
     def test_validation_signals_connected(self, widget: StaircaseParameterWidget) -> None:
         """Test that validation signals are connected."""
         from PySide6.QtWidgets import QDoubleSpinBox
-        
+
         # Change a value and verify no crash (signals are connected)
         post_length = widget.field_widgets["post_length_cm"]
         assert isinstance(post_length, QDoubleSpinBox)
@@ -93,15 +93,15 @@ class TestRectangularParameterWidgetValidation:
     def test_get_parameters_with_valid_values(self, widget: RectangularParameterWidget) -> None:
         """Test getting parameters with valid custom values."""
         from PySide6.QtWidgets import QDoubleSpinBox
-        
+
         width = widget.field_widgets["width_cm"]
         assert isinstance(width, QDoubleSpinBox)
         width.setValue(250.0)
-        
+
         height = widget.field_widgets["height_cm"]
         assert isinstance(height, QDoubleSpinBox)
         height.setValue(120.0)
-        
+
         frame_weight = widget.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)
         frame_weight.setValue(0.7)
@@ -114,7 +114,7 @@ class TestRectangularParameterWidgetValidation:
     def test_validation_signals_connected(self, widget: RectangularParameterWidget) -> None:
         """Test that validation signals are connected."""
         from PySide6.QtWidgets import QDoubleSpinBox
-        
+
         # Change a value and verify no crash (signals are connected)
         width = widget.field_widgets["width_cm"]
         assert isinstance(width, QDoubleSpinBox)

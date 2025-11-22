@@ -215,15 +215,15 @@ class TestRectangularRailingShape:
         )
         shape = RectangularRailingShape(params)
         frame = shape.generate_frame()
-        
+
         # Check area
         expected_area = 300.0 * 150.0
         assert abs(frame.boundary.area - expected_area) < 0.01
-        
+
         # Check perimeter
         expected_length = 2 * 300.0 + 2 * 150.0  # 900.0 cm
         assert abs(frame.total_length_cm - expected_length) < 0.01
-        
+
         # Check weight (900 cm = 9 m, 9 * 0.8 = 7.2 kg)
         expected_weight = 7.2
         assert abs(frame.total_weight_kg - expected_weight) < 0.01
@@ -237,18 +237,18 @@ class TestRectangularRailingShape:
         )
         shape = RectangularRailingShape(params)
         frame = shape.generate_frame()
-        
+
         # Expected corners (counterclockwise from origin)
         expected_corners = [
-            (0.0, 0.0),      # Bottom-left
-            (200.0, 0.0),    # Bottom-right
+            (0.0, 0.0),  # Bottom-left
+            (200.0, 0.0),  # Bottom-right
             (200.0, 100.0),  # Top-right
-            (0.0, 100.0),    # Top-left
+            (0.0, 100.0),  # Top-left
         ]
-        
+
         # Extract boundary coordinates (Polygon exterior)
         boundary_coords = list(frame.boundary.exterior.coords)
-        
+
         # Check that all expected corners are in the boundary
         for corner in expected_corners:
             assert corner in boundary_coords
@@ -262,7 +262,7 @@ class TestRectangularRailingShape:
         )
         shape = RectangularRailingShape(params)
         frame = shape.generate_frame()
-        
+
         # Attempt to modify should raise error
         with pytest.raises(Exception):  # Pydantic raises ValidationError
             frame.rods = []

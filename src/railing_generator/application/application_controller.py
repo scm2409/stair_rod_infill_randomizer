@@ -70,9 +70,7 @@ class ApplicationController:
         # Update model with the generated frame
         self.project_model.set_railing_frame(frame)
 
-    def generate_infill(
-        self, generator_type: str, parameters: InfillGeneratorParameters
-    ) -> None:
+    def generate_infill(self, generator_type: str, parameters: InfillGeneratorParameters) -> None:
         """
         Generate infill for the current railing frame.
 
@@ -101,7 +99,7 @@ class ApplicationController:
 
         # Get the current frame
         frame = self.project_model.railing_frame
-        
+
         # Type narrowing: we know frame is not None because has_railing_frame() returned True
         assert frame is not None, "Frame should not be None after has_railing_frame() check"
 

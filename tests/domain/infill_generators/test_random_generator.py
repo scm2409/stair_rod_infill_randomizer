@@ -1,4 +1,5 @@
 """Tests for RandomGenerator."""
+
 import pytest
 from shapely.geometry import LineString
 
@@ -55,6 +56,7 @@ def simple_params() -> RandomGeneratorParameters:
     """Create simple parameters for testing."""
     return RandomGeneratorParameters(
         num_rods=10,
+        min_rod_length_cm=30.0,
         max_rod_length_cm=150.0,
         max_angle_deviation_deg=30.0,
         num_layers=2,
@@ -229,6 +231,7 @@ def test_random_generator_even_distribution_across_layers(
     for num_rods, num_layers in test_cases:
         params = RandomGeneratorParameters(
             num_rods=num_rods,
+            min_rod_length_cm=30.0,
             max_rod_length_cm=150.0,
             max_angle_deviation_deg=30.0,
             num_layers=num_layers,
@@ -255,19 +258,19 @@ def test_random_generator_even_distribution_across_layers(
         max_allowed_difference = int(num_rods * 0.3)
         actual_difference = max_count - min_count
 
-        assert (
-            actual_difference <= max_allowed_difference
-        ), f"Layer distribution too uneven: {rods_per_layer} (difference: {actual_difference}, max allowed: {max_allowed_difference})"
+        assert actual_difference <= max_allowed_difference, (
+            f"Layer distribution too uneven: {rods_per_layer} (difference: {actual_difference}, max allowed: {max_allowed_difference})"
+        )
 
         # For most cases, the difference should be minimal (0-1 rods)
         # This is a stricter check for typical cases
         if num_rods % num_layers == 0:
             # Perfect division - all layers should have exactly the same count
-            assert (
-                actual_difference == 0
-            ), f"Expected perfect distribution for {num_rods} rods across {num_layers} layers, got {rods_per_layer}"
+            assert actual_difference == 0, (
+                f"Expected perfect distribution for {num_rods} rods across {num_layers} layers, got {rods_per_layer}"
+            )
         else:
             # With remainder, difference should be at most 1
-            assert (
-                actual_difference <= 1
-            ), f"Expected difference of at most 1 rod, got {actual_difference} for {rods_per_layer}"
+            assert actual_difference <= 1, (
+                f"Expected difference of at most 1 rod, got {actual_difference} for {rods_per_layer}"
+            )

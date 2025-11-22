@@ -192,7 +192,9 @@ class RandomGenerator(Generator):
                 # Create rod geometry
                 rod_geometry = LineString([anchor1.coords[0], anchor2.coords[0]])
 
-                # Check length constraint
+                # Check length constraints (both minimum and maximum)
+                if rod_geometry.length < params.min_rod_length_cm:
+                    continue
                 if rod_geometry.length > params.max_rod_length_cm:
                     continue
 

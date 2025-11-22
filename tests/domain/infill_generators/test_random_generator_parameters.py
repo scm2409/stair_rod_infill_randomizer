@@ -1,4 +1,5 @@
 """Tests for RandomGenerator parameters."""
+
 import pytest
 from pydantic import ValidationError
 
@@ -13,6 +14,7 @@ def test_random_generator_defaults_creation() -> None:
     defaults = RandomGeneratorDefaults()
 
     assert defaults.num_rods == 50
+    assert defaults.min_rod_length_cm == 50.0
     assert defaults.max_rod_length_cm == 200.0
     assert defaults.max_angle_deviation_deg == 30.0
     assert defaults.num_layers == 2
@@ -26,6 +28,7 @@ def test_random_generator_defaults_custom_values() -> None:
     """Test creating RandomGeneratorDefaults with custom values."""
     defaults = RandomGeneratorDefaults(
         num_rods=100,
+        min_rod_length_cm=40.0,
         max_rod_length_cm=300.0,
         max_angle_deviation_deg=45.0,
         num_layers=3,
@@ -36,6 +39,7 @@ def test_random_generator_defaults_custom_values() -> None:
     )
 
     assert defaults.num_rods == 100
+    assert defaults.min_rod_length_cm == 40.0
     assert defaults.max_rod_length_cm == 300.0
     assert defaults.max_angle_deviation_deg == 45.0
     assert defaults.num_layers == 3
@@ -49,6 +53,7 @@ def test_random_generator_parameters_creation() -> None:
     """Test creating RandomGeneratorParameters."""
     params = RandomGeneratorParameters(
         num_rods=50,
+        min_rod_length_cm=50.0,
         max_rod_length_cm=200.0,
         max_angle_deviation_deg=30.0,
         num_layers=2,
@@ -59,6 +64,7 @@ def test_random_generator_parameters_creation() -> None:
     )
 
     assert params.num_rods == 50
+    assert params.min_rod_length_cm == 50.0
     assert params.max_rod_length_cm == 200.0
     assert params.max_angle_deviation_deg == 30.0
     assert params.num_layers == 2
@@ -70,10 +76,11 @@ def test_random_generator_parameters_creation() -> None:
 
 def test_random_generator_parameters_from_defaults() -> None:
     """Test creating parameters from defaults."""
-    defaults = RandomGeneratorDefaults(num_rods=75, max_rod_length_cm=250.0)
+    defaults = RandomGeneratorDefaults(num_rods=75, min_rod_length_cm=40.0, max_rod_length_cm=250.0)
     params = RandomGeneratorParameters.from_defaults(defaults)
 
     assert params.num_rods == 75
+    assert params.min_rod_length_cm == 40.0
     assert params.max_rod_length_cm == 250.0
     assert params.max_angle_deviation_deg == 30.0  # Default value
 
@@ -83,6 +90,7 @@ def test_random_generator_parameters_validation_num_rods_min() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=0,  # Below minimum
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=2,
@@ -98,6 +106,23 @@ def test_random_generator_parameters_validation_num_rods_max() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=201,  # Above maximum
+            min_rod_length_cm=50.0,
+            max_rod_length_cm=200.0,
+            max_angle_deviation_deg=30.0,
+            num_layers=2,
+            min_anchor_distance_cm=10.0,
+            max_iterations=1000,
+            max_duration_sec=60.0,
+            infill_weight_per_meter_kg_m=0.3,
+        )
+
+
+def test_random_generator_parameters_validation_min_rod_length() -> None:
+    """Test validation rejects non-positive min_rod_length_cm."""
+    with pytest.raises(ValidationError):
+        RandomGeneratorParameters(
+            num_rods=50,
+            min_rod_length_cm=0.0,  # Must be positive
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=2,
@@ -113,6 +138,7 @@ def test_random_generator_parameters_validation_max_rod_length() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=0.0,  # Must be positive
             max_angle_deviation_deg=30.0,
             num_layers=2,
@@ -128,6 +154,7 @@ def test_random_generator_parameters_validation_max_angle_deviation_min() -> Non
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=-1.0,  # Below minimum
             num_layers=2,
@@ -143,6 +170,7 @@ def test_random_generator_parameters_validation_max_angle_deviation_max() -> Non
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=46.0,  # Above maximum
             num_layers=2,
@@ -158,6 +186,7 @@ def test_random_generator_parameters_validation_num_layers_min() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=0,  # Below minimum
@@ -173,6 +202,7 @@ def test_random_generator_parameters_validation_num_layers_max() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=6,  # Above maximum
@@ -188,6 +218,7 @@ def test_random_generator_parameters_validation_min_anchor_distance() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=2,
@@ -203,6 +234,7 @@ def test_random_generator_parameters_validation_max_iterations() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=2,
@@ -218,6 +250,7 @@ def test_random_generator_parameters_validation_max_duration() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=2,
@@ -233,6 +266,7 @@ def test_random_generator_parameters_validation_infill_weight() -> None:
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
+            min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
             max_angle_deviation_deg=30.0,
             num_layers=2,

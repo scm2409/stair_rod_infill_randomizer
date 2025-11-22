@@ -52,7 +52,9 @@ def create_main_window(config_path: Path) -> MainWindow:
 
     # Fit view after frame is rendered
     window.viewport.fit_in_view()
-    logger.info(f"Rendered RailingFrame with {project_model.railing_frame.rod_count if project_model.railing_frame else 0} frame rods")
+    logger.info(
+        f"Rendered RailingFrame with {project_model.railing_frame.rod_count if project_model.railing_frame else 0} frame rods"
+    )
 
     logger.info("Main window created successfully")
     return window

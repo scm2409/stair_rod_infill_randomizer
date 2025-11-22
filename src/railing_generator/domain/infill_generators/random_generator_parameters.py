@@ -1,4 +1,5 @@
 """Parameters for the random infill generator."""
+
 from dataclasses import dataclass
 
 from pydantic import Field
@@ -18,6 +19,7 @@ class RandomGeneratorDefaults(InfillGeneratorDefaults):
     """
 
     num_rods: int = 50
+    min_rod_length_cm: float = 50.0
     max_rod_length_cm: float = 200.0
     max_angle_deviation_deg: float = 30.0
     num_layers: int = 2
@@ -35,6 +37,7 @@ class RandomGeneratorParameters(InfillGeneratorParameters):
     """
 
     num_rods: int = Field(ge=1, le=200, description="Number of infill rods")
+    min_rod_length_cm: float = Field(gt=0, description="Minimum rod length in cm")
     max_rod_length_cm: float = Field(gt=0, description="Maximum rod length in cm")
     max_angle_deviation_deg: float = Field(
         ge=0, le=45, description="Max angle deviation from vertical in degrees"
@@ -62,6 +65,7 @@ class RandomGeneratorParameters(InfillGeneratorParameters):
         """
         return cls(
             num_rods=defaults.num_rods,
+            min_rod_length_cm=defaults.min_rod_length_cm,
             max_rod_length_cm=defaults.max_rod_length_cm,
             max_angle_deviation_deg=defaults.max_angle_deviation_deg,
             num_layers=defaults.num_layers,

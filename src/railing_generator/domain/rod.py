@@ -1,4 +1,5 @@
 """Rod model for railing frame and infill elements."""
+
 from typing import Any
 from pydantic import BaseModel, Field, computed_field
 from shapely.geometry import LineString, Point
