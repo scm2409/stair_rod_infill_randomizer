@@ -24,7 +24,7 @@ class RandomGeneratorDefaultsV2(InfillGeneratorDefaults, RandomGeneratorDefaults
     """
 
     # Base parameters
-    num_rods: int = 30
+    num_rods: int = 45
     min_rod_length_cm: float = 50.0
     max_rod_length_cm: float = 200.0
     max_angle_deviation_deg: float = 30.0
@@ -36,8 +36,8 @@ class RandomGeneratorDefaultsV2(InfillGeneratorDefaults, RandomGeneratorDefaults
     # V2-specific parameters
     min_anchor_distance_vertical_cm: float = 15.0
     min_anchor_distance_other_cm: float = 5.0
-    main_direction_range_min_deg: float = -30.0
-    main_direction_range_max_deg: float = 30.0
+    main_direction_range_min_deg: float = -50.0
+    main_direction_range_max_deg: float = 20.0
     random_angle_deviation_deg: float = 30.0
 
 

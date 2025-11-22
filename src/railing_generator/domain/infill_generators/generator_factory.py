@@ -16,10 +16,10 @@ class GeneratorFactory:
     Each generator class defines its own PARAMETER_TYPE attribute.
     """
 
-    # Registry of available generator types
+    # Registry of available generator types (order determines UI dropdown order)
     _GENERATOR_TYPES: dict[str, type[Generator]] = {
+        "random_v2": RandomGeneratorV2,  # Default (listed first)
         "random": RandomGenerator,
-        "random_v2": RandomGeneratorV2,
     }
 
     @classmethod

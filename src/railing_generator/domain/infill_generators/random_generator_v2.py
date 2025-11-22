@@ -307,10 +307,90 @@ class RandomGeneratorV2(Generator):
 
         logger.info(
             f"Generated {total_anchor_count} anchor points across "
-            f"{len(anchor_points_by_segment)} frame segments"
+            f"{len(anchor_points_by_segment)} frame segments (before cleanup)"
         )
 
+        # Post-process: Remove anchors that are too close across segment boundaries
+        anchor_points_by_segment = self._cleanup_boundary_anchors(
+            anchor_points_by_segment, frame, params
+        )
+
+        # Recount after cleanup
+        total_anchor_count = sum(len(anchors) for anchors in anchor_points_by_segment.values())
+        logger.info(f"After cleanup: {total_anchor_count} anchor points")
+
         return anchor_points_by_segment
+
+    def _cleanup_boundary_anchors(
+        self,
+        anchor_points_by_segment: dict[int, list[AnchorPoint]],
+        frame: RailingFrame,
+        params: RandomGeneratorParametersV2,
+    ) -> dict[int, list[AnchorPoint]]:
+        """
+        Remove anchors that are too close across segment boundaries.
+
+        Checks the distance between the last anchor of each segment and the first
+        anchor of the next segment. If they're too close, removes the first anchor
+        of the next segment.
+
+        Args:
+            anchor_points_by_segment: Dictionary mapping segment index to anchor points
+            frame: The railing frame
+            params: Generation parameters
+
+        Returns:
+            Cleaned up dictionary with boundary violations removed
+        """
+        import math
+
+        cleaned_segments: dict[int, list[AnchorPoint]] = {}
+
+        for segment_idx in range(len(frame.rods)):
+            if segment_idx not in anchor_points_by_segment:
+                continue
+
+            anchors = list(anchor_points_by_segment[segment_idx])
+
+            # Check distance to previous segment's last anchor
+            if segment_idx > 0 and (segment_idx - 1) in cleaned_segments:
+                prev_anchors = cleaned_segments[segment_idx - 1]
+                if prev_anchors and anchors:
+                    # Get last anchor of previous segment
+                    last_prev = prev_anchors[-1]
+                    # Get first anchor of current segment
+                    first_curr = anchors[0]
+
+                    # Calculate distance
+                    dx = first_curr.position[0] - last_prev.position[0]
+                    dy = first_curr.position[1] - last_prev.position[1]
+                    distance = math.sqrt(dx * dx + dy * dy)
+
+                    # Determine minimum distance based on segment types
+                    # Use the more restrictive (smaller) of the two distances
+                    min_dist_prev = (
+                        params.min_anchor_distance_vertical_cm
+                        if last_prev.is_vertical_segment
+                        else params.min_anchor_distance_other_cm
+                    )
+                    min_dist_curr = (
+                        params.min_anchor_distance_vertical_cm
+                        if first_curr.is_vertical_segment
+                        else params.min_anchor_distance_other_cm
+                    )
+                    min_distance = min(min_dist_prev, min_dist_curr)
+
+                    # If too close, remove the first anchor of current segment
+                    if distance < min_distance:
+                        logger.debug(
+                            f"Removing anchor at segment boundary {segment_idx - 1}->{segment_idx}: "
+                            f"distance {distance:.1f}cm < {min_distance:.1f}cm"
+                        )
+                        anchors = anchors[1:]  # Remove first anchor
+
+            cleaned_segments[segment_idx] = anchors
+
+        return cleaned_segments
 
     def _distribute_anchors_to_layers(
         self, anchor_points_by_segment: dict[int, list[AnchorPoint]], num_layers: int
@@ -583,6 +663,8 @@ class RandomGeneratorV2(Generator):
         unused_anchors = [a for a in available_anchors if not a.used]
         iterations = 0
         max_layer_iterations = params.max_iterations
+        consecutive_failures = 0
+        max_consecutive_failures = 100  # Stop if we fail 100 times in a row
 
         while len(layer_rods) < target_rods_for_layer and iterations < max_layer_iterations:
             iterations += 1
@@ -596,12 +678,23 @@ class RandomGeneratorV2(Generator):
             if iterations % 1000 == 0:
                 logger.info(
                     f"Layer {layer_num} progress: iteration {iterations}, "
-                    f"{len(layer_rods)}/{target_rods_for_layer} rods"
+                    f"{len(layer_rods)}/{target_rods_for_layer} rods, "
+                    f"{len(unused_anchors)} unused anchors"
                 )
 
             # Check if we have enough unused anchors
             if len(unused_anchors) < 2:
-                logger.warning(f"Layer {layer_num} failed: insufficient unused anchors")
+                logger.warning(
+                    f"Layer {layer_num} stopped: only {len(unused_anchors)} unused anchors left"
+                )
+                break
+
+            # Stop if too many consecutive failures (likely no valid rods possible)
+            if consecutive_failures >= max_consecutive_failures:
+                logger.warning(
+                    f"Layer {layer_num} stopped: {consecutive_failures} consecutive failures, "
+                    f"{len(unused_anchors)} unused anchors remaining"
+                )
                 break
 
             # Select random start anchor
@@ -622,6 +715,7 @@ class RandomGeneratorV2(Generator):
             )
 
             if end_anchor is None:
+                consecutive_failures += 1
                 continue  # No suitable end anchor found
 
             # Create rod geometry
@@ -635,6 +729,7 @@ class RandomGeneratorV2(Generator):
                 params=params,
                 existing_layer_rods=layer_rods,
             ):
+                consecutive_failures += 1
                 continue  # Constraints not met
 
             # Create rod
@@ -653,6 +748,9 @@ class RandomGeneratorV2(Generator):
 
             # Add to layer rods
             layer_rods.append(rod)
+
+            # Reset consecutive failures counter on success
+            consecutive_failures = 0
 
         if len(layer_rods) == target_rods_for_layer:
             logger.info(

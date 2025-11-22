@@ -6,6 +6,7 @@ import time
 
 from shapely.geometry import LineString
 
+from railing_generator.domain.anchor_point import AnchorPoint
 from railing_generator.domain.infill_generators.generation_statistics import (
     GenerationStatistics,
 )
@@ -145,7 +146,7 @@ class RandomGenerator(Generator):
 
                 # Generate a random arrangement
                 try:
-                    rods = self._generate_random_arrangement(frame, params)
+                    rods, anchor_points = self._generate_random_arrangement(frame, params)
 
                     # Store partial rods for potential cancellation
                     partial_rods = rods
@@ -156,6 +157,7 @@ class RandomGenerator(Generator):
                         fitness_score=None,  # No quality evaluation yet
                         iteration_count=iteration,
                         duration_sec=elapsed,
+                        anchor_points=anchor_points,
                     )
 
                     # Update best result
@@ -239,7 +241,7 @@ class RandomGenerator(Generator):
 
     def _generate_random_arrangement(
         self, frame: RailingFrame, params: RandomGeneratorParameters
-    ) -> list[Rod]:
+    ) -> tuple[list[Rod], list[AnchorPoint]]:
         """
         Generate a random rod arrangement.
 
@@ -248,7 +250,7 @@ class RandomGenerator(Generator):
             params: Generation parameters
 
         Returns:
-            List of Rod objects
+            Tuple of (list of Rod objects, list of AnchorPoint objects)
 
         Raises:
             ValueError: If unable to generate valid arrangement
@@ -290,8 +292,9 @@ class RandomGenerator(Generator):
         # Shuffle anchor points for randomness
         random.shuffle(anchor_points)
 
-        # Track which anchors have been used
+        # Track which anchors have been used and their assigned layer
         used_anchors: set[int] = set()
+        anchor_layers: dict[int, int] = {}  # Maps anchor index to layer number
 
         # Generate rods by pairing anchor points
         rods: list[Rod] = []
@@ -391,9 +394,11 @@ class RandomGenerator(Generator):
                 rods_by_layer[layer].append(rod)
                 rods.append(rod)
 
-                # Mark these anchors as used
+                # Mark these anchors as used and assign to layer
                 used_anchors.add(anchor1_idx)
                 used_anchors.add(anchor2_idx)
+                anchor_layers[anchor1_idx] = layer
+                anchor_layers[anchor2_idx] = layer
 
                 # Reset consecutive failures on success
                 consecutive_failures = 0
@@ -414,7 +419,21 @@ class RandomGenerator(Generator):
                 f"Generation incomplete."
             )
 
-        return rods
+        # Create AnchorPoint objects for visualization
+        # Note: RandomGenerator doesn't track which frame segment each anchor is on,
+        # so we set frame_segment_index to 0 and is_vertical_segment to False
+        anchor_point_objects = [
+            AnchorPoint(
+                position=pos,
+                frame_segment_index=0,  # Not tracked in v1
+                is_vertical_segment=False,  # Not tracked in v1
+                layer=anchor_layers.get(idx),  # Assigned when used in a rod
+                used=idx in used_anchors,
+            )
+            for idx, pos in enumerate(anchor_points)
+        ]
+
+        return rods, anchor_point_objects
 
     def _generate_anchor_points(
         self, frame_boundary: LineString, frame_length: float, num_points: int, min_distance: float
