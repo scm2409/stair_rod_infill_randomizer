@@ -2,9 +2,9 @@
 
 import logging
 import random
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from railing_generator.domain.anchor_point import AnchorPoint
 from railing_generator.domain.infill_generators.generation_statistics import (
     GenerationStatistics,
 )
@@ -23,17 +23,6 @@ if TYPE_CHECKING:
     from shapely.geometry import LineString
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class AnchorPoint:
-    """Represents an anchor point on the frame boundary."""
-
-    position: tuple[float, float]  # (x, y) coordinates
-    frame_segment_index: int  # Which frame rod this is on
-    is_vertical_segment: bool  # True if on vertical frame rod
-    layer: int | None = None  # Assigned layer (None if unassigned)
-    used: bool = False  # True if used in a rod
 
 
 class RandomGeneratorV2(Generator):
@@ -108,6 +97,11 @@ class RandomGeneratorV2(Generator):
                 anchor_points_by_segment, params.num_layers
             )
 
+            # Collect all anchor points for visualization
+            anchor_points_for_infill: list[AnchorPoint] = []
+            for anchors in anchors_by_layer.values():
+                anchor_points_for_infill.extend(anchors)
+
             # Phase 3: Calculate layer main directions
             layer_main_directions = self._calculate_layer_main_directions(
                 params.num_layers,
@@ -125,6 +119,7 @@ class RandomGeneratorV2(Generator):
                         fitness_score=None,
                         iteration_count=total_iterations,
                         duration_sec=elapsed,
+                        anchor_points=anchor_points_for_infill,
                     )
                     self.statistics.rods_created = len(all_rods)
                     self.statistics.iterations_used = total_iterations
@@ -143,6 +138,7 @@ class RandomGeneratorV2(Generator):
                         fitness_score=None,
                         iteration_count=total_iterations,
                         duration_sec=elapsed,
+                        anchor_points=anchor_points_for_infill,
                     )
                     self.statistics.rods_created = len(all_rods)
                     self.statistics.iterations_used = total_iterations
@@ -183,6 +179,7 @@ class RandomGeneratorV2(Generator):
                 fitness_score=None,  # No fitness evaluation in v2
                 iteration_count=total_iterations,
                 duration_sec=elapsed,
+                anchor_points=anchor_points_for_infill,
             )
 
             # Update statistics
@@ -208,6 +205,9 @@ class RandomGeneratorV2(Generator):
                     fitness_score=None,
                     iteration_count=total_iterations,
                     duration_sec=elapsed,
+                    anchor_points=anchor_points_for_infill
+                    if "anchor_points_for_infill" in locals()
+                    else None,
                 )
                 self.statistics.rods_created = len(all_rods)
                 self.statistics.iterations_used = total_iterations

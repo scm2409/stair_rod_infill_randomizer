@@ -58,6 +58,7 @@ class ViewportWidget(QGraphicsView):
         # Graphics item groups for different elements (allows selective update/remove)
         self._railing_frame_group: QGraphicsItemGroup | None = None
         self._railing_infill_group: QGraphicsItemGroup | None = None
+        self._anchor_points_group: QGraphicsItemGroup | None = None
 
         # Connect to model signals for automatic updates
         self._connect_model_signals()
@@ -194,6 +195,11 @@ class ViewportWidget(QGraphicsView):
             scene.removeItem(self._railing_infill_group)
             self._railing_infill_group = None
 
+        # Remove existing anchor points group if present
+        if self._anchor_points_group is not None:
+            scene.removeItem(self._anchor_points_group)
+            self._anchor_points_group = None
+
         # Create new infill group
         self._railing_infill_group = QGraphicsItemGroup()
         scene.addItem(self._railing_infill_group)
@@ -225,9 +231,35 @@ class ViewportWidget(QGraphicsView):
                 line = scene.addLine(x1, y1, x2, y2, infill_pen)
                 self._railing_infill_group.addToGroup(line)
 
+        # Render anchor points if available
+        if railing_infill.anchor_points is not None:
+            self._anchor_points_group = QGraphicsItemGroup()
+            scene.addItem(self._anchor_points_group)
+
+            for anchor in railing_infill.anchor_points:
+                # Get color for this layer (use layer if assigned, otherwise default to red)
+                if anchor.layer is not None:
+                    layer_index = anchor.layer - 1
+                    if 0 <= layer_index < len(layer_colors):
+                        color = layer_colors[layer_index]
+                    else:
+                        color = Qt.GlobalColor.red
+                else:
+                    color = Qt.GlobalColor.gray  # Unassigned anchors in gray
+
+                # Create small circle (1 pixel width pen, 2cm diameter)
+                anchor_pen = QPen(color, 1)
+                x, y = anchor.position
+                circle = scene.addEllipse(x - 1, y - 1, 2, 2, anchor_pen)
+                self._anchor_points_group.addToGroup(circle)
+
     def clear_railing_infill(self) -> None:
         """Remove the railing infill from the viewport."""
         scene = self.scene()
-        if scene is not None and self._railing_infill_group is not None:
-            scene.removeItem(self._railing_infill_group)
-            self._railing_infill_group = None
+        if scene is not None:
+            if self._railing_infill_group is not None:
+                scene.removeItem(self._railing_infill_group)
+                self._railing_infill_group = None
+            if self._anchor_points_group is not None:
+                scene.removeItem(self._anchor_points_group)
+                self._anchor_points_group = None

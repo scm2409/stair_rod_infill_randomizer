@@ -1,6 +1,8 @@
 """Railing infill model containing generated infill rods."""
 
 from pydantic import BaseModel, Field, computed_field
+
+from railing_generator.domain.anchor_point import AnchorPoint
 from railing_generator.domain.rod import Rod
 
 
@@ -25,6 +27,10 @@ class RailingInfill(BaseModel):
     iteration_count: int | None = Field(default=None, ge=0, description="Optional iteration count")
     duration_sec: float | None = Field(
         default=None, ge=0, description="Optional generation duration in seconds"
+    )
+    anchor_points: list[AnchorPoint] | None = Field(
+        default=None,
+        description="Optional anchor points used during generation",
     )
 
     model_config = {"frozen": True}

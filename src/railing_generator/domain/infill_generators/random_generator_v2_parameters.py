@@ -24,18 +24,18 @@ class RandomGeneratorDefaultsV2(InfillGeneratorDefaults, RandomGeneratorDefaults
     """
 
     # Base parameters
-    num_rods: int = 50
+    num_rods: int = 30
     min_rod_length_cm: float = 50.0
     max_rod_length_cm: float = 200.0
     max_angle_deviation_deg: float = 30.0
-    num_layers: int = 2
+    num_layers: int = 3
     max_iterations: int = 1000
     max_duration_sec: float = 60.0
     infill_weight_per_meter_kg_m: float = 0.3
 
     # V2-specific parameters
-    min_anchor_distance_vertical_cm: float = 5.0
-    min_anchor_distance_other_cm: float = 10.0
+    min_anchor_distance_vertical_cm: float = 15.0
+    min_anchor_distance_other_cm: float = 5.0
     main_direction_range_min_deg: float = -30.0
     main_direction_range_max_deg: float = 30.0
     random_angle_deviation_deg: float = 30.0
