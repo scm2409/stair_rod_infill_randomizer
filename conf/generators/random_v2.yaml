@@ -1,0 +1,18 @@
+# Default parameters for random infill generator v2
+
+# Base parameters
+num_rods: 50
+min_rod_length_cm: 50.0
+max_rod_length_cm: 200.0
+max_angle_deviation_deg: 30.0
+num_layers: 2
+max_iterations: 1000
+max_duration_sec: 60.0
+infill_weight_per_meter_kg_m: 0.3
+
+# V2-specific parameters
+min_anchor_distance_vertical_cm: 5.0
+min_anchor_distance_other_cm: 10.0
+main_direction_range_min_deg: -30.0
+main_direction_range_max_deg: 30.0
+random_angle_deviation_deg: 30.0

@@ -1,8 +1,9 @@
 """Parameters for the random infill generator."""
 
+from abc import ABC
 from dataclasses import dataclass
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorDefaults,
@@ -11,7 +12,42 @@ from railing_generator.domain.infill_generators.generator_parameters import (
 
 
 @dataclass
-class RandomGeneratorDefaults(InfillGeneratorDefaults):
+class RandomGeneratorDefaultsBase(ABC):
+    """
+    Base class for random generator default values.
+
+    This serves as the base for all random generator variants (v1, v2, etc.).
+    """
+
+    num_rods: int
+    min_rod_length_cm: float
+    max_rod_length_cm: float
+    max_angle_deviation_deg: float
+    num_layers: int
+    max_iterations: int
+    max_duration_sec: float
+    infill_weight_per_meter_kg_m: float
+
+
+class RandomGeneratorParametersBase(BaseModel, ABC):
+    """
+    Base class for random generator runtime parameters.
+
+    This serves as the base for all random generator variants (v1, v2, etc.).
+    """
+
+    num_rods: int
+    min_rod_length_cm: float
+    max_rod_length_cm: float
+    max_angle_deviation_deg: float
+    num_layers: int
+    max_iterations: int
+    max_duration_sec: float
+    infill_weight_per_meter_kg_m: float
+
+
+@dataclass
+class RandomGeneratorDefaults(InfillGeneratorDefaults, RandomGeneratorDefaultsBase):
     """
     Default values for random generator loaded from Hydra configuration.
 
@@ -29,7 +65,7 @@ class RandomGeneratorDefaults(InfillGeneratorDefaults):
     infill_weight_per_meter_kg_m: float = 0.3
 
 
-class RandomGeneratorParameters(InfillGeneratorParameters):
+class RandomGeneratorParameters(InfillGeneratorParameters, RandomGeneratorParametersBase):
     """
     Runtime parameters for random generator with Pydantic validation.
 

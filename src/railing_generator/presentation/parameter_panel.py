@@ -15,7 +15,9 @@ from railing_generator.application.railing_project_model import RailingProjectMo
 from railing_generator.domain.infill_generators.generator_factory import GeneratorFactory
 from railing_generator.domain.shapes.railing_shape_factory import RailingShapeFactory
 from railing_generator.presentation.generator_parameter_widget import (
+    GeneratorParameterWidget,
     RandomGeneratorParameterWidget,
+    RandomGeneratorParameterWidgetV2,
 )
 from railing_generator.presentation.shape_parameter_widget import (
     RectangularParameterWidget,
@@ -53,7 +55,7 @@ class ParameterPanel(QWidget):
 
         # Current parameter widgets
         self.current_shape_param_widget: ShapeParameterWidget | None = None
-        self.current_generator_param_widget: RandomGeneratorParameterWidget | None = None
+        self.current_generator_param_widget: GeneratorParameterWidget | None = None
 
         # Create UI
         self._create_ui()
@@ -173,6 +175,8 @@ class ParameterPanel(QWidget):
         # Create appropriate parameter widget based on generator type
         if generator_type == "random":
             self.current_generator_param_widget = RandomGeneratorParameterWidget()
+        elif generator_type == "random_v2":
+            self.current_generator_param_widget = RandomGeneratorParameterWidgetV2()
 
         # Add the new widget to the layout
         if self.current_generator_param_widget is not None:

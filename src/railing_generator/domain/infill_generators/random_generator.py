@@ -83,6 +83,7 @@ class RandomGenerator(Generator):
         # Start generation
         start_time = time.time()
         best_infill: RailingInfill | None = None
+        partial_rods: list[Rod] = []
         iteration = 0
 
         try:
@@ -90,15 +91,54 @@ class RandomGenerator(Generator):
             while iteration < params.max_iterations:
                 # Check cancellation
                 if self.is_cancelled():
+                    elapsed = time.time() - start_time
                     if best_infill is not None:
+                        logger.info(
+                            f"Generation cancelled with complete result:\n{self.statistics}"
+                        )
+                        self.generation_completed.emit(best_infill)
                         return best_infill
+                    elif partial_rods:
+                        # Return partial result
+                        infill = RailingInfill(
+                            rods=partial_rods,
+                            fitness_score=None,
+                            iteration_count=iteration,
+                            duration_sec=elapsed,
+                        )
+                        self.statistics.rods_created = len(partial_rods)
+                        self.statistics.iterations_used = iteration
+                        self.statistics.duration_sec = elapsed
+                        logger.info(
+                            f"Generation cancelled with {len(partial_rods)} partial rods:\n{self.statistics}"
+                        )
+                        self.generation_completed.emit(infill)
+                        return infill
                     raise RuntimeError("Generation cancelled before any valid result")
 
                 # Check duration limit
                 elapsed = time.time() - start_time
                 if elapsed > params.max_duration_sec:
                     if best_infill is not None:
+                        logger.info(f"Generation timeout with complete result:\n{self.statistics}")
+                        self.generation_completed.emit(best_infill)
                         return best_infill
+                    elif partial_rods:
+                        # Return partial result
+                        infill = RailingInfill(
+                            rods=partial_rods,
+                            fitness_score=None,
+                            iteration_count=iteration,
+                            duration_sec=elapsed,
+                        )
+                        self.statistics.rods_created = len(partial_rods)
+                        self.statistics.iterations_used = iteration
+                        self.statistics.duration_sec = elapsed
+                        logger.info(
+                            f"Generation timeout with {len(partial_rods)} partial rods:\n{self.statistics}"
+                        )
+                        self.generation_completed.emit(infill)
+                        return infill
                     raise RuntimeError("Generation timeout before any valid result")
 
                 iteration += 1
@@ -106,6 +146,9 @@ class RandomGenerator(Generator):
                 # Generate a random arrangement
                 try:
                     rods = self._generate_random_arrangement(frame, params)
+
+                    # Store partial rods for potential cancellation
+                    partial_rods = rods
 
                     # Create infill result
                     infill = RailingInfill(
@@ -142,7 +185,11 @@ class RandomGenerator(Generator):
                     self.generation_completed.emit(infill)
                     return infill
 
-                except ValueError:
+                except ValueError as ve:
+                    # Check if it was a cancellation
+                    if "cancelled" in str(ve).lower():
+                        # Re-raise to be caught by outer handler
+                        raise
                     # Failed to generate valid arrangement, try again
                     continue
 
@@ -164,7 +211,29 @@ class RandomGenerator(Generator):
             )
 
         except Exception as e:
+            # Return partial results even on failure
+            elapsed = time.time() - start_time
+            if best_infill is not None:
+                logger.info(f"Generation failed but returning complete result:\n{self.statistics}")
+                self.generation_completed.emit(best_infill)
+                return best_infill
+            elif partial_rods:
+                infill = RailingInfill(
+                    rods=partial_rods,
+                    fitness_score=None,
+                    iteration_count=iteration,
+                    duration_sec=elapsed,
+                )
+                self.statistics.rods_created = len(partial_rods)
+                self.statistics.iterations_used = iteration
+                self.statistics.duration_sec = elapsed
+                error_msg = f"Generation failed with {len(partial_rods)} partial rods: {str(e)}"
+                logger.error(f"{error_msg}\n{self.statistics}")
+                self.generation_completed.emit(infill)
+                return infill
+
             error_msg = f"Generation failed: {str(e)}"
+            logger.error(error_msg)
             self.generation_failed.emit(error_msg)
             raise RuntimeError(error_msg) from e
 
@@ -247,6 +316,10 @@ class RandomGenerator(Generator):
             rod_created = False
 
             for attempt in range(max_attempts):
+                # Check cancellation
+                if self.is_cancelled():
+                    raise ValueError("Generation cancelled")
+
                 # Early exit if we've had too many consecutive failures
                 if consecutive_failures >= max_consecutive_failures:
                     break

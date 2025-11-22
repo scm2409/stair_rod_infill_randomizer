@@ -1,5 +1,8 @@
 """Parameter widgets for infill generators."""
 
+from abc import ABCMeta, abstractmethod
+
+from pydantic import ValidationError
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
@@ -7,13 +10,154 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from railing_generator.domain.infill_generators.generator_parameters import (
+    InfillGeneratorParameters,
+)
 from railing_generator.domain.infill_generators.random_generator_parameters import (
     RandomGeneratorDefaults,
     RandomGeneratorParameters,
 )
+from railing_generator.domain.infill_generators.random_generator_v2_parameters import (
+    RandomGeneratorDefaultsV2,
+    RandomGeneratorParametersV2,
+)
 
 
-class RandomGeneratorParameterWidget(QWidget):
+class QWidgetABCMeta(type(QWidget), ABCMeta):  # type: ignore[misc]
+    """Metaclass that combines QWidget's metaclass with ABCMeta."""
+
+    pass
+
+
+class GeneratorParameterWidget(QWidget, metaclass=QWidgetABCMeta):
+    """
+    Abstract base class for generator parameter input widgets.
+
+    Each generator type has a dedicated widget class that:
+    - Creates appropriate input controls
+    - Loads default values
+    - Collects and validates parameters
+    - Provides real-time validation feedback
+
+    Subclasses must populate the `field_widgets` dictionary mapping
+    Pydantic field names to their corresponding Qt widgets.
+    """
+
+    # Style for invalid input (red border)
+    INVALID_STYLE = "border: 2px solid #ff0000;"
+    VALID_STYLE = ""
+
+    def __init__(self) -> None:
+        """Initialize the parameter widget."""
+        super().__init__()
+        self.form_layout = QFormLayout(self)
+
+        # Dictionary mapping Pydantic field names to Qt widgets
+        # Subclasses populate this in _create_widgets()
+        self.field_widgets: dict[str, QWidget] = {}
+
+        self._create_widgets()
+        self._load_defaults()
+        self._connect_validation_signals()
+
+    @abstractmethod
+    def _create_widgets(self) -> None:
+        """
+        Create input widgets for this generator's parameters.
+
+        Must populate self.field_widgets dictionary with mappings from
+        Pydantic field names to Qt widgets.
+        """
+        ...
+
+    @abstractmethod
+    def _load_defaults(self) -> None:
+        """Load default values into the widgets."""
+        ...
+
+    def _connect_validation_signals(self) -> None:
+        """Connect valueChanged signals to validation for real-time feedback."""
+        for widget in self.field_widgets.values():
+            # Connect appropriate signal based on widget type
+            if isinstance(widget, (QDoubleSpinBox, QSpinBox)):
+                widget.valueChanged.connect(self._validate_and_update_ui)
+
+    @abstractmethod
+    def get_parameters(self) -> InfillGeneratorParameters:
+        """
+        Get the current parameter values as a validated Pydantic model.
+
+        Returns:
+            Validated generator parameters
+
+        Raises:
+            ValidationError: If parameters are invalid
+        """
+        ...
+
+    def _validate_and_update_ui(self) -> None:
+        """
+        Validate current parameters and update UI with visual feedback.
+
+        This method attempts to create a Pydantic model with current values.
+        If validation fails, it highlights invalid fields with red borders
+        and displays error messages as tooltips.
+        """
+        try:
+            # Attempt to get parameters (will raise ValidationError if invalid)
+            self.get_parameters()
+            # If successful, clear all error styling
+            self._clear_all_errors()
+        except ValidationError as e:
+            # Display errors for each invalid field
+            self._display_validation_errors(e)
+
+    def _clear_all_errors(self) -> None:
+        """Clear error styling from all input widgets."""
+        for widget in self.field_widgets.values():
+            self._clear_widget_error(widget)
+
+    def _display_validation_errors(self, error: ValidationError) -> None:
+        """
+        Display validation errors on the appropriate widgets.
+
+        Args:
+            error: The Pydantic ValidationError containing field-specific errors
+        """
+        # First clear all errors
+        self._clear_all_errors()
+
+        # Display error for each invalid field
+        for err in error.errors():
+            field_name = err["loc"][0] if err["loc"] else None
+            if field_name and isinstance(field_name, str) and field_name in self.field_widgets:
+                widget = self.field_widgets[field_name]
+                error_msg = err["msg"]
+                self._set_widget_error(widget, error_msg)
+
+    def _set_widget_error(self, widget: QWidget, error_message: str) -> None:
+        """
+        Set error styling and tooltip on a widget.
+
+        Args:
+            widget: The widget to mark as invalid
+            error_message: The error message to display as tooltip
+        """
+        widget.setStyleSheet(self.INVALID_STYLE)
+        widget.setToolTip(error_message)
+
+    def _clear_widget_error(self, widget: QWidget) -> None:
+        """
+        Clear error styling and tooltip from a widget.
+
+        Args:
+            widget: The widget to clear errors from
+        """
+        widget.setStyleSheet(self.VALID_STYLE)
+        widget.setToolTip("")
+
+
+class RandomGeneratorParameterWidget(GeneratorParameterWidget):
     """
     Parameter widget for random generator configuration.
 
@@ -22,85 +166,117 @@ class RandomGeneratorParameterWidget(QWidget):
 
     def __init__(self) -> None:
         """Initialize the random generator parameter widget."""
+        self._defaults = RandomGeneratorDefaults()
         super().__init__()
 
-        # Load defaults
-        self.defaults = RandomGeneratorDefaults()
-
-        # Create UI
-        self._create_ui()
-
-    def _create_ui(self) -> None:
-        """Create the UI layout and widgets."""
-        layout = QFormLayout(self)
+    def _create_widgets(self) -> None:
+        """Create input widgets for random generator parameters."""
 
         # Number of rods
-        self.num_rods_spin = QSpinBox()
-        self.num_rods_spin.setRange(1, 200)
-        self.num_rods_spin.setValue(self.defaults.num_rods)
-        self.num_rods_spin.setSuffix(" rods")
-        layout.addRow("Number of Rods:", self.num_rods_spin)
+        num_rods_spin = QSpinBox()
+        num_rods_spin.setRange(1, 200)
+        num_rods_spin.setSuffix(" rods")
+        self.form_layout.addRow("Number of Rods:", num_rods_spin)
+        self.field_widgets["num_rods"] = num_rods_spin
 
         # Min rod length
-        self.min_rod_length_spin = QDoubleSpinBox()
-        self.min_rod_length_spin.setRange(1.0, 1000.0)
-        self.min_rod_length_spin.setValue(self.defaults.min_rod_length_cm)
-        self.min_rod_length_spin.setSuffix(" cm")
-        self.min_rod_length_spin.setDecimals(1)
-        layout.addRow("Min Rod Length:", self.min_rod_length_spin)
+        min_rod_length_spin = QDoubleSpinBox()
+        min_rod_length_spin.setRange(1.0, 1000.0)
+        min_rod_length_spin.setSuffix(" cm")
+        min_rod_length_spin.setDecimals(1)
+        self.form_layout.addRow("Min Rod Length:", min_rod_length_spin)
+        self.field_widgets["min_rod_length_cm"] = min_rod_length_spin
 
         # Max rod length
-        self.max_rod_length_spin = QDoubleSpinBox()
-        self.max_rod_length_spin.setRange(1.0, 1000.0)
-        self.max_rod_length_spin.setValue(self.defaults.max_rod_length_cm)
-        self.max_rod_length_spin.setSuffix(" cm")
-        self.max_rod_length_spin.setDecimals(1)
-        layout.addRow("Max Rod Length:", self.max_rod_length_spin)
+        max_rod_length_spin = QDoubleSpinBox()
+        max_rod_length_spin.setRange(1.0, 1000.0)
+        max_rod_length_spin.setSuffix(" cm")
+        max_rod_length_spin.setDecimals(1)
+        self.form_layout.addRow("Max Rod Length:", max_rod_length_spin)
+        self.field_widgets["max_rod_length_cm"] = max_rod_length_spin
 
         # Max angle deviation
-        self.max_angle_spin = QDoubleSpinBox()
-        self.max_angle_spin.setRange(0.0, 45.0)
-        self.max_angle_spin.setValue(self.defaults.max_angle_deviation_deg)
-        self.max_angle_spin.setSuffix(" °")
-        self.max_angle_spin.setDecimals(1)
-        layout.addRow("Max Angle Deviation:", self.max_angle_spin)
+        max_angle_spin = QDoubleSpinBox()
+        max_angle_spin.setRange(0.0, 45.0)
+        max_angle_spin.setSuffix(" °")
+        max_angle_spin.setDecimals(1)
+        self.form_layout.addRow("Max Angle Deviation:", max_angle_spin)
+        self.field_widgets["max_angle_deviation_deg"] = max_angle_spin
 
         # Number of layers
-        self.num_layers_spin = QSpinBox()
-        self.num_layers_spin.setRange(1, 5)
-        self.num_layers_spin.setValue(self.defaults.num_layers)
-        self.num_layers_spin.setSuffix(" layers")
-        layout.addRow("Number of Layers:", self.num_layers_spin)
+        num_layers_spin = QSpinBox()
+        num_layers_spin.setRange(1, 5)
+        num_layers_spin.setSuffix(" layers")
+        self.form_layout.addRow("Number of Layers:", num_layers_spin)
+        self.field_widgets["num_layers"] = num_layers_spin
 
         # Min anchor distance
-        self.min_anchor_distance_spin = QDoubleSpinBox()
-        self.min_anchor_distance_spin.setRange(0.1, 100.0)
-        self.min_anchor_distance_spin.setValue(self.defaults.min_anchor_distance_cm)
-        self.min_anchor_distance_spin.setSuffix(" cm")
-        self.min_anchor_distance_spin.setDecimals(1)
-        layout.addRow("Min Anchor Distance:", self.min_anchor_distance_spin)
+        min_anchor_distance_spin = QDoubleSpinBox()
+        min_anchor_distance_spin.setRange(0.1, 100.0)
+        min_anchor_distance_spin.setSuffix(" cm")
+        min_anchor_distance_spin.setDecimals(1)
+        self.form_layout.addRow("Min Anchor Distance:", min_anchor_distance_spin)
+        self.field_widgets["min_anchor_distance_cm"] = min_anchor_distance_spin
 
         # Max iterations
-        self.max_iterations_spin = QSpinBox()
-        self.max_iterations_spin.setRange(1, 1000000)
-        self.max_iterations_spin.setValue(self.defaults.max_iterations)
-        layout.addRow("Max Iterations:", self.max_iterations_spin)
+        max_iterations_spin = QSpinBox()
+        max_iterations_spin.setRange(1, 1000000)
+        self.form_layout.addRow("Max Iterations:", max_iterations_spin)
+        self.field_widgets["max_iterations"] = max_iterations_spin
 
         # Max duration
-        self.max_duration_spin = QDoubleSpinBox()
-        self.max_duration_spin.setRange(1, 3600.0)
-        self.max_duration_spin.setValue(self.defaults.max_duration_sec)
-        self.max_duration_spin.setSuffix(" sec")
-        self.max_duration_spin.setDecimals(0)
-        layout.addRow("Max Duration:", self.max_duration_spin)
+        max_duration_spin = QDoubleSpinBox()
+        max_duration_spin.setRange(1, 3600.0)
+        max_duration_spin.setSuffix(" sec")
+        max_duration_spin.setDecimals(0)
+        self.form_layout.addRow("Max Duration:", max_duration_spin)
+        self.field_widgets["max_duration_sec"] = max_duration_spin
 
         # Infill weight per meter
-        self.infill_weight_spin = QDoubleSpinBox()
-        self.infill_weight_spin.setRange(0.01, 10.0)
-        self.infill_weight_spin.setValue(self.defaults.infill_weight_per_meter_kg_m)
-        self.infill_weight_spin.setSuffix(" kg/m")
-        self.infill_weight_spin.setDecimals(2)
-        layout.addRow("Infill Weight/Meter:", self.infill_weight_spin)
+        infill_weight_spin = QDoubleSpinBox()
+        infill_weight_spin.setRange(0.01, 10.0)
+        infill_weight_spin.setSuffix(" kg/m")
+        infill_weight_spin.setDecimals(2)
+        self.form_layout.addRow("Infill Weight/Meter:", infill_weight_spin)
+        self.field_widgets["infill_weight_per_meter_kg_m"] = infill_weight_spin
+
+    def _load_defaults(self) -> None:
+        """Load default values into the widgets."""
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+        num_rods.setValue(self._defaults.num_rods)
+
+        min_rod_length = self.field_widgets["min_rod_length_cm"]
+        assert isinstance(min_rod_length, QDoubleSpinBox)
+        min_rod_length.setValue(self._defaults.min_rod_length_cm)
+
+        max_rod_length = self.field_widgets["max_rod_length_cm"]
+        assert isinstance(max_rod_length, QDoubleSpinBox)
+        max_rod_length.setValue(self._defaults.max_rod_length_cm)
+
+        max_angle = self.field_widgets["max_angle_deviation_deg"]
+        assert isinstance(max_angle, QDoubleSpinBox)
+        max_angle.setValue(self._defaults.max_angle_deviation_deg)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+        num_layers.setValue(self._defaults.num_layers)
+
+        min_anchor_distance = self.field_widgets["min_anchor_distance_cm"]
+        assert isinstance(min_anchor_distance, QDoubleSpinBox)
+        min_anchor_distance.setValue(self._defaults.min_anchor_distance_cm)
+
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+        max_iterations.setValue(self._defaults.max_iterations)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+        max_duration.setValue(self._defaults.max_duration_sec)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+        infill_weight.setValue(self._defaults.infill_weight_per_meter_kg_m)
 
     def get_parameters(self) -> RandomGeneratorParameters:
         """
@@ -109,14 +285,274 @@ class RandomGeneratorParameterWidget(QWidget):
         Returns:
             RandomGeneratorParameters with current widget values
         """
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+
+        min_rod_length = self.field_widgets["min_rod_length_cm"]
+        assert isinstance(min_rod_length, QDoubleSpinBox)
+
+        max_rod_length = self.field_widgets["max_rod_length_cm"]
+        assert isinstance(max_rod_length, QDoubleSpinBox)
+
+        max_angle = self.field_widgets["max_angle_deviation_deg"]
+        assert isinstance(max_angle, QDoubleSpinBox)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+
+        min_anchor_distance = self.field_widgets["min_anchor_distance_cm"]
+        assert isinstance(min_anchor_distance, QDoubleSpinBox)
+
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+
         return RandomGeneratorParameters(
-            num_rods=self.num_rods_spin.value(),
-            min_rod_length_cm=self.min_rod_length_spin.value(),
-            max_rod_length_cm=self.max_rod_length_spin.value(),
-            max_angle_deviation_deg=self.max_angle_spin.value(),
-            num_layers=self.num_layers_spin.value(),
-            min_anchor_distance_cm=self.min_anchor_distance_spin.value(),
-            max_iterations=self.max_iterations_spin.value(),
-            max_duration_sec=self.max_duration_spin.value(),
-            infill_weight_per_meter_kg_m=self.infill_weight_spin.value(),
+            num_rods=num_rods.value(),
+            min_rod_length_cm=min_rod_length.value(),
+            max_rod_length_cm=max_rod_length.value(),
+            max_angle_deviation_deg=max_angle.value(),
+            num_layers=num_layers.value(),
+            min_anchor_distance_cm=min_anchor_distance.value(),
+            max_iterations=max_iterations.value(),
+            max_duration_sec=max_duration.value(),
+            infill_weight_per_meter_kg_m=infill_weight.value(),
+        )
+
+
+class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
+    """
+    Parameter widget for random generator v2 configuration.
+
+    Provides input fields for all random generator v2 parameters with validation.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the random generator v2 parameter widget."""
+        self._defaults = RandomGeneratorDefaultsV2()
+        super().__init__()
+
+    def _create_widgets(self) -> None:
+        """Create input widgets for random generator v2 parameters."""
+        # Number of rods
+        num_rods_spin = QSpinBox()
+        num_rods_spin.setRange(1, 200)
+        num_rods_spin.setSuffix(" rods")
+        self.form_layout.addRow("Number of Rods:", num_rods_spin)
+        self.field_widgets["num_rods"] = num_rods_spin
+
+        # Min rod length
+        min_rod_length_spin = QDoubleSpinBox()
+        min_rod_length_spin.setRange(1.0, 1000.0)
+        min_rod_length_spin.setSuffix(" cm")
+        min_rod_length_spin.setDecimals(1)
+        self.form_layout.addRow("Min Rod Length:", min_rod_length_spin)
+        self.field_widgets["min_rod_length_cm"] = min_rod_length_spin
+
+        # Max rod length
+        max_rod_length_spin = QDoubleSpinBox()
+        max_rod_length_spin.setRange(1.0, 1000.0)
+        max_rod_length_spin.setSuffix(" cm")
+        max_rod_length_spin.setDecimals(1)
+        self.form_layout.addRow("Max Rod Length:", max_rod_length_spin)
+        self.field_widgets["max_rod_length_cm"] = max_rod_length_spin
+
+        # Max angle deviation
+        max_angle_spin = QDoubleSpinBox()
+        max_angle_spin.setRange(0.0, 45.0)
+        max_angle_spin.setSuffix(" °")
+        max_angle_spin.setDecimals(1)
+        self.form_layout.addRow("Max Angle Deviation:", max_angle_spin)
+        self.field_widgets["max_angle_deviation_deg"] = max_angle_spin
+
+        # Number of layers
+        num_layers_spin = QSpinBox()
+        num_layers_spin.setRange(1, 5)
+        num_layers_spin.setSuffix(" layers")
+        self.form_layout.addRow("Number of Layers:", num_layers_spin)
+        self.field_widgets["num_layers"] = num_layers_spin
+
+        # Min anchor distance (vertical)
+        min_anchor_distance_vertical_spin = QDoubleSpinBox()
+        min_anchor_distance_vertical_spin.setRange(0.1, 100.0)
+        min_anchor_distance_vertical_spin.setSuffix(" cm")
+        min_anchor_distance_vertical_spin.setDecimals(1)
+        self.form_layout.addRow(
+            "Min Anchor Distance (Vertical):", min_anchor_distance_vertical_spin
+        )
+        self.field_widgets["min_anchor_distance_vertical_cm"] = min_anchor_distance_vertical_spin
+
+        # Min anchor distance (other)
+        min_anchor_distance_other_spin = QDoubleSpinBox()
+        min_anchor_distance_other_spin.setRange(0.1, 100.0)
+        min_anchor_distance_other_spin.setSuffix(" cm")
+        min_anchor_distance_other_spin.setDecimals(1)
+        self.form_layout.addRow("Min Anchor Distance (Other):", min_anchor_distance_other_spin)
+        self.field_widgets["min_anchor_distance_other_cm"] = min_anchor_distance_other_spin
+
+        # Main direction range min
+        main_direction_min_spin = QDoubleSpinBox()
+        main_direction_min_spin.setRange(-90.0, 90.0)
+        main_direction_min_spin.setSuffix(" °")
+        main_direction_min_spin.setDecimals(1)
+        self.form_layout.addRow("Main Direction Min:", main_direction_min_spin)
+        self.field_widgets["main_direction_range_min_deg"] = main_direction_min_spin
+
+        # Main direction range max
+        main_direction_max_spin = QDoubleSpinBox()
+        main_direction_max_spin.setRange(-90.0, 90.0)
+        main_direction_max_spin.setSuffix(" °")
+        main_direction_max_spin.setDecimals(1)
+        self.form_layout.addRow("Main Direction Max:", main_direction_max_spin)
+        self.field_widgets["main_direction_range_max_deg"] = main_direction_max_spin
+
+        # Random angle deviation
+        random_angle_deviation_spin = QDoubleSpinBox()
+        random_angle_deviation_spin.setRange(0.0, 90.0)
+        random_angle_deviation_spin.setSuffix(" °")
+        random_angle_deviation_spin.setDecimals(1)
+        self.form_layout.addRow("Random Angle Deviation:", random_angle_deviation_spin)
+        self.field_widgets["random_angle_deviation_deg"] = random_angle_deviation_spin
+
+        # Max iterations
+        max_iterations_spin = QSpinBox()
+        max_iterations_spin.setRange(1, 1000000)
+        self.form_layout.addRow("Max Iterations:", max_iterations_spin)
+        self.field_widgets["max_iterations"] = max_iterations_spin
+
+        # Max duration
+        max_duration_spin = QDoubleSpinBox()
+        max_duration_spin.setRange(1, 3600.0)
+        max_duration_spin.setSuffix(" sec")
+        max_duration_spin.setDecimals(0)
+        self.form_layout.addRow("Max Duration:", max_duration_spin)
+        self.field_widgets["max_duration_sec"] = max_duration_spin
+
+        # Infill weight per meter
+        infill_weight_spin = QDoubleSpinBox()
+        infill_weight_spin.setRange(0.01, 10.0)
+        infill_weight_spin.setSuffix(" kg/m")
+        infill_weight_spin.setDecimals(2)
+        self.form_layout.addRow("Infill Weight/Meter:", infill_weight_spin)
+        self.field_widgets["infill_weight_per_meter_kg_m"] = infill_weight_spin
+
+    def _load_defaults(self) -> None:
+        """Load default values into the widgets."""
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+        num_rods.setValue(self._defaults.num_rods)
+
+        min_rod_length = self.field_widgets["min_rod_length_cm"]
+        assert isinstance(min_rod_length, QDoubleSpinBox)
+        min_rod_length.setValue(self._defaults.min_rod_length_cm)
+
+        max_rod_length = self.field_widgets["max_rod_length_cm"]
+        assert isinstance(max_rod_length, QDoubleSpinBox)
+        max_rod_length.setValue(self._defaults.max_rod_length_cm)
+
+        max_angle = self.field_widgets["max_angle_deviation_deg"]
+        assert isinstance(max_angle, QDoubleSpinBox)
+        max_angle.setValue(self._defaults.max_angle_deviation_deg)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+        num_layers.setValue(self._defaults.num_layers)
+
+        min_anchor_distance_vertical = self.field_widgets["min_anchor_distance_vertical_cm"]
+        assert isinstance(min_anchor_distance_vertical, QDoubleSpinBox)
+        min_anchor_distance_vertical.setValue(self._defaults.min_anchor_distance_vertical_cm)
+
+        min_anchor_distance_other = self.field_widgets["min_anchor_distance_other_cm"]
+        assert isinstance(min_anchor_distance_other, QDoubleSpinBox)
+        min_anchor_distance_other.setValue(self._defaults.min_anchor_distance_other_cm)
+
+        main_direction_min = self.field_widgets["main_direction_range_min_deg"]
+        assert isinstance(main_direction_min, QDoubleSpinBox)
+        main_direction_min.setValue(self._defaults.main_direction_range_min_deg)
+
+        main_direction_max = self.field_widgets["main_direction_range_max_deg"]
+        assert isinstance(main_direction_max, QDoubleSpinBox)
+        main_direction_max.setValue(self._defaults.main_direction_range_max_deg)
+
+        random_angle_deviation = self.field_widgets["random_angle_deviation_deg"]
+        assert isinstance(random_angle_deviation, QDoubleSpinBox)
+        random_angle_deviation.setValue(self._defaults.random_angle_deviation_deg)
+
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+        max_iterations.setValue(self._defaults.max_iterations)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+        max_duration.setValue(self._defaults.max_duration_sec)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+        infill_weight.setValue(self._defaults.infill_weight_per_meter_kg_m)
+
+    def get_parameters(self) -> RandomGeneratorParametersV2:
+        """
+        Get the current parameter values as a RandomGeneratorParametersV2 instance.
+
+        Returns:
+            RandomGeneratorParametersV2 with current widget values
+        """
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+
+        min_rod_length = self.field_widgets["min_rod_length_cm"]
+        assert isinstance(min_rod_length, QDoubleSpinBox)
+
+        max_rod_length = self.field_widgets["max_rod_length_cm"]
+        assert isinstance(max_rod_length, QDoubleSpinBox)
+
+        max_angle = self.field_widgets["max_angle_deviation_deg"]
+        assert isinstance(max_angle, QDoubleSpinBox)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+
+        min_anchor_distance_vertical = self.field_widgets["min_anchor_distance_vertical_cm"]
+        assert isinstance(min_anchor_distance_vertical, QDoubleSpinBox)
+
+        min_anchor_distance_other = self.field_widgets["min_anchor_distance_other_cm"]
+        assert isinstance(min_anchor_distance_other, QDoubleSpinBox)
+
+        main_direction_min = self.field_widgets["main_direction_range_min_deg"]
+        assert isinstance(main_direction_min, QDoubleSpinBox)
+
+        main_direction_max = self.field_widgets["main_direction_range_max_deg"]
+        assert isinstance(main_direction_max, QDoubleSpinBox)
+
+        random_angle_deviation = self.field_widgets["random_angle_deviation_deg"]
+        assert isinstance(random_angle_deviation, QDoubleSpinBox)
+
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+
+        return RandomGeneratorParametersV2(
+            num_rods=num_rods.value(),
+            min_rod_length_cm=min_rod_length.value(),
+            max_rod_length_cm=max_rod_length.value(),
+            max_angle_deviation_deg=max_angle.value(),
+            num_layers=num_layers.value(),
+            min_anchor_distance_vertical_cm=min_anchor_distance_vertical.value(),
+            min_anchor_distance_other_cm=min_anchor_distance_other.value(),
+            main_direction_range_min_deg=main_direction_min.value(),
+            main_direction_range_max_deg=main_direction_max.value(),
+            random_angle_deviation_deg=random_angle_deviation.value(),
+            max_iterations=max_iterations.value(),
+            max_duration_sec=max_duration.value(),
+            infill_weight_per_meter_kg_m=infill_weight.value(),
         )

@@ -5,6 +5,7 @@ from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
 )
 from railing_generator.domain.infill_generators.random_generator import RandomGenerator
+from railing_generator.domain.infill_generators.random_generator_v2 import RandomGeneratorV2
 
 
 class GeneratorFactory:
@@ -18,6 +19,7 @@ class GeneratorFactory:
     # Registry of available generator types
     _GENERATOR_TYPES: dict[str, type[Generator]] = {
         "random": RandomGenerator,
+        "random_v2": RandomGeneratorV2,
     }
 
     @classmethod
