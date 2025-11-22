@@ -205,3 +205,69 @@ def test_random_generator_emits_signals(
     assert progress_emitted, "progress_updated signal not emitted"
     assert best_result_emitted, "best_result_updated signal not emitted"
     assert completed_emitted, "generation_completed signal not emitted"
+
+
+def test_random_generator_even_distribution_across_layers(
+    simple_frame: RailingFrame,
+) -> None:
+    """
+    Test that rods are evenly distributed across layers.
+
+    Requirement 6.1.1.8: Distribute rods evenly across layers
+    Requirement 6.1.1.9: Max 30% difference between layers
+    """
+    generator = RandomGenerator()
+
+    # Test with different layer counts
+    test_cases = [
+        (20, 2),  # 20 rods, 2 layers -> 10 per layer
+        (30, 3),  # 30 rods, 3 layers -> 10 per layer
+        (25, 2),  # 25 rods, 2 layers -> 13 and 12 (1 rod difference)
+        (50, 4),  # 50 rods, 4 layers -> 12-13 per layer
+    ]
+
+    for num_rods, num_layers in test_cases:
+        params = RandomGeneratorParameters(
+            num_rods=num_rods,
+            max_rod_length_cm=150.0,
+            max_angle_deviation_deg=30.0,
+            num_layers=num_layers,
+            min_anchor_distance_cm=5.0,
+            max_iterations=100,
+            max_duration_sec=5.0,
+            infill_weight_per_meter_kg_m=0.3,
+        )
+
+        infill = generator.generate(simple_frame, params)
+
+        # Count rods per layer
+        rods_per_layer = {layer: 0 for layer in range(1, num_layers + 1)}
+        for rod in infill.rods:
+            rods_per_layer[rod.layer] += 1
+
+        # Calculate min and max counts
+        counts = list(rods_per_layer.values())
+        min_count = min(counts)
+        max_count = max(counts)
+
+        # Verify even distribution
+        # The difference should be at most 30% of total rods
+        max_allowed_difference = int(num_rods * 0.3)
+        actual_difference = max_count - min_count
+
+        assert (
+            actual_difference <= max_allowed_difference
+        ), f"Layer distribution too uneven: {rods_per_layer} (difference: {actual_difference}, max allowed: {max_allowed_difference})"
+
+        # For most cases, the difference should be minimal (0-1 rods)
+        # This is a stricter check for typical cases
+        if num_rods % num_layers == 0:
+            # Perfect division - all layers should have exactly the same count
+            assert (
+                actual_difference == 0
+            ), f"Expected perfect distribution for {num_rods} rods across {num_layers} layers, got {rods_per_layer}"
+        else:
+            # With remainder, difference should be at most 1
+            assert (
+                actual_difference <= 1
+            ), f"Expected difference of at most 1 rod, got {actual_difference} for {rods_per_layer}"

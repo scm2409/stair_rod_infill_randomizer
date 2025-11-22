@@ -1,4 +1,5 @@
 """Random infill generator implementation."""
+
 import random
 import time
 
@@ -30,9 +31,7 @@ class RandomGenerator(Generator):
     # Define the parameter type for this generator
     PARAMETER_TYPE = RandomGeneratorParameters
 
-    def generate(
-        self, frame: RailingFrame, params: InfillGeneratorParameters
-    ) -> RailingInfill:
+    def generate(self, frame: RailingFrame, params: InfillGeneratorParameters) -> RailingInfill:
         """
         Generate random infill arrangement within the frame.
 
@@ -50,8 +49,7 @@ class RandomGenerator(Generator):
         # Validate and narrow parameter type (runtime check for type safety)
         if not isinstance(params, RandomGeneratorParameters):
             raise ValueError(
-                f"RandomGenerator requires RandomGeneratorParameters, "
-                f"got {type(params).__name__}"
+                f"RandomGenerator requires RandomGeneratorParameters, got {type(params).__name__}"
             )
         # After isinstance check, mypy knows params is RandomGeneratorParameters
         # No explicit cast needed - type narrowing handles it
@@ -159,10 +157,22 @@ class RandomGenerator(Generator):
             layer: [] for layer in range(1, params.num_layers + 1)
         }
 
+        # Calculate target rods per layer for even distribution
+        # Requirement 6.1.1.8: Distribute rods evenly across layers
+        target_rods_per_layer = params.num_rods // params.num_layers
+        remaining_rods = params.num_rods % params.num_layers
+
+        # Create a list of target counts per layer
+        # Distribute remaining rods to first layers to maintain even distribution
+        layer_targets = [target_rods_per_layer] * params.num_layers
+        for i in range(remaining_rods):
+            layer_targets[i] += 1
+
         # Generate rods
         for _ in range(params.num_rods):
-            # Randomly assign to a layer
-            layer = random.randint(1, params.num_layers)
+            # Select layer with fewest rods to maintain even distribution
+            # Requirement 6.1.1.9: Max 30% difference between layers
+            layer = self._select_layer_for_even_distribution(rods_by_layer, layer_targets)
 
             # Try to create a valid rod
             max_attempts = 50
@@ -232,8 +242,41 @@ class RandomGenerator(Generator):
 
         # Check if we generated enough rods
         if len(rods) < params.num_rods * 0.5:  # At least 50% of requested rods
-            raise ValueError(
-                f"Only generated {len(rods)} rods out of {params.num_rods} requested"
-            )
+            raise ValueError(f"Only generated {len(rods)} rods out of {params.num_rods} requested")
 
         return rods
+
+    def _select_layer_for_even_distribution(
+        self, rods_by_layer: dict[int, list[Rod]], layer_targets: list[int]
+    ) -> int:
+        """
+        Select a layer for the next rod to maintain even distribution.
+
+        This method ensures that rods are distributed evenly across layers,
+        with a maximum difference of 30% between the layer with the most rods
+        and the layer with the fewest rods.
+
+        Args:
+            rods_by_layer: Dictionary mapping layer number to list of rods
+            layer_targets: Target number of rods per layer
+
+        Returns:
+            Layer number (1-indexed) to assign the next rod to
+        """
+        # Find the layer with the fewest rods relative to its target
+        min_layer = 1
+        min_count = len(rods_by_layer[1])
+        min_target = layer_targets[0]
+
+        for layer_num in range(2, len(rods_by_layer) + 1):
+            current_count = len(rods_by_layer[layer_num])
+            current_target = layer_targets[layer_num - 1]
+
+            # Prioritize layers that are furthest below their target
+            if current_count < current_target:
+                if min_count >= min_target or current_count < min_count:
+                    min_layer = layer_num
+                    min_count = current_count
+                    min_target = current_target
+
+        return min_layer

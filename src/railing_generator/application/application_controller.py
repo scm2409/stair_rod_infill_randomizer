@@ -101,6 +101,9 @@ class ApplicationController:
 
         # Get the current frame
         frame = self.project_model.railing_frame
+        
+        # Type narrowing: we know frame is not None because has_railing_frame() returned True
+        assert frame is not None, "Frame should not be None after has_railing_frame() check"
 
         # Update model with generator type and parameters
         self.project_model.set_infill_generator_type(generator_type)
