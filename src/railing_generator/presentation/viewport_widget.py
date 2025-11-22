@@ -4,10 +4,8 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QPen, QWheelEvent
 from PySide6.QtWidgets import QGraphicsItemGroup, QGraphicsScene, QGraphicsView
 
-from railing_generator.application.railing_project_model import (
-    RailingInfill,
-    RailingProjectModel,
-)
+from railing_generator.application.railing_project_model import RailingProjectModel
+from railing_generator.domain.railing_infill import RailingInfill
 from railing_generator.domain.railing_frame import RailingFrame
 
 

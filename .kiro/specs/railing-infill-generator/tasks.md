@@ -130,7 +130,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 ### Phase 5: First Infill Generation (See rods being generated!)
 
 - [ ] 5. Implement simple random generator (without quality evaluation)
-  - [ ] 5.1 Create RailingInfill class
+  - [x] 5.1 Create RailingInfill class
     - Define immutable container with fields: rods (list), fitness_score (optional), iteration_count (optional), duration_sec (optional)
     - Make frozen (immutable)
     - Write unit tests

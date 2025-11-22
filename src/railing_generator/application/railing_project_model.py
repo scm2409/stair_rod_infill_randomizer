@@ -3,33 +3,13 @@
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
-from pydantic import BaseModel
 
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
 )
 from railing_generator.domain.railing_frame import RailingFrame
-from railing_generator.domain.rod import Rod
+from railing_generator.domain.railing_infill import RailingInfill
 from railing_generator.domain.shapes.railing_shape_parameters import RailingShapeParameters
-
-
-class RailingInfill(BaseModel):
-    """
-    Immutable container for railing infill.
-
-    Contains the infill rods (layer >= 1) and optional metadata about generation.
-    This is the output of a Generator's generate() method.
-    """
-
-    rods: list[Rod] = []
-    fitness_score: float | None = None
-    iteration_count: int | None = None
-    duration_sec: float | None = None
-
-    model_config = {
-        "arbitrary_types_allowed": True,
-        "frozen": True,  # Make immutable
-    }
 
 
 class RailingProjectModel(QObject):

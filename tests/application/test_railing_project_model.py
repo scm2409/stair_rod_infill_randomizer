@@ -7,10 +7,8 @@ import pytest
 from PySide6.QtCore import QObject
 from shapely.geometry import LineString
 
-from railing_generator.application.railing_project_model import (
-    RailingInfill,
-    RailingProjectModel,
-)
+from railing_generator.application.railing_project_model import RailingProjectModel
+from railing_generator.domain.railing_infill import RailingInfill
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
 )

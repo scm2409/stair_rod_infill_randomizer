@@ -42,6 +42,23 @@ Technical standards and tooling requirements for Python development in this work
 - X.Y = task number from tasks.md
 - Description = what needs to be done
 
+### Pre-Task Code Review
+
+**CRITICAL**: Before starting any task implementation:
+
+1. **Review the existing codebase** to check if the class/feature is already implemented or partially implemented
+2. **Search for the class name** in the codebase:
+3. **If code exists**:
+   - Evaluate if the existing implementation is complete and correct
+   - If the new implementation is better, replace the old one
+   - Update all imports and references to use the correct location
+   - Ensure no duplicate classes exist in different locations
+
+4. **If code is partially implemented**:
+   - Complete the existing implementation rather than creating a new one
+   - Add missing features to the existing class
+   - Ensure consistency with the existing code style
+
 ### Protocols vs Abstract Base Classes
 
 **When to use Protocols**:

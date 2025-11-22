@@ -189,7 +189,7 @@ class TestApplicationController:
         controller.update_railing_shape("staircase", params)
 
         # Manually set infill (simulating a previous generation)
-        from railing_generator.application.railing_project_model import RailingInfill
+        from railing_generator.domain.railing_infill import RailingInfill
 
         mock_infill = RailingInfill(rods=[])
         project_model.set_railing_infill(mock_infill)
