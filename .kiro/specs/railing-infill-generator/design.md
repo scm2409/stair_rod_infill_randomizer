@@ -768,9 +768,112 @@ Orchestrates application workflows and updates RailingProjectModel.
   - Angle Distribution Weight: QDoubleSpinBox (0.0-1.0)
   - Anchor Spacing Horizontal Weight: QDoubleSpinBox (0.0-1.0)
   - Anchor Spacing Vertical Weight: QDoubleSpinBox (0.0-1.0)
+  - Max Evaluation Attempts: QSpinBox (1-100)
+  - Max Evaluation Duration: QDoubleSpinBox (1-3600 sec)
+  - Min Acceptable Fitness: QDoubleSpinBox (0.0-1.0)
   - Real-time validation: weights should sum to ~1.0
 - `PassThroughEvaluatorParameterWidget`: Empty widget (no parameters)
 - Pattern matches shape and generator parameter widgets
+
+### Parameter Widget Pattern (Implemented)
+
+All parameter widgets (shapes, generators, evaluators) follow a consistent implementation pattern:
+
+**Base Class Structure:**
+```python
+class ParameterWidget(QWidget, ABC):
+    """Base class for all parameter widgets"""
+    
+    INVALID_STYLE = "border: 2px solid #ff0000;"  # Red border for errors
+    VALID_STYLE = ""
+    
+    def __init__(self):
+        self.form_layout = QFormLayout(self)
+        self.field_widgets: dict[str, QWidget] = {}  # Maps Pydantic field names to Qt widgets
+        
+        self._create_widgets()      # Create Qt input controls
+        self._load_defaults()       # Load values from Hydra defaults
+        self._connect_validation_signals()  # Connect real-time validation
+    
+    @abstractmethod
+    def _create_widgets(self) -> None:
+        """Create Qt widgets and populate field_widgets dict"""
+        pass
+    
+    @abstractmethod
+    def _load_defaults(self) -> None:
+        """Load default values from dataclass into widgets"""
+        pass
+    
+    @abstractmethod
+    def get_parameters(self) -> BaseModel:
+        """Extract values and create validated Pydantic model"""
+        pass
+    
+    def _validate_and_update_ui(self) -> None:
+        """Real-time validation with visual feedback"""
+        try:
+            self.get_parameters()  # Attempt Pydantic validation
+            self._clear_all_errors()
+        except ValidationError as e:
+            self._display_validation_errors(e)  # Red borders + tooltips
+```
+
+**Key Features:**
+1. **field_widgets Dictionary**: Maps Pydantic field names to Qt widgets for easy access
+2. **Real-Time Validation**: Connected to valueChanged signals, validates on every change
+3. **Visual Feedback**: Invalid fields get red borders and error tooltips
+4. **Consistent Pattern**: Same structure for shapes, generators, and evaluators
+5. **Type-Safe**: Uses assert isinstance() for type narrowing before accessing widget values
+
+**Widget Types Used:**
+- `QDoubleSpinBox`: Floating-point values with range, suffix (cm, kg/m, °, sec)
+- `QSpinBox`: Integer values with range, suffix (rods, layers)
+- `QFormLayout`: Automatic label alignment and layout
+
+**Validation Flow:**
+1. User changes value → `valueChanged` signal emitted
+2. `_validate_and_update_ui()` called
+3. `get_parameters()` creates Pydantic model (may raise ValidationError)
+4. If valid: Clear all error styling
+5. If invalid: Red border + tooltip on invalid fields
+
+**Example Concrete Implementation:**
+```python
+class StaircaseParameterWidget(ShapeParameterWidget):
+    def __init__(self):
+        self._defaults = StaircaseRailingShapeDefaults()  # Load from Hydra
+        super().__init__()
+    
+    def _create_widgets(self):
+        post_length_spin = QDoubleSpinBox()
+        post_length_spin.setRange(1.0, 10000.0)
+        post_length_spin.setSuffix(" cm")
+        self.form_layout.addRow("Post Length:", post_length_spin)
+        self.field_widgets["post_length_cm"] = post_length_spin  # Map to Pydantic field
+        # ... create other widgets
+    
+    def _load_defaults(self):
+        widget = self.field_widgets["post_length_cm"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(self._defaults.post_length_cm)
+        # ... load other defaults
+    
+    def get_parameters(self) -> StaircaseRailingShapeParameters:
+        widget = self.field_widgets["post_length_cm"]
+        assert isinstance(widget, QDoubleSpinBox)
+        return StaircaseRailingShapeParameters(
+            post_length_cm=widget.value(),
+            # ... other parameters
+        )
+```
+
+**Benefits:**
+- Consistent user experience across all parameter types
+- Automatic validation without manual error checking
+- Easy to add new parameter widgets following the same pattern
+- Type-safe with mypy validation
+- Clear separation: Qt widgets → Pydantic validation → Domain objects
 
 #### BOM Table (QTableWidget with QTabWidget)
 - Two tabs: Frame Parts, Infill Parts
