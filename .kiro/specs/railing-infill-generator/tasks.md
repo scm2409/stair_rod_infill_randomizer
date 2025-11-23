@@ -129,28 +129,31 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 
 ### Phase 5: First Infill Generation (See rods being generated!)
 
-- [ ] 5. Implement simple random generator (without quality evaluation)
+- [x] 5. Implement random generators (V1 and V2)
   - [x] 5.1 Create RailingInfill class
     - Define immutable container with fields: rods (list), fitness_score (optional), iteration_count (optional), duration_sec (optional)
     - Make frozen (immutable)
     - Write unit tests
+    - ✅ COMPLETED
     - _Requirements: 1, 6.2, 9_
   
-  - [x] 5.2 Implement basic RandomGenerator (simplified version)
+  - [x] 5.2 Implement RandomGeneratorV1 and RandomGeneratorV2
     - Create Generator base class with signals
-    - Implement RandomGenerator with simple random placement
-    - No quality evaluation yet - just generate random valid arrangements
+    - Implement RandomGeneratorV1 with simple random placement
+    - Implement RandomGeneratorV2 with 4-phase algorithm (anchor, vertical, diagonal, gap-filling)
     - Respect basic constraints (no crossings in same layer, within boundary)
     - Accept RailingFrame as input, return RailingInfill
-    - Write unit tests for generator
+    - Write unit tests for both generators
+    - ✅ COMPLETED
     - _Requirements: 1, 4.1, 6.1, 9_
   
   - [x] 5.3 Add generator UI and connect to viewport
-    - Add generator type dropdown to parameter panel
+    - Add generator type dropdown to parameter panel (random_v1, random_v2)
     - Add "Generate Infill" button
     - Implement `set_railing_infill()` in viewport (with layer colors)
     - **VISUAL MILESTONE**: See your first random infill! 🎉
     - Write test to verify infill rendering
+    - ✅ COMPLETED
     - _Requirements: 6.1, 7, 9_
   
   - [x] 5.4 Add progress dialog for generation
@@ -158,34 +161,76 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Implement worker thread pattern for background generation
     - **VISUAL MILESTONE**: See generation progress in real-time! 🎉
     - Write test to verify progress dialog
+    - ✅ COMPLETED
     - _Requirements: 9.1, 9.1.1_
 
-### Phase 6: Improve Quality (See better results!)
+**Note**: Random Generator V2 was implemented outside this task document. Both V1 and V2 are now available but currently run without evaluators.
 
-- [ ] 6. Add quality evaluation to improve results
-  - [ ] 6.1 Implement hole identification
+### Phase 6: Add Evaluation System (See better results!)
+
+- [ ] 6. Implement evaluator architecture (Pass-Through first, then Quality)
+  - [ ] 6.1 Create evaluator base classes and Pass-Through Evaluator
+    - Create Evaluator ABC with `evaluate()` and `is_acceptable()` methods
+    - Create EvaluatorParameters base class (Pydantic)
+    - Create PassThroughEvaluatorParameters (empty Pydantic model)
+    - Implement PassThroughEvaluator (always returns fitness=1.0, is_acceptable=True)
+    - Create conf/evaluators/passthrough.yaml config
+    - Write unit tests for Pass-Through Evaluator
+    - _Requirements: 6.2_
+  
+  - [ ] 6.2 Connect Pass-Through Evaluator to RandomGeneratorV2 (required)
+    - Update RandomGeneratorV2 to require evaluator parameter
+    - Update RandomGeneratorV2Parameters to include evaluator_type field
+    - Create EvaluatorFactory to instantiate evaluators from type string
+    - Update conf/generators/random_v2.yaml to include evaluator_type: "passthrough"
+    - Update ApplicationController to create evaluator and pass to generator
+    - **VISUAL MILESTONE**: Generator V2 now uses evaluator architecture! 🎉
+    - Write integration tests (generator V2 with pass-through evaluator)
+    - _Requirements: 6.2, 9_
+  
+  - [ ] 6.3 Create Quality Evaluator structure with dummy implementations
+    - Create QualityEvaluatorCriteriaDefaults dataclass
+    - Create QualityEvaluatorParameters (Pydantic) with criteria weights
+    - Implement QualityEvaluator class with `evaluate()` and `is_acceptable()` methods
+    - Use dummy/placeholder implementations for quality criteria (return 0.5 for now)
+    - Add TODO comments for hole identification and quality criteria implementations
+    - Create conf/evaluators/quality.yaml config
+    - Register QualityEvaluator in EvaluatorFactory
+    - Write basic unit tests for evaluator structure
+    - _Requirements: 6.2, 6.2.1_
+  
+  - [ ] 6.4 Implement hole identification
     - Implement function using `shapely.node()` and `polygonize()`
+    - Replace dummy implementation in QualityEvaluator
     - Write unit tests for hole identification
     - _Requirements: 6.2, 6.2.1_
   
-  - [ ] 6.2 Implement quality criteria
-    - Implement hole uniformity, incircle uniformity, angle distribution, anchor spacing
+  - [ ] 6.5 Implement quality criteria
+    - Implement hole uniformity criterion
+    - Implement incircle uniformity criterion
+    - Implement angle distribution criterion
+    - Implement anchor spacing criterion
+    - Replace dummy implementations in QualityEvaluator with actual criteria
     - Write unit tests for each criterion
     - _Requirements: 6.2.1_
   
-  - [ ] 6.3 Implement QualityEvaluator
-    - Create EvaluatorCriteriaDefaults dataclass
-    - Implement `evaluate()` and `is_acceptable()` methods
-    - Write unit tests for evaluator
-    - _Requirements: 6.2, 6.2.1_
-  
-  - [ ] 6.4 Connect evaluator to RandomGenerator
-    - Update RandomGenerator to use QualityEvaluator
-    - Add iteration limits and fitness-based termination
+  - [ ] 6.6 Enable Quality Evaluator in RandomGeneratorV2
+    - Add evaluator_type dropdown to parameter panel
+    - Add quality criteria parameter inputs (shown when quality evaluator selected)
     - Update progress dialog to show fitness score
-    - **VISUAL MILESTONE**: See quality improving over iterations! 🎉
-    - Write integration tests
+    - Update conf/generators/random_v2.yaml to support evaluator_type: "quality"
+    - **VISUAL MILESTONE**: See quality improving over iterations in V2! 🎉
+    - Write integration tests (generator V2 with quality evaluator)
     - _Requirements: 1.1, 6.2, 6.3, 9.1.1_
+  
+  - [ ]* 6.7 Optionally add evaluator support to RandomGeneratorV1
+    - Update RandomGeneratorV1 to optionally accept evaluator parameter
+    - Update RandomGeneratorV1Parameters to include optional evaluator_type field
+    - Update conf/generators/random_v1.yaml to support evaluator_type (optional)
+    - Write integration tests (generator V1 with evaluators)
+    - _Requirements: 6.2, 9_
+
+**Note**: Evaluators are required for RandomGeneratorV2 but optional for RandomGeneratorV1.
 
 ### Phase 7: Add Parameter Controls (Fine-tune what you see!)
 
@@ -297,16 +342,17 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 
 1. ✅ Empty window with viewport (Task 2.2)
 2. ✅ First stair shape visible (Task 2.4)
-3. 🎯 Central state management integrated (Task 3.5)
-4. 🎯 Switch between shapes (Task 4.3)
-5. 🎯 First random infill (Task 5.3)
-6. 🎯 Generation progress (Task 5.4)
-7. 🎯 Quality improving (Task 6.4)
-8. 🎯 Adjust parameters (Task 7.1)
-9. 🎯 Parts list (Task 8.2)
-10. 🎯 Highlight parts (Task 8.3)
-11. 🎯 Save/load designs (Task 9.3)
-12. 🎯 Rod numbers (Task 10.2)
+3. ✅ Central state management integrated (Task 3.5)
+4. ✅ Switch between shapes (Task 4.3)
+5. ✅ First random infill with V1 and V2 (Task 5.3)
+6. ✅ Generation progress (Task 5.4)
+7. 🎯 Evaluator architecture integrated (Task 6.2)
+8. 🎯 Quality improving over iterations (Task 6.5)
+9. 🎯 Adjust parameters (Task 7.1)
+10. 🎯 Parts list (Task 8.2)
+11. 🎯 Highlight parts (Task 8.3)
+12. 🎯 Save/load designs (Task 9.3)
+13. 🎯 Rod numbers (Task 10.2)
 
 ## Notes
 
