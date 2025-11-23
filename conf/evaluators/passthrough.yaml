@@ -1,0 +1,5 @@
+# Pass-Through Evaluator Configuration
+# This evaluator has no parameters - it always accepts all arrangements
+# and returns a neutral fitness score of 1.0
+
+# No parameters needed for Pass-Through Evaluator
