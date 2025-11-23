@@ -1,5 +1,7 @@
 """Quality Evaluator implementation."""
 
+import math
+
 import shapely
 from shapely.geometry import Polygon
 from shapely.ops import polygonize
@@ -59,23 +61,24 @@ class QualityEvaluator(Evaluator):
         # Identify holes in the arrangement
         holes = self._identify_holes(infill, frame)
 
-        # TODO(Task 6.5): Implement quality criteria
+        # Calculate incircle uniformity score
+        incircle_uniformity_score = self._calculate_incircle_uniformity(holes)
+
+        # TODO(Task 6.5.2): Implement remaining quality criteria
         # hole_uniformity_score = self._calculate_hole_uniformity(holes)
-        # incircle_uniformity_score = self._calculate_incircle_uniformity(holes)
         # angle_distribution_score = self._calculate_angle_distribution(infill)
         # anchor_spacing_score = self._calculate_anchor_spacing(infill, frame)
 
-        # Combine weighted scores
-        # fitness = (
-        #     self.params.hole_uniformity_weight * hole_uniformity_score
-        #     + self.params.incircle_uniformity_weight * incircle_uniformity_score
-        #     + self.params.angle_distribution_weight * angle_distribution_score
-        #     + self.params.anchor_spacing_horizontal_weight * anchor_spacing_horizontal
-        #     + self.params.anchor_spacing_vertical_weight * anchor_spacing_vertical
-        # )
+        # For now, only use incircle uniformity (Task 6.5.1)
+        # Other criteria will be added in Task 6.5.2
+        fitness = self.params.incircle_uniformity_weight * incircle_uniformity_score
 
-        # Dummy implementation - return neutral score
-        return 0.5
+        # Normalize by the weight to keep score in 0-1 range
+        # (since we're only using one criterion for now)
+        if self.params.incircle_uniformity_weight > 0:
+            fitness = fitness / self.params.incircle_uniformity_weight
+
+        return fitness
 
     def is_acceptable(self, infill: RailingInfill, frame: RailingFrame) -> bool:
         """
@@ -132,13 +135,82 @@ class QualityEvaluator(Evaluator):
         holes = list(polygonize(noded.geoms))
         return holes
 
-    # TODO(Task 6.5): Implement quality criteria methods
+    def _calculate_incircle_uniformity(self, holes: list[Polygon]) -> float:
+        """
+        Calculate incircle radius uniformity score (0.0-1.0).
+
+        Measures how uniform the incircle radii are across all holes.
+        The incircle (inscribed circle) is the largest circle that fits
+        inside a polygon. Uniform incircle radii indicate consistent
+        hole sizes and shapes.
+
+        Uses coefficient of variation (CV = std_dev / mean) to measure uniformity.
+        Lower CV means more uniform radii, which gets a higher score.
+
+        Args:
+            holes: List of Polygon objects representing holes
+
+        Returns:
+            Score between 0.0 and 1.0 (higher is better, 1.0 = perfect uniformity)
+        """
+        if len(holes) == 0:
+            return 1.0  # No holes = perfect uniformity
+
+        if len(holes) == 1:
+            return 1.0  # Single hole = perfect uniformity
+
+        # Calculate incircle radius for each hole
+        radii = [self._calculate_incircle_radius(hole) for hole in holes]
+
+        # Calculate mean and standard deviation
+        mean_radius = sum(radii) / len(radii)
+
+        if mean_radius == 0:
+            return 0.0  # Degenerate case
+
+        variance = sum((r - mean_radius) ** 2 for r in radii) / len(radii)
+        std_dev = math.sqrt(variance)
+
+        # Calculate coefficient of variation (CV)
+        cv = std_dev / mean_radius
+
+        # Convert CV to score (0-1 range, lower CV = higher score)
+        # Use exponential decay: score = e^(-k * CV)
+        # k=2 gives good sensitivity: CV=0 → score=1.0, CV=0.5 → score=0.37, CV=1.0 → score=0.14
+        score = math.exp(-2.0 * cv)
+
+        return score
+
+    def _calculate_incircle_radius(self, polygon: Polygon) -> float:
+        """
+        Calculate the radius of the inscribed circle (incircle) for a polygon.
+
+        Uses Shapely's maximum_inscribed_circle() function which finds the
+        largest circle that is fully contained within the polygon. This is
+        the exact maximum inscribed circle, not an approximation.
+
+        The function returns a LineString where the first point is the center
+        and the second point is on the boundary. The length of this LineString
+        is the radius.
+
+        Args:
+            polygon: Shapely Polygon object
+
+        Returns:
+            Exact incircle radius in cm
+        """
+        # Use Shapely's built-in maximum inscribed circle function
+        # Returns a LineString from center to boundary
+        mic_linestring = shapely.maximum_inscribed_circle(polygon)
+
+        # The length of the LineString is the radius
+        radius = mic_linestring.length
+
+        return radius
+
+    # TODO(Task 6.5.2): Implement remaining quality criteria methods
     # def _calculate_hole_uniformity(self, holes: list[Polygon]) -> float:
     #     """Calculate hole area uniformity score (0.0-1.0)."""
-    #     pass
-    #
-    # def _calculate_incircle_uniformity(self, holes: list[Polygon]) -> float:
-    #     """Calculate incircle radius uniformity score (0.0-1.0)."""
     #     pass
     #
     # def _calculate_angle_distribution(self, infill: RailingInfill) -> float:

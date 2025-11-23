@@ -28,6 +28,9 @@ from railing_generator.presentation.evaluator_parameter_widget import EvaluatorP
 from railing_generator.presentation.passthrough_evaluator_parameter_widget import (
     PassThroughEvaluatorParameterWidget,
 )
+from railing_generator.presentation.quality_evaluator_parameter_widget import (
+    QualityEvaluatorParameterWidget,
+)
 
 
 class QWidgetABCMeta(type(QWidget), ABCMeta):  # type: ignore[misc]
@@ -460,7 +463,7 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
 
         # Evaluator type dropdown
         self.evaluator_type_combo = QComboBox()
-        self.evaluator_type_combo.addItems(["passthrough"])  # Future: add "quality"
+        self.evaluator_type_combo.addItems(["passthrough", "quality"])
         self.form_layout.addRow("Evaluator Type:", self.evaluator_type_combo)
 
         # Container for evaluator parameter widgets
@@ -470,7 +473,7 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
 
         # Create evaluator widgets
         self.evaluator_widgets["passthrough"] = PassThroughEvaluatorParameterWidget()
-        # Future: self.evaluator_widgets["quality"] = QualityEvaluatorParameterWidget()
+        self.evaluator_widgets["quality"] = QualityEvaluatorParameterWidget()
 
         # Add all evaluator widgets to container (hide all except first)
         for widget in self.evaluator_widgets.values():

@@ -10,6 +10,9 @@ from railing_generator.domain.evaluators.evaluator_parameters import EvaluatorPa
 from railing_generator.domain.evaluators.passthrough_evaluator_parameters import (
     PassThroughEvaluatorParameters,
 )
+from railing_generator.domain.evaluators.quality_evaluator_parameters import (
+    QualityEvaluatorParameters,
+)
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorDefaults,
     InfillGeneratorParameters,
@@ -23,7 +26,7 @@ from railing_generator.domain.infill_generators.random_generator_parameters impo
 # Pydantic will automatically select the correct type based on the 'type' field
 EvaluatorParametersUnion = Union[
     PassThroughEvaluatorParameters,
-    # Future: QualityEvaluatorParameters,
+    QualityEvaluatorParameters,
 ]
 
 

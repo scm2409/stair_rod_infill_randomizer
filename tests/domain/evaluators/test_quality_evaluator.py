@@ -205,19 +205,20 @@ class TestQualityEvaluator:
 
         assert evaluator.params == quality_evaluator_params
 
-    def test_evaluate_returns_dummy_score(
+    def test_evaluate_returns_score_based_on_incircle_uniformity(
         self,
         quality_evaluator_params: QualityEvaluatorParameters,
         simple_frame: RailingFrame,
         simple_infill: RailingInfill,
     ) -> None:
-        """Test that evaluate() returns dummy score of 0.5."""
+        """Test that evaluate() returns score based on incircle uniformity."""
         evaluator = QualityEvaluator(quality_evaluator_params)
 
         fitness = evaluator.evaluate(simple_infill, simple_frame)
 
-        # Dummy implementation should return 0.5
-        assert fitness == 0.5
+        # Simple infill has uniform holes, should get high score
+        assert fitness > 0.9
+        assert fitness <= 1.0
 
     def test_evaluate_returns_float(
         self,
@@ -270,8 +271,8 @@ class TestQualityEvaluator:
 
         fitness = evaluator.evaluate(empty_infill, simple_frame)
 
-        # Should still return dummy score
-        assert fitness == 0.5
+        # Empty infill has single hole, perfect uniformity
+        assert fitness == 1.0
 
     def test_is_acceptable_with_empty_infill(
         self,
@@ -585,3 +586,295 @@ class TestHoleIdentification:
 
         # Should accept because all holes are within limit
         assert acceptable is True
+
+
+class TestIncircleUniformity:
+    """Tests for incircle uniformity criterion."""
+
+    def test_calculate_incircle_radius_for_square(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test incircle radius calculation for a square."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create a 10x10 square
+        square = Polygon([(0, 0), (10, 0), (10, 10), (0, 10)])
+
+        radius = evaluator._calculate_incircle_radius(square)
+
+        # For a square with side s, incircle radius = s/2
+        # Area = 100, Perimeter = 40, r = 2*100/40 = 5.0
+        assert abs(radius - 5.0) < 0.01
+
+    def test_calculate_incircle_radius_for_circle(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test incircle radius calculation for a circle."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create a circle with radius 10 (approximate with many points)
+        import math
+
+        center_x, center_y = 50.0, 50.0
+        radius_actual = 10.0
+        num_points = 100
+        points = [
+            (
+                center_x + radius_actual * math.cos(2 * math.pi * i / num_points),
+                center_y + radius_actual * math.sin(2 * math.pi * i / num_points),
+            )
+            for i in range(num_points)
+        ]
+        circle = Polygon(points)
+
+        radius = evaluator._calculate_incircle_radius(circle)
+
+        # For a circle, the approximation should be very close to the actual radius
+        assert abs(radius - radius_actual) < 0.5  # Allow some tolerance for approximation
+
+    def test_calculate_incircle_radius_for_rectangle(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test incircle radius calculation for a rectangle."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create a 20x10 rectangle
+        rectangle = Polygon([(0, 0), (20, 0), (20, 10), (0, 10)])
+
+        radius = evaluator._calculate_incircle_radius(rectangle)
+
+        # For a rectangle, the maximum inscribed circle has radius = half the shorter side
+        # In this case: min(20, 10) / 2 = 5.0
+        expected_radius = 5.0
+        assert abs(radius - expected_radius) < 0.01
+
+    def test_incircle_uniformity_with_identical_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that identical holes get perfect uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create 3 vertical rods that divide frame into 4 equal rectangles
+        infill_rods = [
+            Rod(
+                geometry=LineString([(25, 0), (25, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(75, 0), (75, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        holes = evaluator._identify_holes(infill, simple_frame)
+        score = evaluator._calculate_incircle_uniformity(holes)
+
+        # All holes are identical 25x100 rectangles, should get perfect score
+        assert score == pytest.approx(1.0, abs=0.01)
+
+    def test_incircle_uniformity_with_varied_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test that varied hole sizes get lower uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create frame with non-uniform divisions
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # Create rods at x=10 and x=90 (very uneven division: 10, 80, 10)
+        infill_rods = [
+            Rod(
+                geometry=LineString([(10, 0), (10, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(90, 0), (90, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        holes = evaluator._identify_holes(infill, frame)
+        score = evaluator._calculate_incircle_uniformity(holes)
+
+        # Holes have very different sizes (10x100, 80x100, 10x100)
+        # Should get lower score than uniform arrangement
+        assert score < 0.9  # Not perfect
+        assert score > 0.0  # But not zero
+
+    def test_incircle_uniformity_with_single_hole(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that single hole gets perfect uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+        empty_infill = RailingInfill(rods=[])
+
+        holes = evaluator._identify_holes(empty_infill, simple_frame)
+        score = evaluator._calculate_incircle_uniformity(holes)
+
+        # Single hole = perfect uniformity
+        assert score == 1.0
+
+    def test_incircle_uniformity_with_no_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test that no holes gets perfect uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Empty list of holes
+        score = evaluator._calculate_incircle_uniformity([])
+
+        # No holes = perfect uniformity
+        assert score == 1.0
+
+    def test_evaluate_uses_incircle_uniformity(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that evaluate() now uses incircle uniformity criterion."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create uniform infill
+        infill_rods = [
+            Rod(
+                geometry=LineString([(25, 0), (25, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(75, 0), (75, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        fitness = evaluator.evaluate(infill, simple_frame)
+
+        # Should get high score for uniform arrangement
+        assert fitness > 0.9
+        assert fitness <= 1.0
+
+    def test_evaluate_with_non_uniform_arrangement(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test that evaluate() gives lower score for non-uniform arrangement."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create frame
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # Create non-uniform infill
+        infill_rods = [
+            Rod(
+                geometry=LineString([(10, 0), (10, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(90, 0), (90, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        fitness = evaluator.evaluate(infill, frame)
+
+        # Should get lower score for non-uniform arrangement
+        assert fitness < 0.9
+        assert fitness > 0.0

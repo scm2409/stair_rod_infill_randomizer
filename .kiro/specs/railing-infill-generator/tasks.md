@@ -206,18 +206,10 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for hole identification
     - _Requirements: 6.2, 6.2.1_
   
-  - [ ] 6.5.1 Implement quality criteria
+  - [x] 6.5.1 Implement quality criteria
     - Implement incircle uniformity criterion
     - _Requirements: 6.2.1_
 
-  - [ ] 6.5.2 Implement quality criteria
-    - Implement hole uniformity criterion
-    - Implement angle distribution criterion
-    - Implement anchor spacing criterion
-    - Replace dummy implementations in QualityEvaluator with actual criteria
-    - Write unit tests for each criterion
-    - _Requirements: 6.2.1_
-  
   - [ ] 6.6 Enable Quality Evaluator in RandomGeneratorV2
     - Add evaluator_type dropdown to parameter panel
     - Add quality criteria parameter inputs (shown when quality evaluator selected)
@@ -226,7 +218,15 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - **VISUAL MILESTONE**: See quality improving over iterations in V2! 🎉
     - Write integration tests (generator V2 with quality evaluator)
     - _Requirements: 1.1, 6.2, 6.3, 9.1.1_
-  
+
+  - [ ] 6.6.1 Implement quality criteria
+    - Implement hole uniformity criterion
+    - Implement angle distribution criterion
+    - Implement anchor spacing criterion
+    - Replace dummy implementations in QualityEvaluator with actual criteria
+    - Write unit tests for each criterion
+    - _Requirements: 6.2.1_
+    
   - [ ]* 6.7 Optionally add evaluator support to RandomGeneratorV1
     - Update RandomGeneratorV1 to optionally accept evaluator parameter
     - Update RandomGeneratorV1Parameters to include optional evaluator_type field
