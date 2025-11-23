@@ -24,7 +24,7 @@ This implementation plan creates RandomGenerator_v2, an enhanced random infill g
   - Register with Hydra ConfigStore
   - _Requirements: 6.1.1-v2 (40, 47)_
 
-- [ ]* 1.4 Write property test for parameter validation
+- [x]* 1.4 Write property test for parameter validation
   - **Property 1: Parameter validation correctness**
   - **Validates: Requirements 6.1.1-v2 (42-47)**
   - Test that invalid parameter combinations are rejected
