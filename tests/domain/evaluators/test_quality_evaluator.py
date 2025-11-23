@@ -62,8 +62,7 @@ def simple_frame() -> RailingFrame:
             layer=0,
         ),
     ]
-    boundary = Polygon([(0, 0), (100, 0), (100, 100), (0, 100)])
-    return RailingFrame(rods=frame_rods, boundary=boundary)
+    return RailingFrame(rods=frame_rods)
 
 
 @pytest.fixture
@@ -285,5 +284,304 @@ class TestQualityEvaluator:
 
         acceptable = evaluator.is_acceptable(empty_infill, simple_frame)
 
-        # Should still return dummy True
+        # Empty infill creates one large hole (the entire frame)
+        # Should be acceptable if frame area < max_hole_area_cm2
+        assert acceptable is True
+
+
+class TestHoleIdentification:
+    """Tests for hole identification using shapely.node() and polygonize()."""
+
+    def test_identify_holes_with_simple_vertical_rods(
+        self,
+        quality_evaluator_params: QualityEvaluatorParameters,
+        simple_frame: RailingFrame,
+        simple_infill: RailingInfill,
+    ) -> None:
+        """Test hole identification with simple vertical rods."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        holes = evaluator._identify_holes(simple_infill, simple_frame)
+
+        # 3 vertical rods in a 100x100 frame create 4 rectangular holes
+        assert len(holes) == 4
+        # Each hole should be a Polygon
+        for hole in holes:
+            assert isinstance(hole, Polygon)
+            assert hole.is_valid
+
+    def test_identify_holes_returns_correct_areas(
+        self,
+        quality_evaluator_params: QualityEvaluatorParameters,
+        simple_frame: RailingFrame,
+        simple_infill: RailingInfill,
+    ) -> None:
+        """Test that identified holes have correct areas."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        holes = evaluator._identify_holes(simple_infill, simple_frame)
+
+        # 3 vertical rods at x=25, 50, 75 create 4 holes of width 25 each
+        # Each hole: 25cm wide x 100cm tall = 2500 cm²
+        expected_area = 2500.0
+        for hole in holes:
+            assert abs(hole.area - expected_area) < 1.0  # Allow small floating point error
+
+    def test_identify_holes_with_crossing_rods(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test hole identification with crossing rods (different layers)."""
+        # Create a 100x100 frame
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # Create crossing rods: one vertical, one horizontal (different layers)
+        infill_rods = [
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),  # Vertical
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(0, 50), (100, 50)]),  # Horizontal
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=2,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        evaluator = QualityEvaluator(quality_evaluator_params)
+        holes = evaluator._identify_holes(infill, frame)
+
+        # Crossing rods create 4 quadrants
+        assert len(holes) == 4
+        # Each quadrant: 50cm x 50cm = 2500 cm²
+        expected_area = 2500.0
+        for hole in holes:
+            assert isinstance(hole, Polygon)
+            assert hole.is_valid
+            assert abs(hole.area - expected_area) < 1.0
+
+    def test_identify_holes_with_empty_infill(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test hole identification with no infill rods."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+        empty_infill = RailingInfill(rods=[])
+
+        holes = evaluator._identify_holes(empty_infill, simple_frame)
+
+        # No infill means one large hole (the entire frame)
+        assert len(holes) == 1
+        assert holes[0].area == pytest.approx(10000.0, rel=0.01)  # 100x100 = 10000
+
+    def test_identify_holes_with_diagonal_rods(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test hole identification with diagonal rods."""
+        # Create a 100x100 frame
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # Create diagonal rods forming an X
+        infill_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 100)]),  # Bottom-left to top-right
+                start_cut_angle_deg=45.0,
+                end_cut_angle_deg=45.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (0, 100)]),  # Bottom-right to top-left
+                start_cut_angle_deg=-45.0,
+                end_cut_angle_deg=-45.0,
+                weight_kg_m=0.3,
+                layer=2,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        evaluator = QualityEvaluator(quality_evaluator_params)
+        holes = evaluator._identify_holes(infill, frame)
+
+        # X pattern creates 4 triangular holes
+        assert len(holes) == 4
+        for hole in holes:
+            assert isinstance(hole, Polygon)
+            assert hole.is_valid
+            # Each triangle has area = (100 * 100) / 4 = 2500 cm²
+            assert abs(hole.area - 2500.0) < 10.0  # Allow some tolerance for diagonal
+
+    def test_is_acceptable_rejects_large_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test that is_acceptable() rejects arrangements with holes exceeding max area."""
+        # Create evaluator with small max hole area
+        params = QualityEvaluatorParameters(
+            max_hole_area_cm2=1000.0,  # Small max area
+            hole_uniformity_weight=0.3,
+            incircle_uniformity_weight=0.2,
+            angle_distribution_weight=0.2,
+            anchor_spacing_horizontal_weight=0.15,
+            anchor_spacing_vertical_weight=0.15,
+        )
+        evaluator = QualityEvaluator(params)
+
+        # Create a 100x100 frame with one vertical rod
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # One vertical rod creates two 50x100 = 5000 cm² holes (exceeds 1000 cm²)
+        infill_rods = [
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        acceptable = evaluator.is_acceptable(infill, frame)
+
+        # Should reject because holes are too large
+        assert acceptable is False
+
+    def test_is_acceptable_accepts_small_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that is_acceptable() accepts arrangements with holes within max area."""
+        # Create evaluator with large max hole area
+        params = QualityEvaluatorParameters(
+            max_hole_area_cm2=10000.0,  # Large max area
+            hole_uniformity_weight=0.3,
+            incircle_uniformity_weight=0.2,
+            angle_distribution_weight=0.2,
+            anchor_spacing_horizontal_weight=0.15,
+            anchor_spacing_vertical_weight=0.15,
+        )
+        evaluator = QualityEvaluator(params)
+
+        # 3 vertical rods create 4 holes of 2500 cm² each (all within limit)
+        infill_rods = [
+            Rod(
+                geometry=LineString([(25, 0), (25, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(75, 0), (75, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        acceptable = evaluator.is_acceptable(infill, simple_frame)
+
+        # Should accept because all holes are within limit
         assert acceptable is True

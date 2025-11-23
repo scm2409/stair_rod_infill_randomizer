@@ -200,15 +200,18 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write basic unit tests for evaluator structure
     - _Requirements: 6.2, 6.2.1_
   
-  - [ ] 6.4 Implement hole identification
+  - [x] 6.4 Implement hole identification
     - Implement function using `shapely.node()` and `polygonize()`
     - Replace dummy implementation in QualityEvaluator
     - Write unit tests for hole identification
     - _Requirements: 6.2, 6.2.1_
   
-  - [ ] 6.5 Implement quality criteria
-    - Implement hole uniformity criterion
+  - [ ] 6.5.1 Implement quality criteria
     - Implement incircle uniformity criterion
+    - _Requirements: 6.2.1_
+
+  - [ ] 6.5.2 Implement quality criteria
+    - Implement hole uniformity criterion
     - Implement angle distribution criterion
     - Implement anchor spacing criterion
     - Replace dummy implementations in QualityEvaluator with actual criteria

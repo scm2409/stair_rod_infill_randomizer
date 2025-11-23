@@ -1,5 +1,9 @@
 """Quality Evaluator implementation."""
 
+import shapely
+from shapely.geometry import Polygon
+from shapely.ops import polygonize
+
 from railing_generator.domain.evaluators.evaluator import Evaluator
 from railing_generator.domain.evaluators.quality_evaluator_parameters import (
     QualityEvaluatorParameters,
@@ -50,12 +54,10 @@ class QualityEvaluator(Evaluator):
             Fitness score between 0.0 and 1.0 (higher is better)
 
         Note:
-            This is a dummy implementation that returns 0.5.
-            TODO(Task 6.4): Implement hole identification using shapely.node() and polygonize()
             TODO(Task 6.5): Implement actual quality criteria calculations
         """
-        # TODO(Task 6.4): Implement hole identification
-        # holes = self._identify_holes(infill, frame)
+        # Identify holes in the arrangement
+        holes = self._identify_holes(infill, frame)
 
         # TODO(Task 6.5): Implement quality criteria
         # hole_uniformity_score = self._calculate_hole_uniformity(holes)
@@ -89,53 +91,46 @@ class QualityEvaluator(Evaluator):
 
         Returns:
             True if the arrangement is acceptable, False otherwise
-
-        Note:
-            This is a dummy implementation that always returns True.
-            TODO(Task 6.4): Implement hole identification
-            TODO(Task 6.5): Check if any hole exceeds max_hole_area_cm2
         """
-        # TODO(Task 6.4): Implement hole identification
-        # holes = self._identify_holes(infill, frame)
+        # Identify holes in the arrangement
+        holes = self._identify_holes(infill, frame)
 
-        # TODO(Task 6.5): Check maximum hole area constraint
-        # for hole in holes:
-        #     if hole.area > self.params.max_hole_area_cm2:
-        #         return False
+        # Check maximum hole area constraint
+        for hole in holes:
+            if hole.area > self.params.max_hole_area_cm2:
+                return False
 
-        # Dummy implementation - accept all arrangements
         return True
 
-    # TODO(Task 6.4): Implement hole identification method
-    # def _identify_holes(
-    #     self, infill: RailingInfill, frame: RailingFrame
-    # ) -> list[Polygon]:
-    #     """
-    #     Identify all holes in the infill arrangement.
-    #
-    #     Uses shapely.node() to create a noded network (splits lines at
-    #     intersection points), then polygonize() to extract enclosed polygons.
-    #
-    #     Args:
-    #         infill: The infill arrangement
-    #         frame: The railing frame
-    #
-    #     Returns:
-    #         List of Polygon objects representing holes
-    #     """
-    #     import shapely
-    #     from shapely.ops import polygonize
-    #
-    #     # Combine all rod geometries
-    #     all_rods = [rod.geometry for rod in (frame.rods + infill.rods)]
-    #     collection = shapely.GeometryCollection(all_rods)
-    #
-    #     # Create noded network (splits at intersections)
-    #     noded = shapely.node(collection)
-    #
-    #     # Extract enclosed polygons
-    #     holes = list(polygonize(noded.geoms))
-    #     return holes
+    def _identify_holes(self, infill: RailingInfill, frame: RailingFrame) -> list[Polygon]:
+        """
+        Identify all holes in the infill arrangement.
+
+        Uses shapely.node() to create a noded network (splits lines at
+        intersection points), then polygonize() to extract enclosed polygons.
+
+        This is necessary because rods can cross each other (different layers),
+        and polygonize() requires lines to meet at endpoints. The node() function
+        adds nodes at all intersection points, creating a proper network.
+
+        Args:
+            infill: The infill arrangement
+            frame: The railing frame
+
+        Returns:
+            List of Polygon objects representing holes
+        """
+        # Combine all rod geometries (frame + infill)
+        all_rods = [rod.geometry for rod in (frame.rods + infill.rods)]
+        collection = shapely.GeometryCollection(all_rods)
+
+        # Create noded network (splits lines at intersection points)
+        # This is critical because rods can cross each other (different layers)
+        noded = shapely.node(collection)
+
+        # Extract enclosed polygons (holes)
+        holes = list(polygonize(noded.geoms))
+        return holes
 
     # TODO(Task 6.5): Implement quality criteria methods
     # def _calculate_hole_uniformity(self, holes: list[Polygon]) -> float:
