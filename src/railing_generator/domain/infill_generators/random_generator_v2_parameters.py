@@ -48,6 +48,11 @@ class RandomGeneratorDefaultsV2(InfillGeneratorDefaults, RandomGeneratorDefaults
     max_duration_sec: float = 60.0
     infill_weight_per_meter_kg_m: float = 0.3
 
+    # Evaluation loop parameters
+    max_evaluation_attempts: int = 10
+    max_evaluation_duration_sec: float = 60.0
+    min_acceptable_fitness: float = 0.7
+
     # V2-specific parameters
     min_anchor_distance_vertical_cm: float = 15.0
     min_anchor_distance_other_cm: float = 5.0
@@ -72,10 +77,25 @@ class RandomGeneratorParametersV2(InfillGeneratorParameters, RandomGeneratorPara
         ge=0, le=45, description="Max angle deviation from vertical in degrees"
     )
     num_layers: int = Field(ge=1, le=5, description="Number of layers")
-    max_iterations: int = Field(ge=1, description="Maximum iterations")
-    max_duration_sec: float = Field(gt=0, description="Maximum duration in seconds")
+    max_iterations: int = Field(ge=1, description="Maximum iterations per arrangement (inner loop)")
+    max_duration_sec: float = Field(
+        gt=0, description="Maximum duration per arrangement in seconds (inner loop)"
+    )
     infill_weight_per_meter_kg_m: float = Field(
         gt=0, description="Infill rod weight per meter in kg/m"
+    )
+
+    # Evaluation loop parameters (outer loop)
+    max_evaluation_attempts: int = Field(
+        ge=1, description="Maximum number of arrangements to generate and evaluate (outer loop)"
+    )
+    max_evaluation_duration_sec: float = Field(
+        gt=0, description="Maximum total evaluation duration in seconds (outer loop)"
+    )
+    min_acceptable_fitness: float = Field(
+        ge=0,
+        le=1,
+        description="Minimum fitness score to accept early and stop evaluation loop",
     )
 
     # V2-specific parameters
@@ -134,6 +154,9 @@ class RandomGeneratorParametersV2(InfillGeneratorParameters, RandomGeneratorPara
             max_iterations=defaults.max_iterations,
             max_duration_sec=defaults.max_duration_sec,
             infill_weight_per_meter_kg_m=defaults.infill_weight_per_meter_kg_m,
+            max_evaluation_attempts=defaults.max_evaluation_attempts,
+            max_evaluation_duration_sec=defaults.max_evaluation_duration_sec,
+            min_acceptable_fitness=defaults.min_acceptable_fitness,
             min_anchor_distance_vertical_cm=defaults.min_anchor_distance_vertical_cm,
             min_anchor_distance_other_cm=defaults.min_anchor_distance_other_cm,
             main_direction_range_min_deg=defaults.main_direction_range_min_deg,

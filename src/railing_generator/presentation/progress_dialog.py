@@ -156,10 +156,29 @@ class ProgressDialog(QDialog):
         main thread, regardless of which thread the log message
         originated from.
 
+        Limits the log to 10000 lines to prevent memory issues during
+        very long operations.
+
         Args:
             message: The formatted log message to append
         """
+        # Append the new message
         self.log_text.append(message)
+
+        # Limit to 10000 lines to prevent memory issues
+        max_lines = 10000
+        document = self.log_text.document()
+        if document.blockCount() > max_lines:
+            # Remove oldest lines (from the beginning)
+            cursor = self.log_text.textCursor()
+            cursor.movePosition(cursor.MoveOperation.Start)
+            # Select and delete excess lines
+            lines_to_remove = document.blockCount() - max_lines
+            for _ in range(lines_to_remove):
+                cursor.select(cursor.SelectionType.BlockUnderCursor)
+                cursor.movePosition(cursor.MoveOperation.NextBlock, cursor.MoveMode.KeepAnchor)
+                cursor.removeSelectedText()
+                cursor.deleteChar()  # Remove the newline
 
     def closeEvent(self, event) -> None:  # type: ignore[no-untyped-def]
         """

@@ -208,3 +208,74 @@ def test_log_signal_proxy_multiple_messages(qtbot: QtBot) -> None:
 
     # Verify all messages were received
     assert messages_received == ["Message 1", "Message 2", "Message 3"]
+
+
+def test_progress_dialog_line_limiting(qtbot: QtBot) -> None:
+    """Test that the progress dialog limits log lines to prevent memory issues."""
+    import logging
+
+    dialog = ProgressDialog()
+    qtbot.addWidget(dialog)
+
+    # Get the logger
+    logger = logging.getLogger("railing_generator.test_line_limiting")
+    original_level = logger.level
+    logger.setLevel(logging.INFO)
+
+    # Add many log messages (more than the 10000 line limit)
+    # We'll add 100 messages to test the limiting logic without taking too long
+    for i in range(100):
+        logger.info(f"Test log message {i:04d}")
+
+    # Process events to ensure all messages are handled
+    qtbot.wait(100)
+
+    # Get the document
+    document = dialog.log_text.document()
+    line_count = document.blockCount()
+
+    # With 100 messages, we should have all of them (well under the 10000 limit)
+    assert line_count <= 110, f"Expected <= 110 lines, got {line_count}"
+
+    # Verify the last message is present
+    log_text = dialog.log_text.toPlainText()
+    assert "Test log message 0099" in log_text
+
+    # Clean up
+    dialog.close()
+    logger.setLevel(original_level)
+
+
+def test_progress_dialog_line_limiting_removes_old_lines(qtbot: QtBot) -> None:
+    """Test that old lines are removed when limit is exceeded."""
+    dialog = ProgressDialog()
+    qtbot.addWidget(dialog)
+
+    # Manually set a lower limit for testing by modifying the _append_log_message behavior
+    # We'll simulate exceeding the limit by directly appending many lines
+    for i in range(10005):
+        dialog.log_text.append(f"Line {i:05d}")
+
+    # Process events
+    qtbot.wait(50)
+
+    # Now trigger the line limiting by appending via the log proxy
+    dialog.log_proxy.emit_log("Final test message")
+    qtbot.wait(50)
+
+    # Get the document
+    document = dialog.log_text.document()
+    line_count = document.blockCount()
+
+    # Should be limited to 10000 lines
+    assert line_count <= 10001, f"Expected <= 10001 lines, got {line_count}"
+
+    # The final message should still be present
+    log_text = dialog.log_text.toPlainText()
+    assert "Final test message" in log_text
+
+    # The very first lines should have been removed
+    assert "Line 00000" not in log_text
+
+    # Clean up
+    dialog.close()

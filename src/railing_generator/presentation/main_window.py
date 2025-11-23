@@ -55,7 +55,8 @@ class MainWindow(QMainWindow):
 
         # Create parameter panel (left side)
         self.parameter_panel = ParameterPanel(project_model, controller)
-        self.parameter_panel.setMaximumWidth(350)
+        self.parameter_panel.setMinimumWidth(450)  # Ensure panel is wide enough
+        self.parameter_panel.setMaximumWidth(450)  # Fixed width to accommodate all parameters
         layout.addWidget(self.parameter_panel)
 
         # Create viewport (right side, pass model for observation)

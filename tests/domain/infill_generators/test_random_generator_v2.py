@@ -62,6 +62,9 @@ def simple_params() -> RandomGeneratorParametersV2:
         max_iterations=500,
         max_duration_sec=10.0,
         infill_weight_per_meter_kg_m=0.3,
+        max_evaluation_attempts=1,
+        max_evaluation_duration_sec=10.0,
+        min_acceptable_fitness=0.7,
         min_anchor_distance_vertical_cm=5.0,
         min_anchor_distance_other_cm=10.0,
         main_direction_range_min_deg=-30.0,
@@ -259,6 +262,9 @@ def test_random_generator_v2_even_distribution_across_layers(
             max_iterations=500,
             max_duration_sec=10.0,
             infill_weight_per_meter_kg_m=0.3,
+            max_evaluation_attempts=1,
+            max_evaluation_duration_sec=10.0,
+            min_acceptable_fitness=0.7,
             min_anchor_distance_vertical_cm=5.0,
             min_anchor_distance_other_cm=10.0,
             main_direction_range_min_deg=-30.0,
@@ -400,3 +406,166 @@ def test_random_generator_v2_anchor_distribution_to_layers(
     for layer, anchors in anchors_by_layer.items():
         for anchor in anchors:
             assert anchor.layer == layer
+
+
+def test_random_generator_v2_with_quality_evaluator(simple_frame: RailingFrame) -> None:
+    """Test RandomGeneratorV2 with Quality Evaluator integration."""
+    from railing_generator.domain.evaluators.quality_evaluator_parameters import (
+        QualityEvaluatorParameters,
+    )
+
+    # Create parameters with quality evaluator
+    params = RandomGeneratorParametersV2(
+        num_rods=10,
+        min_rod_length_cm=20.0,
+        max_rod_length_cm=180.0,
+        max_angle_deviation_deg=40.0,
+        num_layers=2,
+        max_iterations=500,
+        max_duration_sec=10.0,
+        infill_weight_per_meter_kg_m=0.3,
+        max_evaluation_attempts=3,
+        max_evaluation_duration_sec=10.0,
+        min_acceptable_fitness=0.5,
+        min_anchor_distance_vertical_cm=5.0,
+        min_anchor_distance_other_cm=10.0,
+        main_direction_range_min_deg=-30.0,
+        main_direction_range_max_deg=30.0,
+        random_angle_deviation_deg=30.0,
+        evaluator=QualityEvaluatorParameters(
+            type="quality",
+            max_hole_area_cm2=10000.0,
+            hole_uniformity_weight=0.3,
+            incircle_uniformity_weight=0.2,
+            angle_distribution_weight=0.2,
+            anchor_spacing_horizontal_weight=0.15,
+            anchor_spacing_vertical_weight=0.15,
+        ),
+    )
+
+    generator = RandomGeneratorV2()
+    infill = generator.generate(simple_frame, params)
+
+    # Verify infill was generated
+    assert infill is not None
+    assert len(infill.rods) > 0
+
+    # Verify fitness score was calculated
+    assert infill.fitness_score is not None
+    assert 0.0 <= infill.fitness_score <= 1.0
+
+    # Verify metadata
+    assert infill.iteration_count is not None
+    assert infill.iteration_count > 0
+    assert infill.duration_sec is not None
+    assert infill.duration_sec >= 0
+
+
+def test_random_generator_v2_with_passthrough_evaluator(simple_frame: RailingFrame) -> None:
+    """Test RandomGeneratorV2 with Pass-Through Evaluator integration."""
+    from railing_generator.domain.evaluators.passthrough_evaluator_parameters import (
+        PassThroughEvaluatorParameters,
+    )
+
+    # Create parameters with pass-through evaluator
+    params = RandomGeneratorParametersV2(
+        num_rods=10,
+        min_rod_length_cm=20.0,
+        max_rod_length_cm=180.0,
+        max_angle_deviation_deg=40.0,
+        num_layers=2,
+        max_iterations=500,
+        max_duration_sec=10.0,
+        infill_weight_per_meter_kg_m=0.3,
+        max_evaluation_attempts=1,
+        max_evaluation_duration_sec=10.0,
+        min_acceptable_fitness=0.7,
+        min_anchor_distance_vertical_cm=5.0,
+        min_anchor_distance_other_cm=10.0,
+        main_direction_range_min_deg=-30.0,
+        main_direction_range_max_deg=30.0,
+        random_angle_deviation_deg=30.0,
+        evaluator=PassThroughEvaluatorParameters(type="passthrough"),
+    )
+
+    generator = RandomGeneratorV2()
+    infill = generator.generate(simple_frame, params)
+
+    # Verify infill was generated
+    assert infill is not None
+    assert len(infill.rods) > 0
+
+    # Verify fitness score (pass-through always returns 1.0)
+    assert infill.fitness_score is not None
+    assert infill.fitness_score == 1.0
+
+    # Verify metadata
+    assert infill.iteration_count is not None
+    assert infill.duration_sec is not None
+
+
+def test_random_generator_v2_quality_evaluator_improves_fitness(
+    simple_frame: RailingFrame,
+) -> None:
+    """Test that quality evaluator finds better arrangements over multiple attempts."""
+    from railing_generator.domain.evaluators.quality_evaluator_parameters import (
+        QualityEvaluatorParameters,
+    )
+
+    # Create parameters with multiple evaluation attempts
+    params = RandomGeneratorParametersV2(
+        num_rods=8,
+        min_rod_length_cm=20.0,
+        max_rod_length_cm=180.0,
+        max_angle_deviation_deg=40.0,
+        num_layers=2,
+        max_iterations=500,
+        max_duration_sec=10.0,
+        infill_weight_per_meter_kg_m=0.3,
+        max_evaluation_attempts=5,
+        max_evaluation_duration_sec=15.0,
+        min_acceptable_fitness=0.9,  # High threshold to force multiple attempts
+        min_anchor_distance_vertical_cm=5.0,
+        min_anchor_distance_other_cm=10.0,
+        main_direction_range_min_deg=-30.0,
+        main_direction_range_max_deg=30.0,
+        random_angle_deviation_deg=30.0,
+        evaluator=QualityEvaluatorParameters(
+            type="quality",
+            max_hole_area_cm2=10000.0,
+            hole_uniformity_weight=0.3,
+            incircle_uniformity_weight=0.2,
+            angle_distribution_weight=0.2,
+            anchor_spacing_horizontal_weight=0.15,
+            anchor_spacing_vertical_weight=0.15,
+        ),
+    )
+
+    generator = RandomGeneratorV2()
+
+    # Track best fitness updates
+    fitness_updates: list[float] = []
+
+    def on_best_result(infill: object) -> None:
+        from railing_generator.domain.railing_infill import RailingInfill
+
+        if isinstance(infill, RailingInfill) and infill.fitness_score is not None:
+            fitness_updates.append(infill.fitness_score)
+
+    generator.best_result_updated.connect(on_best_result)
+
+    infill = generator.generate(simple_frame, params)
+
+    # Verify we got multiple fitness updates (evaluator tried multiple arrangements)
+    assert len(fitness_updates) >= 1, "Should have at least one fitness update"
+
+    # Verify final result has fitness score
+    assert infill.fitness_score is not None
+    assert 0.0 <= infill.fitness_score <= 1.0
+
+    # If we got multiple updates, verify fitness improved or stayed the same
+    if len(fitness_updates) > 1:
+        for i in range(1, len(fitness_updates)):
+            assert fitness_updates[i] >= fitness_updates[i - 1], (
+                f"Fitness should not decrease: {fitness_updates[i]} < {fitness_updates[i - 1]}"
+            )

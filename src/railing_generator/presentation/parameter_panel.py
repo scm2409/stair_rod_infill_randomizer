@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -69,26 +70,45 @@ class ParameterPanel(QWidget):
 
     def _create_ui(self) -> None:
         """Create the UI layout and widgets."""
-        layout = QVBoxLayout(self)
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        # Main layout for the panel
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create scroll area
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Create content widget for scroll area
+        content_widget = QWidget()
+        content_widget.setMinimumWidth(430)  # Ensure content isn't cut off (450px panel - margins)
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # Shape configuration group
         shape_group = self._create_shape_group()
-        layout.addWidget(shape_group)
+        content_layout.addWidget(shape_group)
 
         # Update Shape button
         self.update_shape_button = QPushButton("Update Shape")
         self.update_shape_button.clicked.connect(self._on_update_shape_clicked)
-        layout.addWidget(self.update_shape_button)
+        content_layout.addWidget(self.update_shape_button)
 
         # Generator configuration group
         generator_group = self._create_generator_group()
-        layout.addWidget(generator_group)
+        content_layout.addWidget(generator_group)
 
         # Generate Infill button
         self.generate_infill_button = QPushButton("Generate Infill")
         self.generate_infill_button.clicked.connect(self._on_generate_infill_clicked)
-        layout.addWidget(self.generate_infill_button)
+        content_layout.addWidget(self.generate_infill_button)
+
+        # Set content widget to scroll area
+        scroll_area.setWidget(content_widget)
+
+        # Add scroll area to main layout
+        main_layout.addWidget(scroll_area)
 
     def _create_shape_group(self) -> QGroupBox:
         """Create the shape configuration group box."""

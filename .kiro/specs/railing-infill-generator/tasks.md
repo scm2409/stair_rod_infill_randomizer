@@ -197,6 +197,8 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Add TODO comments for hole identification and quality criteria implementations
     - Create conf/evaluators/quality.yaml config
     - Register QualityEvaluator in EvaluatorFactory
+    - Add evaluator_type dropdown to parameter panel
+    - Add quality criteria parameter inputs (shown when quality evaluator selected)
     - Write basic unit tests for evaluator structure
     - _Requirements: 6.2, 6.2.1_
   
@@ -210,16 +212,14 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Implement incircle uniformity criterion
     - _Requirements: 6.2.1_
 
-  - [ ] 6.6 Enable Quality Evaluator in RandomGeneratorV2
-    - Add evaluator_type dropdown to parameter panel
-    - Add quality criteria parameter inputs (shown when quality evaluator selected)
-    - Update progress dialog to show fitness score
+  - [x] 6.6 Enable Quality Evaluator in RandomGeneratorV2
+    - Update log to output highest fitness score if new highest fintness score is found
     - Update conf/generators/random_v2.yaml to support evaluator_type: "quality"
     - **VISUAL MILESTONE**: See quality improving over iterations in V2! 🎉
     - Write integration tests (generator V2 with quality evaluator)
     - _Requirements: 1.1, 6.2, 6.3, 9.1.1_
 
-  - [ ] 6.6.1 Implement quality criteria
+  - [ ] 6.7 Implement quality criteria
     - Implement hole uniformity criterion
     - Implement angle distribution criterion
     - Implement anchor spacing criterion
@@ -227,7 +227,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for each criterion
     - _Requirements: 6.2.1_
     
-  - [ ]* 6.7 Optionally add evaluator support to RandomGeneratorV1
+  - [ ]* 6.8 Optionally add evaluator support to RandomGeneratorV1
     - Update RandomGeneratorV1 to optionally accept evaluator parameter
     - Update RandomGeneratorV1Parameters to include optional evaluator_type field
     - Update conf/generators/random_v1.yaml to support evaluator_type (optional)

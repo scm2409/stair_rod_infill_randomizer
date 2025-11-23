@@ -85,8 +85,8 @@ class QualityEvaluator(Evaluator):
         Check if an infill arrangement meets minimum acceptance criteria.
 
         Verifies that the arrangement satisfies hard constraints like
-        maximum hole area. This is used to reject invalid arrangements
-        before detailed fitness scoring.
+        maximum hole area and completeness. This is used to reject invalid
+        arrangements before detailed fitness scoring.
 
         Args:
             infill: The infill arrangement to check
@@ -95,6 +95,10 @@ class QualityEvaluator(Evaluator):
         Returns:
             True if the arrangement is acceptable, False otherwise
         """
+        # Reject incomplete infills (not all requested rods were generated)
+        if not infill.is_complete:
+            return False
+
         # Identify holes in the arrangement
         holes = self._identify_holes(infill, frame)
 

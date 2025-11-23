@@ -448,7 +448,35 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
         self.form_layout.addRow("Max Duration:", max_duration_spin)
         self.field_widgets["max_duration_sec"] = max_duration_spin
 
+        # Evaluation loop parameters
+        self.form_layout.addRow(QLabel())  # Spacer
+        evaluation_label = QLabel("<b>Evaluation Loop (Outer Loop)</b>")
+        self.form_layout.addRow(evaluation_label)
+
+        # Max evaluation attempts
+        max_eval_attempts_spin = QSpinBox()
+        max_eval_attempts_spin.setRange(1, 100000)
+        self.form_layout.addRow("Max Evaluation Attempts:", max_eval_attempts_spin)
+        self.field_widgets["max_evaluation_attempts"] = max_eval_attempts_spin
+
+        # Max evaluation duration
+        max_eval_duration_spin = QDoubleSpinBox()
+        max_eval_duration_spin.setRange(1, 36000.0)
+        max_eval_duration_spin.setSuffix(" sec")
+        max_eval_duration_spin.setDecimals(0)
+        self.form_layout.addRow("Max Evaluation Duration:", max_eval_duration_spin)
+        self.field_widgets["max_evaluation_duration_sec"] = max_eval_duration_spin
+
+        # Min acceptable fitness
+        min_fitness_spin = QDoubleSpinBox()
+        min_fitness_spin.setRange(0.0, 1.0)
+        min_fitness_spin.setDecimals(2)
+        min_fitness_spin.setSingleStep(0.05)
+        self.form_layout.addRow("Min Acceptable Fitness:", min_fitness_spin)
+        self.field_widgets["min_acceptable_fitness"] = min_fitness_spin
+
         # Infill weight per meter
+        self.form_layout.addRow(QLabel())  # Spacer
         infill_weight_spin = QDoubleSpinBox()
         infill_weight_spin.setRange(0.01, 10.0)
         infill_weight_spin.setSuffix(" kg/m")
@@ -549,6 +577,18 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
         assert isinstance(max_duration, QDoubleSpinBox)
         max_duration.setValue(self._defaults.max_duration_sec)
 
+        max_eval_attempts = self.field_widgets["max_evaluation_attempts"]
+        assert isinstance(max_eval_attempts, QSpinBox)
+        max_eval_attempts.setValue(self._defaults.max_evaluation_attempts)
+
+        max_eval_duration = self.field_widgets["max_evaluation_duration_sec"]
+        assert isinstance(max_eval_duration, QDoubleSpinBox)
+        max_eval_duration.setValue(self._defaults.max_evaluation_duration_sec)
+
+        min_fitness = self.field_widgets["min_acceptable_fitness"]
+        assert isinstance(min_fitness, QDoubleSpinBox)
+        min_fitness.setValue(self._defaults.min_acceptable_fitness)
+
         infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
         assert isinstance(infill_weight, QDoubleSpinBox)
         infill_weight.setValue(self._defaults.infill_weight_per_meter_kg_m)
@@ -613,6 +653,16 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
 
         evaluator_params_typed = cast(EvaluatorParametersUnion, evaluator_params)
 
+        # Get evaluation loop parameters
+        max_eval_attempts = self.field_widgets["max_evaluation_attempts"]
+        assert isinstance(max_eval_attempts, QSpinBox)
+
+        max_eval_duration = self.field_widgets["max_evaluation_duration_sec"]
+        assert isinstance(max_eval_duration, QDoubleSpinBox)
+
+        min_fitness = self.field_widgets["min_acceptable_fitness"]
+        assert isinstance(min_fitness, QDoubleSpinBox)
+
         return RandomGeneratorParametersV2(
             num_rods=num_rods.value(),
             min_rod_length_cm=min_rod_length.value(),
@@ -626,6 +676,9 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
             random_angle_deviation_deg=random_angle_deviation.value(),
             max_iterations=max_iterations.value(),
             max_duration_sec=max_duration.value(),
+            max_evaluation_attempts=max_eval_attempts.value(),
+            max_evaluation_duration_sec=max_eval_duration.value(),
+            min_acceptable_fitness=min_fitness.value(),
             infill_weight_per_meter_kg_m=infill_weight.value(),
             evaluator=evaluator_params_typed,  # Nested evaluator parameters
         )

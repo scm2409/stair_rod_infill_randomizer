@@ -174,6 +174,9 @@ class ApplicationController(QObject):
         if self._generation_thread is not None and self._generation_thread.isRunning():
             raise RuntimeError("Generation already in progress")
 
+        # Clear current infill before starting new generation
+        self.project_model.set_railing_infill(None)
+
         # Get the current frame
         frame = self.project_model.railing_frame
 

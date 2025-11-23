@@ -196,3 +196,29 @@ def test_passthrough_evaluator_parameters_validation() -> None:
     params_from_empty = PassThroughEvaluatorParameters.model_validate({})
     assert params_from_empty is not None
     assert params_from_empty.type == "passthrough"
+
+
+def test_passthrough_evaluator_accepts_incomplete_infill(
+    passthrough_evaluator: PassThroughEvaluator, sample_frame: RailingFrame
+) -> None:
+    """Test that PassThroughEvaluator accepts incomplete infills."""
+    # Create an incomplete infill (is_complete=False)
+    incomplete_infill = RailingInfill(
+        rods=[
+            Rod(
+                geometry=LineString([(25, 0), (25, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ],
+        is_complete=False,
+    )
+
+    # PassThroughEvaluator should still accept incomplete infills
+    fitness = passthrough_evaluator.evaluate(incomplete_infill, sample_frame)
+    assert fitness == 1.0
+
+    acceptable = passthrough_evaluator.is_acceptable(incomplete_infill, sample_frame)
+    assert acceptable is True

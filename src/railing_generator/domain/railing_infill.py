@@ -32,6 +32,10 @@ class RailingInfill(BaseModel):
         default=None,
         description="Optional anchor points used during generation",
     )
+    is_complete: bool = Field(
+        default=True,
+        description="Whether all requested rods were successfully generated",
+    )
 
     model_config = {"frozen": True}
 

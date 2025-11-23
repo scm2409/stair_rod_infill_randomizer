@@ -92,142 +92,228 @@ class RandomGeneratorV2(Generator):
         import time
 
         start_time = time.time()
-        all_rods: list[Rod] = []
-        total_iterations = 0
+
+        # Evaluation loop: generate multiple arrangements and keep the best
+        best_infill: RailingInfill | None = None
+        best_fitness: float = -1.0
+        evaluation_attempt = 0
 
         try:
-            # Phase 1: Generate anchor points
-            anchor_points_by_segment = self._generate_anchor_points_by_frame_segment(frame, params)
-
-            # Phase 2: Distribute anchors to layers
-            anchors_by_layer = self._distribute_anchors_to_layers(
-                anchor_points_by_segment, params.num_layers
-            )
-
-            # Collect all anchor points for visualization
-            anchor_points_for_infill: list[AnchorPoint] = []
-            for anchors in anchors_by_layer.values():
-                anchor_points_for_infill.extend(anchors)
-
-            # Phase 3: Calculate layer main directions
-            layer_main_directions = self._calculate_layer_main_directions(
-                params.num_layers,
-                params.main_direction_range_min_deg,
-                params.main_direction_range_max_deg,
-            )
-
-            # Phase 4: Generate rods layer by layer
-            for layer_num in range(1, params.num_layers + 1):
-                # Check cancellation
-                if self.is_cancelled():
-                    elapsed = time.time() - start_time
-                    infill = RailingInfill(
-                        rods=all_rods,
-                        fitness_score=None,
-                        iteration_count=total_iterations,
-                        duration_sec=elapsed,
-                        anchor_points=anchor_points_for_infill,
-                    )
-                    self.statistics.rods_created = len(all_rods)
-                    self.statistics.iterations_used = total_iterations
-                    self.statistics.duration_sec = elapsed
-                    logger.info(
-                        f"Generation cancelled with {len(all_rods)} rods:\n{self.statistics}"
-                    )
-                    self.generation_completed.emit(infill)
-                    return infill
-
-                # Check duration limit
-                elapsed = time.time() - start_time
-                if elapsed > params.max_duration_sec:
-                    infill = RailingInfill(
-                        rods=all_rods,
-                        fitness_score=None,
-                        iteration_count=total_iterations,
-                        duration_sec=elapsed,
-                        anchor_points=anchor_points_for_infill,
-                    )
-                    self.statistics.rods_created = len(all_rods)
-                    self.statistics.iterations_used = total_iterations
-                    self.statistics.duration_sec = elapsed
-                    logger.info(f"Generation timeout with {len(all_rods)} rods:\n{self.statistics}")
-                    self.generation_completed.emit(infill)
-                    return infill
-
-                layer_rods, layer_iterations = self._generate_layer_rods(
-                    layer_num=layer_num,
-                    available_anchors=anchors_by_layer[layer_num],
-                    main_direction=layer_main_directions[layer_num],
-                    frame=frame,
-                    params=params,
-                    existing_rods=all_rods,
+            while evaluation_attempt < params.max_evaluation_attempts:
+                evaluation_attempt += 1
+                logger.debug(
+                    f"Evaluation attempt {evaluation_attempt}/{params.max_evaluation_attempts}"
                 )
 
-                all_rods.extend(layer_rods)
-                total_iterations += layer_iterations
+                # Check cancellation
+                if self.is_cancelled():
+                    if best_infill is not None and self.evaluator.is_acceptable(best_infill, frame):
+                        logger.info(
+                            f"Generation cancelled, returning best acceptable result (fitness: {best_fitness:.3f}):\n{self.statistics}"
+                        )
+                        self.generation_completed.emit(best_infill)
+                        return best_infill
+                    raise RuntimeError(
+                        "Generation cancelled before any acceptable result"
+                        if best_infill is not None
+                        else "Generation cancelled before any valid result"
+                    )
+
+                # Check evaluation duration limit
+                elapsed = time.time() - start_time
+                if elapsed > params.max_evaluation_duration_sec:
+                    if best_infill is not None and self.evaluator.is_acceptable(best_infill, frame):
+                        logger.info(
+                            f"Evaluation timeout, returning best acceptable result (fitness: {best_fitness:.3f}):\n{self.statistics}"
+                        )
+                        self.generation_completed.emit(best_infill)
+                        return best_infill
+                    raise RuntimeError(
+                        "Evaluation timeout before any acceptable result"
+                        if best_infill is not None
+                        else "Evaluation timeout before any valid result"
+                    )
+
+                # Generate one complete arrangement
+                logger.info(f"Generating arrangement for attempt {evaluation_attempt}")
+                infill = self._generate_single_arrangement(frame, params)
+
+                # Check if arrangement is acceptable (e.g., complete, meets constraints)
+                if not self.evaluator.is_acceptable(infill, frame):
+                    logger.info(
+                        f"Arrangement rejected by evaluator (attempt {evaluation_attempt}/{params.max_evaluation_attempts}, incomplete={not infill.is_complete})"
+                    )
+                    continue  # Skip this arrangement and try again
+
+                # Evaluate fitness
+                fitness = self.evaluator.evaluate(infill, frame)
+
+                # Update infill with fitness score
+                infill = RailingInfill(
+                    rods=infill.rods,
+                    fitness_score=fitness,
+                    iteration_count=infill.iteration_count,
+                    duration_sec=infill.duration_sec,
+                    anchor_points=infill.anchor_points,
+                    is_complete=infill.is_complete,
+                )
+
+                # Check if this is the best arrangement so far
+                if fitness > best_fitness:
+                    best_fitness = fitness
+                    best_infill = infill
+
+                    # Log new best fitness
+                    logger.info(
+                        f"New best fitness: {best_fitness:.3f} (attempt {evaluation_attempt}/{params.max_evaluation_attempts})"
+                    )
+
+                    # Emit best result update
+                    self.best_result_updated.emit(infill)
 
                 # Emit progress
+                elapsed = time.time() - start_time
                 self.progress_updated.emit(
                     {
-                        "iteration": total_iterations,
-                        "best_fitness": None,
+                        "iteration": evaluation_attempt,
+                        "best_fitness": best_fitness,
                         "elapsed_sec": elapsed,
                     }
                 )
 
-                # Check iteration limit
-                if total_iterations >= params.max_iterations:
+                # Check if fitness is acceptable (early exit)
+                if fitness >= params.min_acceptable_fitness:
+                    logger.info(
+                        f"Acceptable fitness reached: {fitness:.3f} >= {params.min_acceptable_fitness:.3f}"
+                    )
                     break
 
-            # Create result
-            elapsed = time.time() - start_time
-            infill = RailingInfill(
-                rods=all_rods,
-                fitness_score=None,  # No fitness evaluation in v2
-                iteration_count=total_iterations,
-                duration_sec=elapsed,
-                anchor_points=anchor_points_for_infill,
-            )
+            # Return best result
+            if best_infill is None:
+                raise RuntimeError("Failed to generate any valid arrangement")
+
+            # Check if best result is acceptable
+            if not self.evaluator.is_acceptable(best_infill, frame):
+                error_msg = (
+                    f"Failed to generate acceptable arrangement after {evaluation_attempt} attempts. "
+                    f"Best result was incomplete or did not meet quality criteria."
+                )
+                logger.error(error_msg)
+                self.generation_failed.emit(error_msg)
+                raise RuntimeError(error_msg)
 
             # Update statistics
-            self.statistics.rods_created = len(all_rods)
-            self.statistics.iterations_used = total_iterations
-            self.statistics.duration_sec = elapsed
+            self.statistics.rods_created = len(best_infill.rods)
+            self.statistics.iterations_used = evaluation_attempt
+            self.statistics.duration_sec = time.time() - start_time
 
             # Log final statistics
-            logger.info(f"Generation complete:\n{self.statistics}")
+            logger.info(f"Generation complete with fitness {best_fitness:.3f}:\n{self.statistics}")
 
-            # Emit signals
-            self.best_result_updated.emit(infill)
-            self.generation_completed.emit(infill)
+            # Emit completion signal
+            self.generation_completed.emit(best_infill)
 
-            return infill
+            return best_infill
 
         except Exception as e:
-            # Return partial results even on failure
-            elapsed = time.time() - start_time
-            if all_rods:
-                infill = RailingInfill(
-                    rods=all_rods,
-                    fitness_score=None,
-                    iteration_count=total_iterations,
-                    duration_sec=elapsed,
-                    anchor_points=anchor_points_for_infill
-                    if "anchor_points_for_infill" in locals()
-                    else None,
+            # Return best result if available AND acceptable
+            if best_infill is not None and self.evaluator.is_acceptable(best_infill, frame):
+                logger.error(
+                    f"Generation failed but returning best acceptable result (fitness: {best_fitness:.3f}): {str(e)}\n{self.statistics}"
                 )
-                self.statistics.rods_created = len(all_rods)
-                self.statistics.iterations_used = total_iterations
-                self.statistics.duration_sec = elapsed
-                error_msg = f"Generation failed with {len(all_rods)} partial rods: {str(e)}"
-                logger.error(f"{error_msg}\n{self.statistics}")
-                self.generation_completed.emit(infill)
-                return infill
+                self.generation_completed.emit(best_infill)
+                return best_infill
 
             error_msg = f"Generation failed: {str(e)}"
             logger.error(error_msg)
             self.generation_failed.emit(error_msg)
             raise RuntimeError(error_msg) from e
+
+    def _generate_single_arrangement(
+        self, frame: RailingFrame, params: RandomGeneratorParametersV2
+    ) -> RailingInfill:
+        """
+        Generate a single infill arrangement.
+
+        Args:
+            frame: The railing frame defining the boundary
+            params: Generation parameters
+
+        Returns:
+            RailingInfill with generated rods (fitness_score will be None)
+
+        Raises:
+            RuntimeError: If generation is cancelled
+        """
+        import time
+
+        # Start time for THIS arrangement only
+        start_time = time.time()
+
+        all_rods: list[Rod] = []
+        total_iterations = 0
+
+        # Phase 1: Generate anchor points
+        anchor_points_by_segment = self._generate_anchor_points_by_frame_segment(frame, params)
+
+        # Phase 2: Distribute anchors to layers
+        anchors_by_layer = self._distribute_anchors_to_layers(
+            anchor_points_by_segment, params.num_layers
+        )
+
+        # Collect all anchor points for visualization
+        anchor_points_for_infill: list[AnchorPoint] = []
+        for anchors in anchors_by_layer.values():
+            anchor_points_for_infill.extend(anchors)
+
+        # Phase 3: Calculate layer main directions
+        layer_main_directions = self._calculate_layer_main_directions(
+            params.num_layers,
+            params.main_direction_range_min_deg,
+            params.main_direction_range_max_deg,
+        )
+
+        # Phase 4: Generate rods layer by layer
+        for layer_num in range(1, params.num_layers + 1):
+            # Check cancellation
+            if self.is_cancelled():
+                raise RuntimeError("Generation cancelled")
+
+            # Check duration limit (per-arrangement)
+            elapsed_arrangement = time.time() - start_time
+            if elapsed_arrangement > params.max_duration_sec:
+                # This arrangement took too long, return what we have
+                break
+
+            layer_rods, layer_iterations = self._generate_layer_rods(
+                layer_num=layer_num,
+                available_anchors=anchors_by_layer[layer_num],
+                main_direction=layer_main_directions[layer_num],
+                frame=frame,
+                params=params,
+                existing_rods=all_rods,
+            )
+
+            all_rods.extend(layer_rods)
+            total_iterations += layer_iterations
+
+            # Check iteration limit (per-arrangement)
+            if total_iterations >= params.max_iterations:
+                break
+
+        # Check if arrangement is complete (all requested rods generated)
+        is_complete = len(all_rods) == params.num_rods
+
+        # Create infill result for this arrangement
+        elapsed = time.time() - start_time
+        return RailingInfill(
+            rods=all_rods,
+            fitness_score=None,  # Will be set by caller after evaluation
+            iteration_count=total_iterations,
+            duration_sec=elapsed,
+            anchor_points=anchor_points_for_infill,
+            is_complete=is_complete,
+        )
 
     def _classify_frame_segment(self, frame_rod: Rod) -> bool:
         """

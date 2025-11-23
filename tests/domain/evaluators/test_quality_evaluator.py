@@ -878,3 +878,57 @@ class TestIncircleUniformity:
         # Should get lower score for non-uniform arrangement
         assert fitness < 0.9
         assert fitness > 0.0
+
+
+class TestIncompleteInfillHandling:
+    """Tests for handling incomplete infills."""
+
+    def test_is_acceptable_rejects_incomplete_infill(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that is_acceptable() rejects incomplete infills."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create an incomplete infill (is_complete=False)
+        incomplete_infill = RailingInfill(
+            rods=[
+                Rod(
+                    geometry=LineString([(25, 0), (25, 100)]),
+                    start_cut_angle_deg=0.0,
+                    end_cut_angle_deg=0.0,
+                    weight_kg_m=0.3,
+                    layer=1,
+                ),
+            ],
+            is_complete=False,
+        )
+
+        acceptable = evaluator.is_acceptable(incomplete_infill, simple_frame)
+
+        # Should reject incomplete infills
+        assert acceptable is False
+
+    def test_is_acceptable_accepts_complete_infill(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that is_acceptable() accepts complete infills."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create a complete infill (is_complete=True, which is the default)
+        complete_infill = RailingInfill(
+            rods=[
+                Rod(
+                    geometry=LineString([(25, 0), (25, 100)]),
+                    start_cut_angle_deg=0.0,
+                    end_cut_angle_deg=0.0,
+                    weight_kg_m=0.3,
+                    layer=1,
+                ),
+            ],
+            is_complete=True,
+        )
+
+        acceptable = evaluator.is_acceptable(complete_infill, simple_frame)
+
+        # Should accept complete infills (assuming no other constraints violated)
+        assert acceptable is True
