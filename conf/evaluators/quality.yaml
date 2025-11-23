@@ -1,0 +1,12 @@
+# Quality Evaluator Configuration
+#
+# The Quality Evaluator uses multiple weighted criteria to assess
+# infill arrangement quality. It provides detailed fitness scoring
+# for optimization and rejects arrangements that exceed maximum hole area.
+#
+# Parameters:
+#   - max_hole_area_cm2: Maximum allowed hole area in square centimeters
+#     Any arrangement with a hole larger than this will be rejected.
+#     Default: 10000.0 cm² (100cm x 100cm)
+
+max_hole_area_cm2: 10000.0

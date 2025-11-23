@@ -6,6 +6,10 @@ from railing_generator.domain.evaluators.passthrough_evaluator import PassThroug
 from railing_generator.domain.evaluators.passthrough_evaluator_parameters import (
     PassThroughEvaluatorParameters,
 )
+from railing_generator.domain.evaluators.quality_evaluator import QualityEvaluator
+from railing_generator.domain.evaluators.quality_evaluator_parameters import (
+    QualityEvaluatorParameters,
+)
 
 
 class EvaluatorFactory:
@@ -18,7 +22,8 @@ class EvaluatorFactory:
 
     Supported evaluator types:
         - PassThroughEvaluatorParameters: Creates PassThroughEvaluator
-        - Future: QualityEvaluatorParameters, custom evaluators
+        - QualityEvaluatorParameters: Creates QualityEvaluator
+        - Future: Custom evaluators
 
     Example:
         >>> params = PassThroughEvaluatorParameters()
@@ -44,9 +49,9 @@ class EvaluatorFactory:
         """
         if isinstance(params, PassThroughEvaluatorParameters):
             return PassThroughEvaluator(params)
+        elif isinstance(params, QualityEvaluatorParameters):
+            return QualityEvaluator(params)
 
         # Future evaluator types will be added here
-        # elif isinstance(params, QualityEvaluatorParameters):
-        #     return QualityEvaluator(params)
 
         raise ValueError(f"Unknown evaluator parameter type: {type(params).__name__}")
