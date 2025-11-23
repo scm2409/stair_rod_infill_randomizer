@@ -183,10 +183,16 @@ def test_passthrough_evaluator_parameters_validation() -> None:
     params = PassThroughEvaluatorParameters()
     assert params is not None
 
-    # Should serialize to empty dict
+    # Should serialize with type discriminator
     params_dict = params.model_dump()
-    assert params_dict == {}
+    assert params_dict == {"type": "passthrough"}
 
-    # Should deserialize from empty dict
-    params_from_dict = PassThroughEvaluatorParameters.model_validate({})
+    # Should deserialize from dict with type
+    params_from_dict = PassThroughEvaluatorParameters.model_validate({"type": "passthrough"})
     assert params_from_dict is not None
+    assert params_from_dict.type == "passthrough"
+
+    # Should also work with empty dict (type has default)
+    params_from_empty = PassThroughEvaluatorParameters.model_validate({})
+    assert params_from_empty is not None
+    assert params_from_empty.type == "passthrough"

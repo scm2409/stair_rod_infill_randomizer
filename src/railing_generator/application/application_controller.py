@@ -28,7 +28,10 @@ class GenerationWorker(QObject):
     """
 
     def __init__(
-        self, generator: Generator, frame: RailingFrame, params: InfillGeneratorParameters
+        self,
+        generator: Generator,
+        frame: RailingFrame,
+        params: InfillGeneratorParameters,
     ):
         """
         Initialize the generation worker.
@@ -36,7 +39,7 @@ class GenerationWorker(QObject):
         Args:
             generator: The generator instance to run
             frame: The railing frame to generate infill for
-            params: The generation parameters
+            params: The generation parameters (includes nested evaluator params)
         """
         super().__init__()
         self.generator = generator
@@ -53,6 +56,7 @@ class GenerationWorker(QObject):
         The generator emits signals directly (Qt handles thread safety).
         """
         try:
+            # Generator creates its own evaluator from params
             self.generator.generate(self.frame, self.params)
         except Exception as e:
             # Emit failure signal from generator
@@ -181,6 +185,7 @@ class ApplicationController(QObject):
         self.project_model.set_infill_generator_parameters(parameters)
 
         # Create generator instance (in main thread)
+        # Generator will create its own evaluator from nested parameters
         generator = GeneratorFactory.create_generator(generator_type, parameters)
         self._current_generator = generator
 

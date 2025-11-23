@@ -16,3 +16,5 @@ min_anchor_distance_other_cm: 10.0
 main_direction_range_min_deg: -30.0
 main_direction_range_max_deg: 30.0
 random_angle_deviation_deg: 30.0
+
+# Note: Evaluator parameters are nested in the parameters object, not in config defaults

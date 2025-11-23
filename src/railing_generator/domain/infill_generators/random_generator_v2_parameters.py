@@ -1,10 +1,15 @@
 """Parameters for the random infill generator v2."""
 
 from dataclasses import dataclass
+from typing import Union
 
 from pydantic import Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
+from railing_generator.domain.evaluators.evaluator_parameters import EvaluatorParameters
+from railing_generator.domain.evaluators.passthrough_evaluator_parameters import (
+    PassThroughEvaluatorParameters,
+)
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorDefaults,
     InfillGeneratorParameters,
@@ -13,6 +18,13 @@ from railing_generator.domain.infill_generators.random_generator_parameters impo
     RandomGeneratorDefaultsBase,
     RandomGeneratorParametersBase,
 )
+
+# Discriminated union for evaluator parameters
+# Pydantic will automatically select the correct type based on the 'type' field
+EvaluatorParametersUnion = Union[
+    PassThroughEvaluatorParameters,
+    # Future: QualityEvaluatorParameters,
+]
 
 
 @dataclass
@@ -39,6 +51,7 @@ class RandomGeneratorDefaultsV2(InfillGeneratorDefaults, RandomGeneratorDefaults
     main_direction_range_min_deg: float = -50.0
     main_direction_range_max_deg: float = 20.0
     random_angle_deviation_deg: float = 30.0
+    # Note: evaluator parameters stored separately, not in defaults
 
 
 class RandomGeneratorParametersV2(InfillGeneratorParameters, RandomGeneratorParametersBase):
@@ -80,6 +93,13 @@ class RandomGeneratorParametersV2(InfillGeneratorParameters, RandomGeneratorPara
         ge=0, description="Random angle deviation from layer main direction (±degrees)"
     )
 
+    # Nested evaluator parameters (discriminated union)
+    evaluator: EvaluatorParametersUnion = Field(
+        default_factory=PassThroughEvaluatorParameters,
+        discriminator="type",
+        description="Evaluator configuration (passthrough, quality, etc.)",
+    )
+
     @field_validator("main_direction_range_max_deg")
     @classmethod
     def validate_direction_range(cls, v: float, info: ValidationInfo) -> float:
@@ -116,4 +136,5 @@ class RandomGeneratorParametersV2(InfillGeneratorParameters, RandomGeneratorPara
             main_direction_range_min_deg=defaults.main_direction_range_min_deg,
             main_direction_range_max_deg=defaults.main_direction_range_max_deg,
             random_angle_deviation_deg=defaults.random_angle_deviation_deg,
+            evaluator=PassThroughEvaluatorParameters(),  # Default evaluator
         )

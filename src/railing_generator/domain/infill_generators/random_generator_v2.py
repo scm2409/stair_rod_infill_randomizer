@@ -5,6 +5,8 @@ import random
 from typing import TYPE_CHECKING
 
 from railing_generator.domain.anchor_point import AnchorPoint
+from railing_generator.domain.evaluators.evaluator import Evaluator
+from railing_generator.domain.evaluators.evaluator_factory import EvaluatorFactory
 from railing_generator.domain.infill_generators.generation_statistics import (
     GenerationStatistics,
 )
@@ -34,6 +36,7 @@ class RandomGeneratorV2(Generator):
     - Pre-generated anchor points distributed to layers
     - Layer-specific main directions with controlled variation
     - Efficient rod generation via projection and nearest-anchor search
+    - Requires an evaluator for fitness scoring (Pass-Through or Quality)
     """
 
     # Define the parameter type for this generator
@@ -43,6 +46,7 @@ class RandomGeneratorV2(Generator):
         """Initialize the random generator v2."""
         super().__init__()
         self.statistics = GenerationStatistics()
+        self.evaluator: Evaluator | None = None  # Will be set when generate() is called
 
     def get_statistics(self) -> GenerationStatistics:
         """
@@ -74,6 +78,9 @@ class RandomGeneratorV2(Generator):
                 f"RandomGeneratorV2 requires RandomGeneratorParametersV2, "
                 f"got {type(params).__name__}"
             )
+
+        # Generator creates its own evaluator from nested parameters
+        self.evaluator = EvaluatorFactory.create_evaluator(params.evaluator)
 
         # Reset cancellation flag
         self.reset_cancellation()

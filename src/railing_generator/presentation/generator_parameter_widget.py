@@ -4,9 +4,12 @@ from abc import ABCMeta, abstractmethod
 
 from pydantic import ValidationError
 from PySide6.QtWidgets import (
+    QComboBox,
     QDoubleSpinBox,
     QFormLayout,
+    QLabel,
     QSpinBox,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -20,6 +23,10 @@ from railing_generator.domain.infill_generators.random_generator_parameters impo
 from railing_generator.domain.infill_generators.random_generator_v2_parameters import (
     RandomGeneratorDefaultsV2,
     RandomGeneratorParametersV2,
+)
+from railing_generator.presentation.evaluator_parameter_widget import EvaluatorParameterWidget
+from railing_generator.presentation.passthrough_evaluator_parameter_widget import (
+    PassThroughEvaluatorParameterWidget,
 )
 
 
@@ -329,12 +336,17 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
     """
     Parameter widget for random generator v2 configuration.
 
-    Provides input fields for all random generator v2 parameters with validation.
+    Provides input fields for all random generator v2 parameters with validation,
+    including nested evaluator parameter selection.
     """
 
     def __init__(self) -> None:
         """Initialize the random generator v2 parameter widget."""
         self._defaults = RandomGeneratorDefaultsV2()
+        # Dictionary of evaluator widgets (created in _create_widgets)
+        self.evaluator_widgets: dict[str, EvaluatorParameterWidget] = {}
+        self.evaluator_type_combo: QComboBox | None = None
+        self.evaluator_container: QWidget | None = None
         super().__init__()
 
     def _create_widgets(self) -> None:
@@ -441,6 +453,49 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
         self.form_layout.addRow("Infill Weight/Meter:", infill_weight_spin)
         self.field_widgets["infill_weight_per_meter_kg_m"] = infill_weight_spin
 
+        # Evaluator selection section
+        self.form_layout.addRow(QLabel())  # Spacer
+        evaluator_label = QLabel("<b>Evaluator Configuration</b>")
+        self.form_layout.addRow(evaluator_label)
+
+        # Evaluator type dropdown
+        self.evaluator_type_combo = QComboBox()
+        self.evaluator_type_combo.addItems(["passthrough"])  # Future: add "quality"
+        self.form_layout.addRow("Evaluator Type:", self.evaluator_type_combo)
+
+        # Container for evaluator parameter widgets
+        self.evaluator_container = QWidget()
+        evaluator_container_layout = QVBoxLayout(self.evaluator_container)
+        evaluator_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create evaluator widgets
+        self.evaluator_widgets["passthrough"] = PassThroughEvaluatorParameterWidget()
+        # Future: self.evaluator_widgets["quality"] = QualityEvaluatorParameterWidget()
+
+        # Add all evaluator widgets to container (hide all except first)
+        for widget in self.evaluator_widgets.values():
+            evaluator_container_layout.addWidget(widget)
+            widget.hide()
+
+        # Show the default evaluator widget
+        self.evaluator_widgets["passthrough"].show()
+
+        # Add container to form
+        self.form_layout.addRow(self.evaluator_container)
+
+        # Connect evaluator type change signal
+        self.evaluator_type_combo.currentTextChanged.connect(self._on_evaluator_type_changed)
+
+    def _on_evaluator_type_changed(self, evaluator_type: str) -> None:
+        """Handle evaluator type selection change."""
+        # Hide all evaluator widgets
+        for widget in self.evaluator_widgets.values():
+            widget.hide()
+
+        # Show the selected evaluator widget
+        if evaluator_type in self.evaluator_widgets:
+            self.evaluator_widgets[evaluator_type].show()
+
     def _load_defaults(self) -> None:
         """Load default values into the widgets."""
         num_rods = self.field_widgets["num_rods"]
@@ -541,6 +596,20 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
         infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
         assert isinstance(infill_weight, QDoubleSpinBox)
 
+        # Get evaluator parameters from the active evaluator widget
+        assert self.evaluator_type_combo is not None
+        evaluator_type = self.evaluator_type_combo.currentText()
+        evaluator_params = self.evaluator_widgets[evaluator_type].get_parameters()
+
+        # Type narrowing: evaluator_params is EvaluatorParameters, which is compatible
+        # with the union type expected by RandomGeneratorParametersV2
+        from railing_generator.domain.infill_generators.random_generator_v2_parameters import (
+            EvaluatorParametersUnion,
+        )
+        from typing import cast
+
+        evaluator_params_typed = cast(EvaluatorParametersUnion, evaluator_params)
+
         return RandomGeneratorParametersV2(
             num_rods=num_rods.value(),
             min_rod_length_cm=min_rod_length.value(),
@@ -555,4 +624,5 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
             max_iterations=max_iterations.value(),
             max_duration_sec=max_duration.value(),
             infill_weight_per_meter_kg_m=infill_weight.value(),
+            evaluator=evaluator_params_typed,  # Nested evaluator parameters
         )

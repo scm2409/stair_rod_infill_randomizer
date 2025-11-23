@@ -210,8 +210,24 @@ class RailingInfill(BaseModel):
   - `min_anchor_distance_other_cm`: Spacing for horizontal/sloped frame segments (e.g., handrails)
   - `main_direction_range_min_deg`, `main_direction_range_max_deg`: Range for layer main directions
   - `random_angle_deviation_deg`: Random deviation from layer main direction
+  - **`evaluator: EvaluatorParametersUnion`**: Nested evaluator configuration (discriminated union)
 - Initialized with defaults from Hydra config (dataclass)
 - Pydantic validation errors displayed in UI
+
+**Nested Evaluator Parameters:**
+```python
+class RandomGeneratorParametersV2(BaseModel):
+    num_rods: int
+    evaluator: EvaluatorParametersUnion = Field(discriminator="type")
+```
+
+**Serialization:**
+```json
+{
+  "num_rods": 50,
+  "evaluator": {"type": "passthrough"}  // Pydantic auto-selects type
+}
+```
 
 **Two-Level Control System:**
 1. **Inner Loop** (`max_iterations`, `max_duration_sec`): Controls rod generation for a single arrangement
@@ -225,72 +241,159 @@ Example: With `max_iterations=1000` and `max_evaluation_attempts=10`:
 
 ### 3. Evaluator System
 
-Evaluators are required components that score infill arrangements. Both Random Generator V1 and V2 must use an evaluator. Different evaluators provide different optimization strategies.
+Evaluators score infill arrangements. Generator parameters nest evaluator parameters using Pydantic discriminated unions.
+
+**Architecture:**
+
+```python
+# Evaluator parameters with discriminator
+class PassThroughEvaluatorParameters(BaseModel):
+    type: Literal["passthrough"] = "passthrough"
+
+class QualityEvaluatorParameters(BaseModel):
+    type: Literal["quality"] = "quality"
+    max_hole_area_cm2: float
+    # ... weights
+
+# Union type
+EvaluatorParametersUnion = Union[PassThroughEvaluatorParameters, QualityEvaluatorParameters]
+
+# Generator nests evaluator
+class RandomGeneratorParametersV2(BaseModel):
+    num_rods: int
+    evaluator: EvaluatorParametersUnion = Field(discriminator="type")
+
+# Generator creates evaluator
+class RandomGeneratorV2:
+    def generate(self, frame, params):
+        self.evaluator = EvaluatorFactory.create_evaluator(params.evaluator)
+```
+
 
 **Evaluator Types:**
-- **Quality Evaluator**: Multi-criteria fitness scoring for optimal visual quality (default)
 - **Pass-Through Evaluator**: Returns first valid arrangement without scoring (fastest, no optimization)
+- **Quality Evaluator**: Multi-criteria fitness scoring for optimal visual quality
 - **Future**: Structural evaluator, aesthetic evaluator, cost evaluator, custom evaluators
-
-**Quality Evaluator:**
-
-Scores infill arrangements using weighted criteria for optimal visual quality.
-
-**Evaluation Criteria:**
-1. **Hole Uniformity**: Similar hole areas
-2. **Incircle Uniformity**: Uniform incircle radii
-3. **Angle Distribution**: Avoid too vertical or too angled rods
-4. **Anchor Spacing**: Evenly distributed anchors
-   - Separate weights for horizontal (top/bottom) vs vertical (posts) elements
-
-**Shapely Operations:**
-- `polygonize()` - Identify holes from rod arrangement
-- `Polygon.area` - Calculate hole areas
-- `Point.distance()` - Measure anchor spacing
-
-**Parameters** (Pydantic models for UI validation):
-- `QualityEvaluatorParameters`: 
-  - `max_hole_area_cm2`: Maximum allowed hole area (rejection threshold)
-  - `hole_uniformity_weight`: Weight for hole uniformity criterion (0-1)
-  - `incircle_uniformity_weight`: Weight for incircle uniformity criterion (0-1)
-  - `angle_distribution_weight`: Weight for angle distribution criterion (0-1)
-  - `anchor_spacing_horizontal_weight`: Weight for horizontal anchor spacing (0-1)
-  - `anchor_spacing_vertical_weight`: Weight for vertical anchor spacing (0-1)
-- Initialized with defaults from Hydra config (dataclass)
-- Pydantic validation errors displayed in UI
-
-**Note**: Evaluator only scores individual arrangements. The generator controls the evaluation loop using its own parameters.
 
 **Pass-Through Evaluator:**
 
-Returns first valid arrangement without scoring. Fastest option when quality optimization is not needed.
+Returns first valid arrangement without scoring.
 
 **Behavior:**
-- `evaluate()`: Always returns 1.0 (neutral score)
-- `is_acceptable()`: Always returns True (accepts first valid arrangement)
-- No computational overhead for fitness calculation
-- Useful for quick previews or when speed is priority
+- `evaluate()`: Always returns 1.0
+- `is_acceptable()`: Always returns True
 
-**Parameters** (Pydantic models for UI validation):
-- `PassThroughEvaluatorParameters`: No parameters (empty model)
-- No configuration needed
+**Parameters:**
+```python
+class PassThroughEvaluatorParameters(BaseModel):
+    type: Literal["passthrough"] = "passthrough"  # No other params
+```
 
-**Usage with Generators:**
-- **V1 with Quality Evaluator**: 
-  - Inner loop: Generates each arrangement using `max_iterations`/`max_duration_sec`
-  - Outer loop: Evaluates multiple arrangements up to `max_evaluation_attempts`/`max_evaluation_duration_sec`
-  - Stops when `min_acceptable_fitness` reached or limits hit
-  - Returns best arrangement found
-- **V1 with Pass-Through**: 
-  - Generates one arrangement using `max_iterations`/`max_duration_sec`
-  - Returns first valid arrangement (fast, no evaluation loop)
-- **V2 with Quality Evaluator**: 
-  - Inner loop: Generates each arrangement using `max_iterations`/`max_duration_sec`
-  - Outer loop: Evaluates multiple arrangements up to `max_evaluation_attempts`/`max_evaluation_duration_sec`
-  - Returns best scored arrangement
-- **V2 with Pass-Through**: 
-  - Generates one arrangement using `max_iterations`/`max_duration_sec`
-  - Returns first valid arrangement (fastest overall)
+**Quality Evaluator:**
+
+Scores infill arrangements using weighted criteria.
+
+**Evaluation Criteria:**
+1. Hole Uniformity
+2. Incircle Uniformity
+3. Angle Distribution
+4. Anchor Spacing (horizontal and vertical weights)
+
+**Parameters:**
+```python
+class QualityEvaluatorParameters(BaseModel):
+    type: Literal["quality"] = "quality"
+    max_hole_area_cm2: float
+    hole_uniformity_weight: float  # ... other weights
+```
+
+**EvaluatorFactory:**
+
+```python
+class EvaluatorFactory:
+    @staticmethod
+    def create_evaluator(params: EvaluatorParameters) -> Evaluator:
+        if isinstance(params, PassThroughEvaluatorParameters):
+            return PassThroughEvaluator(params)
+        # ... other evaluator types
+```
+
+**UI Implementation: Evaluator Parameter Widgets**
+
+Evaluator parameters are configured through nested widgets within the generator parameter widget. This follows the same pattern as shape and generator parameter widgets.
+
+**Widget Hierarchy:**
+```
+RandomGeneratorV2ParameterWidget
+├── Generator parameter inputs (num_rods, etc.)
+├── Evaluator Configuration Section
+│   ├── Evaluator Type Dropdown (QComboBox)
+│   └── Evaluator Parameter Container (QWidget)
+│       ├── PassThroughEvaluatorParameterWidget (shown when "passthrough" selected)
+│       └── QualityEvaluatorParameterWidget (shown when "quality" selected)
+```
+
+**Base Class: EvaluatorParameterWidget**
+```python
+class EvaluatorParameterWidget(QWidget, ABC):
+    def __init__(self):
+        self.form_layout = QFormLayout(self)
+        self.field_widgets: dict[str, QWidget] = {}
+        self._create_widgets()
+    
+    @abstractmethod
+    def get_parameters(self) -> EvaluatorParameters: ...
+```
+
+**PassThroughEvaluatorParameterWidget:**
+```python
+class PassThroughEvaluatorParameterWidget(EvaluatorParameterWidget):
+    def _create_widgets(self):
+        info_label = QLabel("Pass-Through has no parameters (fastest option)")
+        self.form_layout.addRow(info_label)
+    
+    def get_parameters(self):
+        return PassThroughEvaluatorParameters()
+```
+
+**Integration in RandomGeneratorV2ParameterWidget:**
+```python
+class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
+    def _create_widgets(self):
+        # ... generator parameter widgets
+        
+        # Evaluator section
+        self.evaluator_type_combo = QComboBox()
+        self.evaluator_type_combo.addItems(["passthrough", "quality"])
+        
+        # Create evaluator widgets (swapped based on selection)
+        self.evaluator_widgets = {
+            "passthrough": PassThroughEvaluatorParameterWidget(),
+            "quality": QualityEvaluatorParameterWidget()
+        }
+        
+        # Connect type change → show/hide widgets
+        self.evaluator_type_combo.currentTextChanged.connect(self._on_type_changed)
+    
+    def get_parameters(self):
+        evaluator_type = self.evaluator_type_combo.currentText()
+        evaluator_params = self.evaluator_widgets[evaluator_type].get_parameters()
+        
+        return RandomGeneratorParametersV2(
+            num_rods=...,
+            evaluator=evaluator_params  # Nested!
+        )
+```
+
+
+
+**ApplicationController:**
+
+```python
+def generate_infill(self, generator_type, parameters):
+    generator = GeneratorFactory.create_generator(generator_type, parameters)
+    # Generator creates evaluator from params.evaluator
+```
 
 ### 4. Random Generator V2 (Enhanced Layered Directional Approach)
 
