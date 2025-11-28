@@ -1,7 +1,7 @@
 # Default parameters for random infill generator v2
 
 # Base parameters
-num_rods: 50
+num_rods: 30
 min_rod_length_cm: 50.0
 max_rod_length_cm: 200.0
 max_angle_deviation_deg: 30.0

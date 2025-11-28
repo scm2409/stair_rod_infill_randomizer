@@ -219,15 +219,20 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write integration tests (generator V2 with quality evaluator)
     - _Requirements: 1.1, 6.2, 6.3, 9.1.1_
 
-  - [ ] 6.7 Implement quality criteria
+  - [ ] 6.7 Implement angle distribution criterion
+    - Replace dummy implementations in QualityEvaluator with actual criteria
+    - Write unit tests for each criterion
+    - _Requirements: 6.2.1_
+
+  - [ ] 6.8 Implement quality criteria
     - Implement hole uniformity criterion
-    - Implement angle distribution criterion
     - Implement anchor spacing criterion
     - Replace dummy implementations in QualityEvaluator with actual criteria
     - Write unit tests for each criterion
     - _Requirements: 6.2.1_
     
-  - [ ]* 6.8 Optionally add evaluator support to RandomGeneratorV1
+   
+  - [ ] 6.9 Optionally add evaluator support to RandomGeneratorV1
     - Update RandomGeneratorV1 to optionally accept evaluator parameter
     - Update RandomGeneratorV1Parameters to include optional evaluator_type field
     - Update conf/generators/random_v1.yaml to support evaluator_type (optional)

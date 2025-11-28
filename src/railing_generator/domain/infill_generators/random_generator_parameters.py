@@ -54,7 +54,7 @@ class RandomGeneratorDefaults(InfillGeneratorDefaults, RandomGeneratorDefaultsBa
     These defaults are loaded from conf/generators/random.yaml.
     """
 
-    num_rods: int = 50
+    num_rods: int = 30
     min_rod_length_cm: float = 50.0
     max_rod_length_cm: float = 200.0
     max_angle_deviation_deg: float = 30.0

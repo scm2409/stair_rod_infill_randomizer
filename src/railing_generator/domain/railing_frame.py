@@ -61,6 +61,21 @@ class RailingFrame(BaseModel):
 
     @computed_field  # type: ignore[prop-decorator]
     @property
+    def enlarged_boundary(self) -> Polygon:
+        """
+        Calculate a slightly enlarged boundary polygon.
+
+        Creates a boundary enlarged by 0.1cm (1mm) using buffer operation.
+        This enlarged boundary can be used in algorithms to avoid rounding
+        inconsistencies when checking if points are inside/outside the frame.
+
+        Returns:
+            Shapely Polygon that is 0.1cm larger than the actual boundary
+        """
+        return self.boundary.buffer(0.1)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
     def total_length_cm(self) -> float:
         """Calculate total length of all frame rods."""
         return sum(rod.length_cm for rod in self.rods)

@@ -2,6 +2,7 @@
 
 import pytest
 from pydantic import ValidationError
+from pytestqt.qtbot import QtBot
 
 from railing_generator.domain.evaluators.quality_evaluator_parameters import (
     QualityEvaluatorParameters,
@@ -14,7 +15,7 @@ from railing_generator.presentation.quality_evaluator_parameter_widget import (
 class TestQualityEvaluatorParameterWidget:
     """Tests for QualityEvaluatorParameterWidget."""
 
-    def test_widget_creation(self, qtbot) -> None:
+    def test_widget_creation(self, qtbot: QtBot) -> None:
         """Test that widget is created successfully."""
         widget = QualityEvaluatorParameterWidget()
         qtbot.addWidget(widget)
@@ -27,7 +28,7 @@ class TestQualityEvaluatorParameterWidget:
         assert "anchor_spacing_horizontal_weight" in widget.field_widgets
         assert "anchor_spacing_vertical_weight" in widget.field_widgets
 
-    def test_default_values_loaded(self, qtbot) -> None:
+    def test_default_values_loaded(self, qtbot: QtBot) -> None:
         """Test that default values are loaded correctly."""
         widget = QualityEvaluatorParameterWidget()
         qtbot.addWidget(widget)
@@ -42,7 +43,7 @@ class TestQualityEvaluatorParameterWidget:
         assert params.anchor_spacing_horizontal_weight == 0.15
         assert params.anchor_spacing_vertical_weight == 0.15
 
-    def test_get_parameters_returns_valid_model(self, qtbot) -> None:
+    def test_get_parameters_returns_valid_model(self, qtbot: QtBot) -> None:
         """Test that get_parameters returns a valid QualityEvaluatorParameters."""
         widget = QualityEvaluatorParameterWidget()
         qtbot.addWidget(widget)
@@ -52,7 +53,7 @@ class TestQualityEvaluatorParameterWidget:
         assert isinstance(params, QualityEvaluatorParameters)
         assert params.type == "quality"
 
-    def test_parameter_modification(self, qtbot) -> None:
+    def test_parameter_modification(self, qtbot: QtBot) -> None:
         """Test that parameter values can be modified."""
         widget = QualityEvaluatorParameterWidget()
         qtbot.addWidget(widget)
@@ -74,7 +75,7 @@ class TestQualityEvaluatorParameterWidget:
         assert params.max_hole_area_cm2 == 5000.0
         assert params.incircle_uniformity_weight == 0.5
 
-    def test_validation_rejects_invalid_max_hole_area(self, qtbot) -> None:
+    def test_validation_rejects_invalid_max_hole_area(self, qtbot: QtBot) -> None:
         """Test that validation rejects invalid max hole area."""
         widget = QualityEvaluatorParameterWidget()
         qtbot.addWidget(widget)
@@ -89,7 +90,7 @@ class TestQualityEvaluatorParameterWidget:
         # Spinbox should clamp to minimum (0.1)
         assert max_hole_spin.value() == 0.1
 
-    def test_validation_rejects_invalid_weight(self, qtbot) -> None:
+    def test_validation_rejects_invalid_weight(self, qtbot: QtBot) -> None:
         """Test that validation rejects weights outside [0, 1]."""
         widget = QualityEvaluatorParameterWidget()
         qtbot.addWidget(widget)
@@ -104,7 +105,7 @@ class TestQualityEvaluatorParameterWidget:
         # Spinbox should clamp to maximum (1.0)
         assert weight_spin.value() == 1.0
 
-    def test_weights_can_sum_to_one(self, qtbot) -> None:
+    def test_weights_can_sum_to_one(self, qtbot: QtBot) -> None:
         """Test that weights can be configured to sum to 1.0."""
         widget = QualityEvaluatorParameterWidget()
         qtbot.addWidget(widget)

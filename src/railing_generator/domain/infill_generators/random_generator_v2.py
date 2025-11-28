@@ -285,21 +285,22 @@ class RandomGeneratorV2(Generator):
                 # This arrangement took too long, return what we have
                 break
 
+            # Check iteration limit (per-arrangement)
+            if total_iterations >= params.max_iterations:
+                break
+
             layer_rods, layer_iterations = self._generate_layer_rods(
                 layer_num=layer_num,
                 available_anchors=anchors_by_layer[layer_num],
                 main_direction=layer_main_directions[layer_num],
                 frame=frame,
                 params=params,
-                existing_rods=all_rods,
+                start_time=start_time,
+                current_iterations=total_iterations,
             )
 
             all_rods.extend(layer_rods)
             total_iterations += layer_iterations
-
-            # Check iteration limit (per-arrangement)
-            if total_iterations >= params.max_iterations:
-                break
 
         # Check if arrangement is complete (all requested rods generated)
         is_complete = len(all_rods) == params.num_rods
@@ -680,6 +681,7 @@ class RandomGeneratorV2(Generator):
         Returns:
             True if valid, False otherwise
         """
+
         import math
 
         # Check length constraints
@@ -692,20 +694,25 @@ class RandomGeneratorV2(Generator):
             return False
 
         # Check boundary constraint
-        if not rod_geometry.within(frame.boundary):
+        if not rod_geometry.covered_by(frame.enlarged_boundary):
             self.statistics.outside_boundary += 1
             return False
 
         # Check angle deviation from vertical
+        # Calculate angle from vertical axis (0° = straight up/down)
         coords = list(rod_geometry.coords)
-        dx = abs(coords[1][0] - coords[0][0])
-        dy = abs(coords[1][1] - coords[0][1])
-        if dy > 0:
-            angle_rad = math.atan(dx / dy)
-            angle_deg = math.degrees(angle_rad)
-            if angle_deg > params.max_angle_deviation_deg:
-                self.statistics.angle_too_large += 1
-                return False
+        dx = coords[1][0] - coords[0][0]
+        dy = coords[1][1] - coords[0][1]
+
+        # Use atan2 for proper angle calculation in all quadrants
+        # atan2(dx, dy) gives angle from vertical axis
+        # We take abs() of the result to get deviation magnitude
+        angle_rad = math.atan2(abs(dx), abs(dy))
+        angle_deg = math.degrees(angle_rad)
+
+        if angle_deg > params.max_angle_deviation_deg:
+            self.statistics.angle_too_large += 1
+            return False
 
         # Check for crossings with same-layer rods
         for existing_rod in existing_layer_rods:
@@ -722,7 +729,8 @@ class RandomGeneratorV2(Generator):
         main_direction: float,
         frame: RailingFrame,
         params: RandomGeneratorParametersV2,
-        existing_rods: list[Rod],
+        start_time: float,
+        current_iterations: int,
     ) -> tuple[list[Rod], int]:
         """
         Generate rods for a single layer.
@@ -736,11 +744,14 @@ class RandomGeneratorV2(Generator):
             main_direction: Main direction angle for this layer
             frame: The railing frame
             params: Generation parameters
-            existing_rods: Existing rods from all layers
+            start_time: Start time of the arrangement generation
+            current_iterations: Current total iterations used so far
 
         Returns:
             Tuple of (generated rods, iterations used)
         """
+        import time
+
         from shapely.geometry import LineString
 
         logger.info(
@@ -753,18 +764,32 @@ class RandomGeneratorV2(Generator):
             target_rods_for_layer += 1
 
         layer_rods: list[Rod] = []
-        unused_anchors = [a for a in available_anchors if not a.used]
+        unused_anchors = list(available_anchors)
         iterations = 0
-        max_layer_iterations = params.max_iterations
         consecutive_failures = 0
-        max_consecutive_failures = 100  # Stop if we fail 100 times in a row
+        max_consecutive_failures = 300  # Reset and shuffle after this many failures
 
-        while len(layer_rods) < target_rods_for_layer and iterations < max_layer_iterations:
+        while len(layer_rods) < target_rods_for_layer:
             iterations += 1
 
             # Check cancellation
             if self.is_cancelled():
                 logger.info(f"Layer {layer_num} cancelled at iteration {iterations}")
+                break
+
+            # Check iteration limit
+            if current_iterations + iterations >= params.max_iterations:
+                logger.info(
+                    f"Layer {layer_num} stopped: reached max iterations ({params.max_iterations})"
+                )
+                break
+
+            # Check duration limit
+            elapsed = time.time() - start_time
+            if elapsed > params.max_duration_sec:
+                logger.info(
+                    f"Layer {layer_num} stopped: reached max duration ({params.max_duration_sec:.1f}s)"
+                )
                 break
 
             # Progress logging every 1000 iterations
@@ -782,13 +807,21 @@ class RandomGeneratorV2(Generator):
                 )
                 break
 
-            # Stop if too many consecutive failures (likely no valid rods possible)
+            # Reset if too many consecutive failures
             if consecutive_failures >= max_consecutive_failures:
-                logger.warning(
-                    f"Layer {layer_num} stopped: {consecutive_failures} consecutive failures, "
-                    f"{len(unused_anchors)} unused anchors remaining"
+                logger.info(
+                    f"Layer {layer_num}: {consecutive_failures} consecutive failures, "
+                    f"resetting layer"
                 )
-                break
+                # Reset layer rods
+                layer_rods = []
+                # Reset all anchors for this layer
+                for anchor in available_anchors:
+                    anchor.used = False
+                unused_anchors = list(available_anchors)
+                # Reset consecutive failures counter
+                consecutive_failures = 0
+                continue
 
             # Select random start anchor
             start_anchor = random.choice(unused_anchors)

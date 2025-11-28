@@ -13,7 +13,7 @@ def test_random_generator_defaults_creation() -> None:
     """Test creating RandomGeneratorDefaults."""
     defaults = RandomGeneratorDefaults()
 
-    assert defaults.num_rods == 50
+    assert defaults.num_rods == 30
     assert defaults.min_rod_length_cm == 50.0
     assert defaults.max_rod_length_cm == 200.0
     assert defaults.max_angle_deviation_deg == 30.0
