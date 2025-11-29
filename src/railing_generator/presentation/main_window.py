@@ -2,10 +2,19 @@
 
 import logging
 
-from PySide6.QtWidgets import QHBoxLayout, QMainWindow, QMenuBar, QWidget
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QMainWindow,
+    QMenuBar,
+    QSplitter,
+    QVBoxLayout,
+    QWidget,
+)
+from PySide6.QtCore import Qt
 
 from railing_generator.application.application_controller import ApplicationController
 from railing_generator.application.railing_project_model import RailingProjectModel
+from railing_generator.presentation.bom_table_widget import BOMTableWidget
 from railing_generator.presentation.parameter_panel import ParameterPanel
 from railing_generator.presentation.progress_dialog import ProgressDialog
 from railing_generator.presentation.viewport_widget import ViewportWidget
@@ -59,9 +68,27 @@ class MainWindow(QMainWindow):
         self.parameter_panel.setMaximumWidth(450)  # Fixed width to accommodate all parameters
         layout.addWidget(self.parameter_panel)
 
-        # Create viewport (right side, pass model for observation)
+        # Create right side container with viewport and BOM table
+        right_container = QWidget()
+        right_layout = QVBoxLayout(right_container)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create splitter for viewport and BOM table
+        splitter = QSplitter(Qt.Orientation.Vertical)
+
+        # Create viewport (top of splitter, pass model for observation)
         self.viewport = ViewportWidget(project_model)
-        layout.addWidget(self.viewport, stretch=1)
+        splitter.addWidget(self.viewport)
+
+        # Create BOM table (bottom of splitter)
+        self.bom_table = BOMTableWidget()
+        splitter.addWidget(self.bom_table)
+
+        # Set initial splitter sizes (viewport gets 60%, BOM gets 40%)
+        splitter.setSizes([600, 400])
+
+        right_layout.addWidget(splitter)
+        layout.addWidget(right_container, stretch=1)
 
         self.setCentralWidget(central_widget)
 
@@ -76,6 +103,9 @@ class MainWindow(QMainWindow):
 
         # Connect to controller signals for generation events
         self._connect_controller_signals()
+
+        # Connect BOM table to model signals
+        self._connect_bom_table_signals()
 
     def _create_menu_bar(self) -> None:
         """Create the menu bar with File, View, and Help menus."""
@@ -118,6 +148,72 @@ class MainWindow(QMainWindow):
         """Connect to controller signals for generation events."""
         # Connect to generation started signal to show progress dialog
         self.controller.generation_started.connect(self._on_generation_started)
+
+    def _connect_bom_table_signals(self) -> None:
+        """Connect BOM table to model signals and selection signals."""
+        # Connect model signals to BOM table data updates
+        self.project_model.railing_frame_updated.connect(self._on_frame_updated_for_bom)
+        self.project_model.railing_infill_updated.connect(self._on_infill_updated_for_bom)
+
+        # Connect BOM table selection signals to viewport highlighting
+        self.bom_table.frame_rod_selected.connect(self._on_frame_rod_selected)
+        self.bom_table.infill_rod_selected.connect(self._on_infill_rod_selected)
+        self.bom_table.selection_cleared.connect(self._on_bom_selection_cleared)
+
+    def _on_frame_updated_for_bom(self, frame: object) -> None:
+        """
+        Handle frame updates for BOM table.
+
+        Args:
+            frame: RailingFrame or None
+        """
+        from railing_generator.domain.railing_frame import RailingFrame
+
+        if frame is None:
+            self.bom_table.set_frame_data(None)
+        else:
+            assert isinstance(frame, RailingFrame)
+            self.bom_table.set_frame_data(frame)
+
+    def _on_infill_updated_for_bom(self, infill: object) -> None:
+        """
+        Handle infill updates for BOM table.
+
+        Args:
+            infill: RailingInfill or None
+        """
+        from railing_generator.domain.railing_infill import RailingInfill
+
+        if infill is None:
+            self.bom_table.set_infill_data(None)
+        else:
+            assert isinstance(infill, RailingInfill)
+            self.bom_table.set_infill_data(infill)
+
+    def _on_frame_rod_selected(self, rod_id: int) -> None:
+        """
+        Handle frame rod selection from BOM table.
+
+        Args:
+            rod_id: ID of the selected frame rod (1-based index)
+        """
+        logger.debug(f"Frame rod {rod_id} selected in BOM table")
+        self.viewport.highlight_frame_rod(rod_id - 1)  # Convert to 0-based index
+
+    def _on_infill_rod_selected(self, rod_id: int) -> None:
+        """
+        Handle infill rod selection from BOM table.
+
+        Args:
+            rod_id: ID of the selected infill rod (1-based index)
+        """
+        logger.debug(f"Infill rod {rod_id} selected in BOM table")
+        self.viewport.highlight_infill_rod(rod_id - 1)  # Convert to 0-based index
+
+    def _on_bom_selection_cleared(self) -> None:
+        """Handle BOM selection cleared."""
+        logger.debug("BOM selection cleared")
+        self.viewport.clear_highlight()
 
     def _on_project_state_changed(self) -> None:
         """Handle project state changes (file path or modified flag)."""

@@ -266,21 +266,21 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 
 ### Phase 8: Add BOM Table (See the parts list!)
 
-- [ ] 8. Implement BOM table
-  - [ ] 8.1 Create BOM Table widget
+- [x] 8. Implement BOM table
+  - [x] 8.1 Create BOM Table widget
     - Create BOMTableWidget with two tabs (Frame/Infill)
     - Set up columns and sorting
     - Write test for table structure
     - _Requirements: 8_
   
-  - [ ] 8.2 Populate BOM data
+  - [x] 8.2 Populate BOM data
     - Populate from shape and infill result
     - Calculate and display totals
     - **VISUAL MILESTONE**: See parts list with totals! 🎉
     - Write tests for data population and totals
     - _Requirements: 8_
   
-  - [ ] 8.3 Add BOM selection highlighting
+  - [x] 8.3 Add BOM selection highlighting
     - Connect row selection to viewport highlighting
     - **VISUAL MILESTONE**: Click BOM row to highlight part! 🎉
     - Write test for selection

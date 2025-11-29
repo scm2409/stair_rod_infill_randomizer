@@ -59,6 +59,11 @@ class ViewportWidget(QGraphicsView):
         self._railing_frame_group: QGraphicsItemGroup | None = None
         self._railing_infill_group: QGraphicsItemGroup | None = None
         self._anchor_points_group: QGraphicsItemGroup | None = None
+        self._highlight_group: QGraphicsItemGroup | None = None
+
+        # Store current frame and infill for highlighting
+        self._current_frame: RailingFrame | None = None
+        self._current_infill: RailingInfill | None = None
 
         # Connect to model signals for automatic updates
         self._connect_model_signals()
@@ -151,6 +156,9 @@ class ViewportWidget(QGraphicsView):
         if scene is None:
             return
 
+        # Store current frame for highlighting
+        self._current_frame = railing_frame
+
         # Remove existing frame group if present
         if self._railing_frame_group is not None:
             scene.removeItem(self._railing_frame_group)
@@ -174,6 +182,7 @@ class ViewportWidget(QGraphicsView):
 
     def clear_railing_frame(self) -> None:
         """Remove the railing frame from the viewport."""
+        self._current_frame = None
         scene = self.scene()
         if scene is not None and self._railing_frame_group is not None:
             scene.removeItem(self._railing_frame_group)
@@ -189,6 +198,9 @@ class ViewportWidget(QGraphicsView):
         scene = self.scene()
         if scene is None:
             return
+
+        # Store current infill for highlighting
+        self._current_infill = railing_infill
 
         # Remove existing infill group if present
         if self._railing_infill_group is not None:
@@ -255,6 +267,7 @@ class ViewportWidget(QGraphicsView):
 
     def clear_railing_infill(self) -> None:
         """Remove the railing infill from the viewport."""
+        self._current_infill = None
         scene = self.scene()
         if scene is not None:
             if self._railing_infill_group is not None:
@@ -263,3 +276,84 @@ class ViewportWidget(QGraphicsView):
             if self._anchor_points_group is not None:
                 scene.removeItem(self._anchor_points_group)
                 self._anchor_points_group = None
+
+    def highlight_frame_rod(self, rod_index: int) -> None:
+        """
+        Highlight a specific frame rod.
+
+        Args:
+            rod_index: 0-based index of the rod to highlight
+        """
+        if (
+            self._current_frame is None
+            or rod_index < 0
+            or rod_index >= len(self._current_frame.rods)
+        ):
+            return
+
+        scene = self.scene()
+        if scene is None:
+            return
+
+        # Clear existing highlight
+        self.clear_highlight()
+
+        # Create highlight group
+        self._highlight_group = QGraphicsItemGroup()
+        scene.addItem(self._highlight_group)
+
+        # Highlight pen (thick yellow line)
+        highlight_pen = QPen(Qt.GlobalColor.yellow, 4)
+
+        # Get the rod to highlight
+        rod = self._current_frame.rods[rod_index]
+        coords = list(rod.geometry.coords)
+        if len(coords) >= 2:
+            x1, y1 = coords[0]
+            x2, y2 = coords[1]
+            line = scene.addLine(x1, y1, x2, y2, highlight_pen)
+            self._highlight_group.addToGroup(line)
+
+    def highlight_infill_rod(self, rod_index: int) -> None:
+        """
+        Highlight a specific infill rod.
+
+        Args:
+            rod_index: 0-based index of the rod to highlight
+        """
+        if (
+            self._current_infill is None
+            or rod_index < 0
+            or rod_index >= len(self._current_infill.rods)
+        ):
+            return
+
+        scene = self.scene()
+        if scene is None:
+            return
+
+        # Clear existing highlight
+        self.clear_highlight()
+
+        # Create highlight group
+        self._highlight_group = QGraphicsItemGroup()
+        scene.addItem(self._highlight_group)
+
+        # Highlight pen (thick yellow line)
+        highlight_pen = QPen(Qt.GlobalColor.yellow, 4)
+
+        # Get the rod to highlight
+        rod = self._current_infill.rods[rod_index]
+        coords = list(rod.geometry.coords)
+        if len(coords) >= 2:
+            x1, y1 = coords[0]
+            x2, y2 = coords[1]
+            line = scene.addLine(x1, y1, x2, y2, highlight_pen)
+            self._highlight_group.addToGroup(line)
+
+    def clear_highlight(self) -> None:
+        """Clear any rod highlighting."""
+        scene = self.scene()
+        if scene is not None and self._highlight_group is not None:
+            scene.removeItem(self._highlight_group)
+            self._highlight_group = None
