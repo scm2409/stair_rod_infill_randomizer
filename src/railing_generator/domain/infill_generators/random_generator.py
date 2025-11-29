@@ -421,12 +421,13 @@ class RandomGenerator(Generator):
 
         # Create AnchorPoint objects for visualization
         # Note: RandomGenerator doesn't track which frame segment each anchor is on,
-        # so we set frame_segment_index to 0 and is_vertical_segment to False
+        # so we set frame_segment_index to 0, is_vertical_segment to False, and frame_segment_angle_deg to 0.0
         anchor_point_objects = [
             AnchorPoint(
                 position=pos,
                 frame_segment_index=0,  # Not tracked in v1
                 is_vertical_segment=False,  # Not tracked in v1
+                frame_segment_angle_deg=0.0,  # Not tracked in v1
                 layer=anchor_layers.get(idx),  # Assigned when used in a rod
                 used=idx in used_anchors,
             )

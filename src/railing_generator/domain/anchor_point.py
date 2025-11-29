@@ -15,6 +15,7 @@ class AnchorPoint(BaseModel):
         position: (x, y) coordinates of the anchor point
         frame_segment_index: Index of the frame rod this anchor is on
         is_vertical_segment: True if on a vertical frame rod, False otherwise
+        frame_segment_angle_deg: Angle of the frame segment from vertical in degrees
         layer: Assigned layer number (1-indexed), None if unassigned
         used: True if this anchor has been used in a rod
     """
@@ -22,6 +23,9 @@ class AnchorPoint(BaseModel):
     position: tuple[float, float] = Field(description="(x, y) coordinates")
     frame_segment_index: int = Field(ge=0, description="Frame rod index")
     is_vertical_segment: bool = Field(description="True if on vertical frame rod")
+    frame_segment_angle_deg: float = Field(
+        description="Angle of frame segment from vertical in degrees"
+    )
     layer: int | None = Field(default=None, ge=1, description="Assigned layer (1-indexed)")
     used: bool = Field(default=False, description="True if used in a rod")
 

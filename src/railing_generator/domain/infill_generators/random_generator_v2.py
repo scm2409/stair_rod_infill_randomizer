@@ -366,6 +366,9 @@ class RandomGeneratorV2(Generator):
             # Classify segment as vertical or other
             is_vertical = self._classify_frame_segment(frame_rod)
 
+            # Get the angle of this frame segment from vertical
+            frame_segment_angle = frame_rod.angle_from_vertical_deg
+
             # Select appropriate minimum distance
             min_distance = (
                 params.min_anchor_distance_vertical_cm
@@ -375,14 +378,43 @@ class RandomGeneratorV2(Generator):
 
             # Generate anchor points along this segment
             segment_length = frame_rod.geometry.length
-            num_anchors = max(int(segment_length / min_distance), 2)
+
+            # Define minimum margin from segment ends (2cm)
+            min_margin_cm = 2.0
+
+            # Calculate usable length (excluding margins at both ends)
+            usable_length = segment_length - (2 * min_margin_cm)
+
+            # Skip this segment if it's too short to accommodate margins
+            if usable_length <= 0:
+                logger.warning(
+                    f"Segment {segment_idx} too short ({segment_length:.1f}cm) "
+                    f"to accommodate 2cm margins, skipping anchor generation"
+                )
+                anchor_points_by_segment[segment_idx] = []
+                continue
+
+            # Calculate number of anchors based on usable length
+            num_anchors = max(int(usable_length / min_distance), 1)
 
             anchors = []
             for i in range(num_anchors):
-                # Evenly distribute with small random offset
-                base_position = (i / (num_anchors - 1)) * segment_length if num_anchors > 1 else 0
-                offset = random.uniform(-min_distance * 0.2, min_distance * 0.2)
-                position = max(0, min(segment_length, base_position + offset))
+                # Evenly distribute within usable range with small random offset
+                if num_anchors > 1:
+                    base_position_in_usable = (i / (num_anchors - 1)) * usable_length
+                else:
+                    # Single anchor: place in the middle of usable range
+                    base_position_in_usable = usable_length / 2
+
+                # Add margin offset to get position along full segment
+                base_position = min_margin_cm + base_position_in_usable
+
+                # Add small random offset (but ensure we stay within margins)
+                max_offset = min(min_distance * 0.2, min_margin_cm * 0.3)
+                offset = random.uniform(-max_offset, max_offset)
+                position = max(
+                    min_margin_cm, min(segment_length - min_margin_cm, base_position + offset)
+                )
 
                 # Get point at this position along the segment
                 point = frame_rod.geometry.interpolate(position)
@@ -391,6 +423,7 @@ class RandomGeneratorV2(Generator):
                     position=(point.x, point.y),
                     frame_segment_index=segment_idx,
                     is_vertical_segment=is_vertical,
+                    frame_segment_angle_deg=frame_segment_angle,
                     layer=None,
                     used=False,
                 )
@@ -563,6 +596,53 @@ class RandomGeneratorV2(Generator):
             logger.info(f"Layer {layer} main direction: {direction:.1f}°")
 
         return layer_directions
+
+    def _calculate_cut_angles(
+        self,
+        rod_angle_deg: float,
+        start_anchor: AnchorPoint,
+        end_anchor: AnchorPoint,
+    ) -> tuple[float, float]:
+        """
+        Calculate start and end cut angles for a rod based on frame segment angles.
+
+        The cut angle is the angle between the rod and the frame segment it attaches to.
+        This is calculated as the difference between the rod angle and the frame segment angle.
+
+        Args:
+            rod_angle_deg: Angle of the rod from vertical in degrees
+            start_anchor: Starting anchor point with frame segment angle
+            end_anchor: Ending anchor point with frame segment angle
+
+        Returns:
+            Tuple of (start_cut_angle_deg, end_cut_angle_deg)
+        """
+        # Calculate cut angles as the difference between rod angle and frame segment angle
+        start_cut_angle = rod_angle_deg - start_anchor.frame_segment_angle_deg
+        end_cut_angle = rod_angle_deg - end_anchor.frame_segment_angle_deg
+
+        # Normalize angles to [-90, 90] range by wrapping around
+        # If angle > 90, it means we should measure from the other direction
+        # If angle < -90, same thing
+        def normalize_cut_angle(angle: float) -> float:
+            # Wrap angle to [-180, 180] first
+            while angle > 180:
+                angle -= 360
+            while angle < -180:
+                angle += 360
+
+            # If angle is outside [-90, 90], flip it
+            if angle > 90:
+                angle = 180 - angle
+            elif angle < -90:
+                angle = -180 - angle
+
+            return angle
+
+        start_cut_angle = normalize_cut_angle(start_cut_angle)
+        end_cut_angle = normalize_cut_angle(end_cut_angle)
+
+        return start_cut_angle, end_cut_angle
 
     def _project_and_find_end_anchor(
         self,
@@ -830,11 +910,30 @@ class RandomGeneratorV2(Generator):
                 consecutive_failures += 1
                 continue  # No suitable end anchor found
 
-            # Create rod
-            rod = Rod(
-                geometry=LineString([start_anchor.position, end_anchor.position]),
+            # Create rod geometry
+            rod_geometry = LineString([start_anchor.position, end_anchor.position])
+
+            # Create temporary rod to get its angle
+            temp_rod = Rod(
+                geometry=rod_geometry,
                 start_cut_angle_deg=0.0,
                 end_cut_angle_deg=0.0,
+                weight_kg_m=params.infill_weight_per_meter_kg_m,
+                layer=layer_num,
+            )
+
+            # Calculate cut angles based on rod angle and frame segment angles
+            start_cut_angle, end_cut_angle = self._calculate_cut_angles(
+                rod_angle_deg=temp_rod.angle_from_vertical_deg,
+                start_anchor=start_anchor,
+                end_anchor=end_anchor,
+            )
+
+            # Create final rod with calculated cut angles
+            rod = Rod(
+                geometry=rod_geometry,
+                start_cut_angle_deg=start_cut_angle,
+                end_cut_angle_deg=end_cut_angle,
                 weight_kg_m=params.infill_weight_per_meter_kg_m,
                 layer=layer_num,
             )
