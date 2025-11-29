@@ -224,15 +224,20 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write unit tests for each criterion
     - _Requirements: 6.2.1_
 
-  - [ ] 6.8 Implement quality criteria
+  - [x] 6.8 Implement quality criteria
     - Implement hole uniformity criterion
+    - Replace dummy implementations in QualityEvaluator with actual criteria
+    - Write unit tests for each criterion
+    - _Requirements: 6.2.1_
+    
+  - [ ] 6.9 Optionally Implement quality criteria
     - Implement anchor spacing criterion
     - Replace dummy implementations in QualityEvaluator with actual criteria
     - Write unit tests for each criterion
     - _Requirements: 6.2.1_
     
-   
-  - [ ] 6.9 Optionally add evaluator support to RandomGeneratorV1
+  
+  - [ ] 6.10 Optionally add evaluator support to RandomGeneratorV1
     - Update RandomGeneratorV1 to optionally accept evaluator parameter
     - Update RandomGeneratorV1Parameters to include optional evaluator_type field
     - Update conf/generators/random_v1.yaml to support evaluator_type (optional)

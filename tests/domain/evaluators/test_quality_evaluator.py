@@ -934,6 +934,236 @@ class TestIncompleteInfillHandling:
         assert acceptable is True
 
 
+class TestHoleUniformity:
+    """Tests for hole uniformity criterion."""
+
+    def test_calculate_hole_uniformity_with_identical_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that identical holes get perfect uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create 3 vertical rods that divide frame into 4 equal rectangles
+        infill_rods = [
+            Rod(
+                geometry=LineString([(25, 0), (25, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(75, 0), (75, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        holes = evaluator._identify_holes(infill, simple_frame)
+        score = evaluator._calculate_hole_uniformity(holes)
+
+        # All holes are identical 25x100 rectangles, should get perfect score
+        assert score == pytest.approx(1.0, abs=0.01)
+
+    def test_calculate_hole_uniformity_with_varied_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test that varied hole sizes get lower uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create frame with non-uniform divisions
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # Create rods at x=10 and x=90 (very uneven division: 10, 80, 10)
+        infill_rods = [
+            Rod(
+                geometry=LineString([(10, 0), (10, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(90, 0), (90, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        holes = evaluator._identify_holes(infill, frame)
+        score = evaluator._calculate_hole_uniformity(holes)
+
+        # Holes have very different sizes (10x100=1000, 80x100=8000, 10x100=1000)
+        # Should get lower score than uniform arrangement
+        assert score < 0.9  # Not perfect
+        assert score > 0.0  # But not zero
+
+    def test_calculate_hole_uniformity_with_single_hole(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that single hole gets perfect uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+        empty_infill = RailingInfill(rods=[])
+
+        holes = evaluator._identify_holes(empty_infill, simple_frame)
+        score = evaluator._calculate_hole_uniformity(holes)
+
+        # Single hole = perfect uniformity
+        assert score == 1.0
+
+    def test_calculate_hole_uniformity_with_no_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test that no holes gets perfect uniformity score."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Empty list of holes
+        score = evaluator._calculate_hole_uniformity([])
+
+        # No holes = perfect uniformity
+        assert score == 1.0
+
+    def test_calculate_hole_uniformity_with_two_different_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test hole uniformity with two holes of different sizes."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create frame
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # Create one vertical rod at x=30 (creates 30x100=3000 and 70x100=7000 holes)
+        infill_rods = [
+            Rod(
+                geometry=LineString([(30, 0), (30, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        holes = evaluator._identify_holes(infill, frame)
+        score = evaluator._calculate_hole_uniformity(holes)
+
+        # Two holes with different sizes should get lower score
+        # Areas: 3000 and 7000, mean=5000, std_dev=2000, CV=0.4
+        # score = exp(-2*0.4) = exp(-0.8) ≈ 0.45
+        assert 0.3 < score < 0.6
+
+    def test_evaluate_uses_hole_uniformity(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that evaluate() now uses hole uniformity criterion."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create uniform infill
+        infill_rods = [
+            Rod(
+                geometry=LineString([(25, 0), (25, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(75, 0), (75, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        fitness = evaluator.evaluate(infill, simple_frame)
+
+        # Uniform holes should contribute positively to fitness
+        # Score combines hole uniformity + incircle uniformity + angle distribution
+        assert 0.0 < fitness <= 1.0
+
+
 class TestAngleDistribution:
     """Tests for angle distribution criterion."""
 

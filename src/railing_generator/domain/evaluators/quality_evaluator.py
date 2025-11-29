@@ -56,10 +56,13 @@ class QualityEvaluator(Evaluator):
             Fitness score between 0.0 and 1.0 (higher is better)
 
         Note:
-            TODO(Task 6.8): Implement remaining quality criteria (hole uniformity, anchor spacing)
+            TODO(Task 6.9): Implement remaining quality criteria (anchor spacing)
         """
         # Identify holes in the arrangement
         holes = self._identify_holes(infill, frame)
+
+        # Calculate hole uniformity score
+        hole_uniformity_score = self._calculate_hole_uniformity(holes)
 
         # Calculate incircle uniformity score
         incircle_uniformity_score = self._calculate_incircle_uniformity(holes)
@@ -67,19 +70,21 @@ class QualityEvaluator(Evaluator):
         # Calculate angle distribution score
         angle_distribution_score = self._calculate_angle_distribution(infill)
 
-        # TODO(Task 6.8): Implement remaining quality criteria
-        # hole_uniformity_score = self._calculate_hole_uniformity(holes)
+        # TODO(Task 6.9): Implement remaining quality criteria
         # anchor_spacing_score = self._calculate_anchor_spacing(infill, frame)
 
         # Combine implemented criteria with their weights
         fitness = (
-            self.params.incircle_uniformity_weight * incircle_uniformity_score
+            self.params.hole_uniformity_weight * hole_uniformity_score
+            + self.params.incircle_uniformity_weight * incircle_uniformity_score
             + self.params.angle_distribution_weight * angle_distribution_score
         )
 
         # Normalize by total weight to keep score in 0-1 range
         total_weight = (
-            self.params.incircle_uniformity_weight + self.params.angle_distribution_weight
+            self.params.hole_uniformity_weight
+            + self.params.incircle_uniformity_weight
+            + self.params.angle_distribution_weight
         )
         if total_weight > 0:
             fitness = fitness / total_weight
@@ -218,6 +223,50 @@ class QualityEvaluator(Evaluator):
 
         return radius
 
+    def _calculate_hole_uniformity(self, holes: list[Polygon]) -> float:
+        """
+        Calculate hole area uniformity score (0.0-1.0).
+
+        Measures how uniform the hole areas are across all holes.
+        Uniform hole areas indicate consistent spacing and arrangement quality.
+
+        Uses coefficient of variation (CV = std_dev / mean) to measure uniformity.
+        Lower CV means more uniform areas, which gets a higher score.
+
+        Args:
+            holes: List of Polygon objects representing holes
+
+        Returns:
+            Score between 0.0 and 1.0 (higher is better, 1.0 = perfect uniformity)
+        """
+        if len(holes) == 0:
+            return 1.0  # No holes = perfect uniformity
+
+        if len(holes) == 1:
+            return 1.0  # Single hole = perfect uniformity
+
+        # Calculate area for each hole
+        areas = [hole.area for hole in holes]
+
+        # Calculate mean and standard deviation
+        mean_area = sum(areas) / len(areas)
+
+        if mean_area == 0:
+            return 0.0  # Degenerate case
+
+        variance = sum((a - mean_area) ** 2 for a in areas) / len(areas)
+        std_dev = math.sqrt(variance)
+
+        # Calculate coefficient of variation (CV)
+        cv = std_dev / mean_area
+
+        # Convert CV to score (0-1 range, lower CV = higher score)
+        # Use exponential decay: score = e^(-k * CV)
+        # k=2 gives good sensitivity: CV=0 → score=1.0, CV=0.5 → score=0.37, CV=1.0 → score=0.14
+        score = math.exp(-2.0 * cv)
+
+        return score
+
     def _calculate_angle_distribution(self, infill: RailingInfill) -> float:
         """
         Calculate rod angle distribution score (0.0-1.0).
@@ -255,11 +304,7 @@ class QualityEvaluator(Evaluator):
 
         return score
 
-    # TODO(Task 6.8): Implement remaining quality criteria methods
-    # def _calculate_hole_uniformity(self, holes: list[Polygon]) -> float:
-    #     """Calculate hole area uniformity score (0.0-1.0)."""
-    #     pass
-    #
+    # TODO(Task 6.9): Implement remaining quality criteria methods
     # def _calculate_anchor_spacing(
     #     self, infill: RailingInfill, frame: RailingFrame
     # ) -> tuple[float, float]:
