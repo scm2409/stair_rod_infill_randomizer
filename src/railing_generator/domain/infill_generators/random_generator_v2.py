@@ -659,8 +659,7 @@ class RandomGeneratorV2(Generator):
 
     def _validate_rod_constraints(
         self,
-        rod_geometry: "LineString",
-        layer_num: int,
+        rod: Rod,
         frame: RailingFrame,
         params: RandomGeneratorParametersV2,
         existing_layer_rods: list[Rod],
@@ -672,8 +671,7 @@ class RandomGeneratorV2(Generator):
         Updates statistics counters for each failed check.
 
         Args:
-            rod_geometry: The rod geometry to validate
-            layer_num: The layer number
+            rod: The rod to validate
             frame: The railing frame
             params: Generation parameters
             existing_layer_rods: Existing rods in the same layer
@@ -681,34 +679,22 @@ class RandomGeneratorV2(Generator):
         Returns:
             True if valid, False otherwise
         """
-
-        import math
-
         # Check length constraints
-        rod_length = rod_geometry.length
-        if rod_length < params.min_rod_length_cm:
+        if rod.length_cm < params.min_rod_length_cm:
             self.statistics.too_short += 1
             return False
-        if rod_length > params.max_rod_length_cm:
+        if rod.length_cm > params.max_rod_length_cm:
             self.statistics.too_long += 1
             return False
 
         # Check boundary constraint
-        if not rod_geometry.covered_by(frame.enlarged_boundary):
+        if not rod.geometry.covered_by(frame.enlarged_boundary):
             self.statistics.outside_boundary += 1
             return False
 
         # Check angle deviation from vertical
-        # Calculate angle from vertical axis (0° = straight up/down)
-        coords = list(rod_geometry.coords)
-        dx = coords[1][0] - coords[0][0]
-        dy = coords[1][1] - coords[0][1]
-
-        # Use atan2 for proper angle calculation in all quadrants
-        # atan2(dx, dy) gives angle from vertical axis
-        # We take abs() of the result to get deviation magnitude
-        angle_rad = math.atan2(abs(dx), abs(dy))
-        angle_deg = math.degrees(angle_rad)
+        # Use abs() since we only care about magnitude for constraint checking
+        angle_deg = abs(rod.angle_from_vertical_deg)
 
         if angle_deg > params.max_angle_deviation_deg:
             self.statistics.angle_too_large += 1
@@ -716,7 +702,7 @@ class RandomGeneratorV2(Generator):
 
         # Check for crossings with same-layer rods
         for existing_rod in existing_layer_rods:
-            if rod_geometry.crosses(existing_rod.geometry):
+            if rod.geometry.crosses(existing_rod.geometry):
                 self.statistics.crosses_same_layer += 1
                 return False
 
@@ -844,28 +830,24 @@ class RandomGeneratorV2(Generator):
                 consecutive_failures += 1
                 continue  # No suitable end anchor found
 
-            # Create rod geometry
-            rod_geometry = LineString([start_anchor.position, end_anchor.position])
+            # Create rod
+            rod = Rod(
+                geometry=LineString([start_anchor.position, end_anchor.position]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=params.infill_weight_per_meter_kg_m,
+                layer=layer_num,
+            )
 
             # Validate constraints
             if not self._validate_rod_constraints(
-                rod_geometry=rod_geometry,
-                layer_num=layer_num,
+                rod=rod,
                 frame=frame,
                 params=params,
                 existing_layer_rods=layer_rods,
             ):
                 consecutive_failures += 1
                 continue  # Constraints not met
-
-            # Create rod
-            rod = Rod(
-                geometry=rod_geometry,
-                start_cut_angle_deg=0.0,
-                end_cut_angle_deg=0.0,
-                weight_kg_m=params.infill_weight_per_meter_kg_m,
-                layer=layer_num,
-            )
 
             # Mark anchors as used
             start_anchor.used = True

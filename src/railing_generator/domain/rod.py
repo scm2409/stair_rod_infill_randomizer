@@ -50,6 +50,51 @@ class Rod(BaseModel):
         """Get end point of rod."""
         return Point(self.geometry.coords[-1])
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def angle_from_vertical_deg(self) -> float:
+        """
+        Calculate the angle of this rod from vertical in degrees.
+
+        This computed property calculates the signed angle deviation from vertical,
+        independent of the LineString direction.
+
+        Returns:
+            Signed angle from vertical in degrees (-90 to +90)
+            - 0° = perfectly vertical
+            - Positive = leans right
+            - Negative = leans left
+            - ±90° = horizontal
+
+        Note:
+            This is the canonical property for calculating rod angles.
+            - Generator uses abs(angle_from_vertical_deg) for constraint checking
+            - Evaluator uses the signed value for distribution analysis
+        """
+        import math
+
+        # Get coordinates
+        coords = list(self.geometry.coords)
+        x1, y1 = coords[0]
+        x2, y2 = coords[-1]
+
+        # Calculate dx and dy
+        dx = x2 - x1
+        dy = y2 - y1
+
+        # Handle degenerate case
+        if dx == 0 and dy == 0:
+            return 0.0
+
+        # Calculate signed angle from vertical
+        # atan2(dx, dy) gives angle from vertical axis
+        # Vertical (dy large, dx small) → angle near 0°
+        # Horizontal (dx large, dy small) → angle near ±90°
+        angle_rad = math.atan2(dx, dy)
+        angle_deg = math.degrees(angle_rad)
+
+        return angle_deg
+
     def to_bom_entry(self, rod_id: int) -> dict[str, Any]:
         """
         Convert rod to BOM table entry.

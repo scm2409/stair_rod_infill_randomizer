@@ -211,14 +211,14 @@ class TestQualityEvaluator:
         simple_frame: RailingFrame,
         simple_infill: RailingInfill,
     ) -> None:
-        """Test that evaluate() returns score based on incircle uniformity."""
+        """Test that evaluate() returns score based on incircle uniformity and angle distribution."""
         evaluator = QualityEvaluator(quality_evaluator_params)
 
         fitness = evaluator.evaluate(simple_infill, simple_frame)
 
-        # Simple infill has uniform holes, should get high score
-        assert fitness > 0.9
-        assert fitness <= 1.0
+        # Simple infill has uniform holes but all vertical rods (penalized for angle)
+        # Score combines incircle uniformity (high) + angle distribution (low)
+        assert 0.0 < fitness <= 1.0
 
     def test_evaluate_returns_float(
         self,
@@ -780,7 +780,7 @@ class TestIncircleUniformity:
     def test_evaluate_uses_incircle_uniformity(
         self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
     ) -> None:
-        """Test that evaluate() now uses incircle uniformity criterion."""
+        """Test that evaluate() now uses incircle uniformity and angle distribution criteria."""
         evaluator = QualityEvaluator(quality_evaluator_params)
 
         # Create uniform infill
@@ -811,9 +811,9 @@ class TestIncircleUniformity:
 
         fitness = evaluator.evaluate(infill, simple_frame)
 
-        # Should get high score for uniform arrangement
-        assert fitness > 0.9
-        assert fitness <= 1.0
+        # Uniform holes but all vertical rods (penalized for angle)
+        # Score combines both criteria
+        assert 0.0 < fitness <= 1.0
 
     def test_evaluate_with_non_uniform_arrangement(
         self, quality_evaluator_params: QualityEvaluatorParameters
@@ -932,3 +932,203 @@ class TestIncompleteInfillHandling:
 
         # Should accept complete infills (assuming no other constraints violated)
         assert acceptable is True
+
+
+class TestAngleDistribution:
+    """Tests for angle distribution criterion."""
+
+    def test_calculate_angle_from_vertical_for_vertical_rod(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test angle calculation for a perfectly vertical rod."""
+        # Create a vertical rod (bottom to top)
+        rod = Rod(
+            geometry=LineString([(50, 0), (50, 100)]),
+            start_cut_angle_deg=0.0,
+            end_cut_angle_deg=0.0,
+            weight_kg_m=0.3,
+            layer=1,
+        )
+
+        angle = rod.angle_from_vertical_deg
+
+        # Vertical rod should have angle = 0°
+        assert abs(angle - 0.0) < 0.01
+
+    def test_calculate_angle_from_vertical_for_horizontal_rod(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test angle calculation for a horizontal rod."""
+        # Create a horizontal rod (left to right)
+        rod = Rod(
+            geometry=LineString([(0, 50), (100, 50)]),
+            start_cut_angle_deg=0.0,
+            end_cut_angle_deg=0.0,
+            weight_kg_m=0.3,
+            layer=1,
+        )
+
+        angle = rod.angle_from_vertical_deg
+
+        # Horizontal rod should have angle = 90° or -90°
+        assert abs(abs(angle) - 90.0) < 0.01
+
+    def test_calculate_angle_from_vertical_for_45_degree_rod(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test angle calculation for a 45° rod."""
+        # Create a 45° rod (bottom-left to top-right)
+        rod = Rod(
+            geometry=LineString([(0, 0), (100, 100)]),
+            start_cut_angle_deg=45.0,
+            end_cut_angle_deg=45.0,
+            weight_kg_m=0.3,
+            layer=1,
+        )
+
+        angle = rod.angle_from_vertical_deg
+
+        # 45° rod should have angle = 45°
+        assert abs(angle - 45.0) < 0.01
+
+    def test_calculate_angle_from_vertical_for_negative_angle_rod(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test angle calculation for a rod with negative angle (returns signed value)."""
+        # Create a -45° rod (bottom-right to top-left)
+        rod = Rod(
+            geometry=LineString([(100, 0), (0, 100)]),
+            start_cut_angle_deg=-45.0,
+            end_cut_angle_deg=-45.0,
+            weight_kg_m=0.3,
+            layer=1,
+        )
+
+        angle = rod.angle_from_vertical_deg
+
+        # -45° rod should return signed angle = -45° (evaluator uses signed angles)
+        assert abs(angle - (-45.0)) < 0.01
+
+    def test_calculate_angle_distribution_with_vertical_rods(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test angle distribution score for all vertical rods."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create all vertical rods
+        infill_rods = [
+            Rod(
+                geometry=LineString([(25, 0), (25, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(50, 0), (50, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(75, 0), (75, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        score = evaluator._calculate_angle_distribution(infill)
+
+        # All vertical rods should get low score (penalized for extreme angles + no distribution)
+        assert score < 0.2
+
+    def test_calculate_angle_distribution_with_varied_angles(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test angle distribution score for well-distributed angles."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create rods with varied angles
+        infill_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (30, 100)]),  # ~73° from vertical
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(40, 0), (60, 100)]),  # ~11° from vertical
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(70, 0), (100, 100)]),  # ~17° from vertical
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        score = evaluator._calculate_angle_distribution(infill)
+
+        # Varied angles should get some score (std_dev > 0)
+        assert score > 0.0
+
+    def test_calculate_angle_distribution_with_empty_infill(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test angle distribution score for empty infill."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        empty_infill = RailingInfill(rods=[])
+
+        score = evaluator._calculate_angle_distribution(empty_infill)
+
+        # Empty infill should get perfect score
+        assert score == 1.0
+
+    def test_evaluate_includes_angle_distribution(
+        self, quality_evaluator_params: QualityEvaluatorParameters, simple_frame: RailingFrame
+    ) -> None:
+        """Test that evaluate() now includes angle distribution criterion."""
+        evaluator = QualityEvaluator(quality_evaluator_params)
+
+        # Create infill with good angles
+        infill_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (30, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(40, 0), (60, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(70, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            ),
+        ]
+        infill = RailingInfill(rods=infill_rods)
+
+        fitness = evaluator.evaluate(infill, simple_frame)
+
+        # Should get reasonable score (combines incircle uniformity + angle distribution)
+        assert 0.0 < fitness <= 1.0

@@ -56,7 +56,7 @@ class QualityEvaluator(Evaluator):
             Fitness score between 0.0 and 1.0 (higher is better)
 
         Note:
-            TODO(Task 6.5): Implement actual quality criteria calculations
+            TODO(Task 6.8): Implement remaining quality criteria (hole uniformity, anchor spacing)
         """
         # Identify holes in the arrangement
         holes = self._identify_holes(infill, frame)
@@ -64,19 +64,25 @@ class QualityEvaluator(Evaluator):
         # Calculate incircle uniformity score
         incircle_uniformity_score = self._calculate_incircle_uniformity(holes)
 
-        # TODO(Task 6.5.2): Implement remaining quality criteria
+        # Calculate angle distribution score
+        angle_distribution_score = self._calculate_angle_distribution(infill)
+
+        # TODO(Task 6.8): Implement remaining quality criteria
         # hole_uniformity_score = self._calculate_hole_uniformity(holes)
-        # angle_distribution_score = self._calculate_angle_distribution(infill)
         # anchor_spacing_score = self._calculate_anchor_spacing(infill, frame)
 
-        # For now, only use incircle uniformity (Task 6.5.1)
-        # Other criteria will be added in Task 6.5.2
-        fitness = self.params.incircle_uniformity_weight * incircle_uniformity_score
+        # Combine implemented criteria with their weights
+        fitness = (
+            self.params.incircle_uniformity_weight * incircle_uniformity_score
+            + self.params.angle_distribution_weight * angle_distribution_score
+        )
 
-        # Normalize by the weight to keep score in 0-1 range
-        # (since we're only using one criterion for now)
-        if self.params.incircle_uniformity_weight > 0:
-            fitness = fitness / self.params.incircle_uniformity_weight
+        # Normalize by total weight to keep score in 0-1 range
+        total_weight = (
+            self.params.incircle_uniformity_weight + self.params.angle_distribution_weight
+        )
+        if total_weight > 0:
+            fitness = fitness / total_weight
 
         return fitness
 
@@ -212,13 +218,46 @@ class QualityEvaluator(Evaluator):
 
         return radius
 
-    # TODO(Task 6.5.2): Implement remaining quality criteria methods
+    def _calculate_angle_distribution(self, infill: RailingInfill) -> float:
+        """
+        Calculate rod angle distribution score (0.0-1.0).
+
+        Measures the standard deviation of angles. Lower standard deviation
+        means angles are clustered together (bad), higher standard deviation
+        means angles are spread out (good).
+
+        Args:
+            infill: The infill arrangement to evaluate
+
+        Returns:
+            Score between 0.0 and 1.0 (higher is better)
+        """
+        if len(infill.rods) <= 1:
+            return 1.0  # Single rod or no rods = perfect distribution
+
+        # Calculate angle from vertical for each rod
+        angles = [rod.angle_from_vertical_deg for rod in infill.rods]
+
+        # Calculate standard deviation
+        mean_angle = sum(angles) / len(angles)
+        variance = sum((a - mean_angle) ** 2 for a in angles) / len(angles)
+        std_dev = math.sqrt(variance)
+
+        # Convert std_dev to score
+        # Higher std_dev = better distribution (up to a point)
+        # Use sigmoid-like function: score = 1 - exp(-k * std_dev)
+        # k=0.05 gives good sensitivity:
+        #   std_dev=0° → score=0.0 (all same angle)
+        #   std_dev=10° → score=0.39
+        #   std_dev=20° → score=0.63
+        #   std_dev=30° → score=0.78
+        score = 1.0 - math.exp(-0.05 * std_dev)
+
+        return score
+
+    # TODO(Task 6.8): Implement remaining quality criteria methods
     # def _calculate_hole_uniformity(self, holes: list[Polygon]) -> float:
     #     """Calculate hole area uniformity score (0.0-1.0)."""
-    #     pass
-    #
-    # def _calculate_angle_distribution(self, infill: RailingInfill) -> float:
-    #     """Calculate rod angle distribution score (0.0-1.0)."""
     #     pass
     #
     # def _calculate_anchor_spacing(

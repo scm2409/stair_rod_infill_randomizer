@@ -86,6 +86,18 @@ Technical standards and tooling requirements for Python development in this work
 
 **Note**: No need to run `ruff check` separately - just run `ruff format` at the end to ensure consistent formatting across the entire project.
 
+### CRITICAL: Zero Tolerance for Errors
+
+**MANDATORY RULE**: Before completing ANY task, ALL mypy and test errors MUST be fixed, regardless of whether they are related to the current implementation.
+
+**Requirements:**
+1. **Run full test suite**: `uv run pytest --cov=railing_generator --cov-report=term-missing`
+2. **Run mypy on entire codebase**: `uv run mypy src/`
+3. **Fix ALL errors**: Even if errors are unrelated to your current task, you MUST fix them
+4. **No exceptions**: It is NOT allowed to complete a task with ANY mypy or testing errors in the project
+5. **Document fixes**: If fixing unrelated errors, briefly note what was fixed and why
+
+
 ### Mypy Type Ignore Policy
 
 **CRITICAL**: Before adding any `# type: ignore` comment, you MUST ask the user for approval.

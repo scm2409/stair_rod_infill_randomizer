@@ -218,10 +218,10 @@ def test_random_generator_v2_rods_within_boundary(
     generator = RandomGeneratorV2()
     infill = generator.generate(simple_frame, simple_params)
 
-    # Verify all rods are within the boundary
+    # Verify all rods are covered by the frame boundary
+    # Use enlarged_boundary to handle rounding issues
     for rod in infill.rods:
-        # Check that the rod is within the frame boundary
-        assert rod.geometry.within(simple_frame.boundary), (
+        assert simple_frame.enlarged_boundary.covers(rod.geometry), (
             f"Rod extends outside frame boundary: {rod.geometry}"
         )
 

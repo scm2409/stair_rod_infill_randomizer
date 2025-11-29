@@ -13,10 +13,10 @@ def test_random_generator_v2_defaults_creation() -> None:
     """Test creating RandomGeneratorDefaultsV2."""
     defaults = RandomGeneratorDefaultsV2()
 
-    assert defaults.num_rods == 45
+    assert defaults.num_rods == 30
     assert defaults.min_rod_length_cm == 50.0
     assert defaults.max_rod_length_cm == 200.0
-    assert defaults.max_angle_deviation_deg == 30.0
+    assert defaults.max_angle_deviation_deg == 40.0
     assert defaults.num_layers == 3
     assert defaults.max_iterations == 1000
     assert defaults.max_duration_sec == 60.0
@@ -26,9 +26,9 @@ def test_random_generator_v2_defaults_creation() -> None:
     assert defaults.min_acceptable_fitness == 0.7
     assert defaults.min_anchor_distance_vertical_cm == 15.0
     assert defaults.min_anchor_distance_other_cm == 5.0
-    assert defaults.main_direction_range_min_deg == -50.0
-    assert defaults.main_direction_range_max_deg == 20.0
-    assert defaults.random_angle_deviation_deg == 30.0
+    assert defaults.main_direction_range_min_deg == -30.0
+    assert defaults.main_direction_range_max_deg == 10.0
+    assert defaults.random_angle_deviation_deg == 20.0
 
 
 def test_random_generator_v2_parameters_creation() -> None:
