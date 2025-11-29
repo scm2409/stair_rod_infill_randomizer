@@ -29,6 +29,7 @@ class TestEvaluatorFactory:
         """Test creating Quality Evaluator from parameters."""
         params = QualityEvaluatorParameters(
             max_hole_area_cm2=10000.0,
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,
@@ -59,6 +60,7 @@ class TestEvaluatorFactory:
         passthrough_params = PassThroughEvaluatorParameters()
         quality_params = QualityEvaluatorParameters(
             max_hole_area_cm2=5000.0,
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,

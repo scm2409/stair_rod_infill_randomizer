@@ -2,11 +2,34 @@
 #
 # The Quality Evaluator uses multiple weighted criteria to assess
 # infill arrangement quality. It provides detailed fitness scoring
-# for optimization and rejects arrangements that exceed maximum hole area.
+# for optimization and rejects arrangements that exceed maximum hole area
+# or fall below minimum hole area.
 #
-# Parameters:
+# Acceptance Criteria Thresholds:
 #   - max_hole_area_cm2: Maximum allowed hole area in square centimeters
 #     Any arrangement with a hole larger than this will be rejected.
 #     Default: 10000.0 cm² (100cm x 100cm)
+#   - min_hole_area_cm2: Minimum allowed hole area in square centimeters
+#     Any arrangement with a hole smaller than this will be rejected.
+#     Default: 10.0 cm² (prevents tiny slivers)
+#
+# Quality Criteria Weights:
+#   These weights determine the relative importance of each quality criterion
+#   in the overall fitness score. All weights should sum to approximately 1.0.
+#
+#   - hole_uniformity: Prefer arrangements where all holes are approximately the same size
+#   - incircle_uniformity: Prefer arrangements where hole incircles have similar radii
+#   - angle_distribution: Penalize rods that are nearly vertical or at extreme angles
+#   - anchor_spacing_horizontal: Prefer evenly distributed anchors on horizontal frame segments
+#   - anchor_spacing_vertical: Prefer evenly distributed anchors on vertical frame segments
 
+# Acceptance criteria thresholds
 max_hole_area_cm2: 10000.0
+min_hole_area_cm2: 10.0
+
+# Quality criteria weights
+hole_uniformity_weight: 0.3
+incircle_uniformity_weight: 0.2
+angle_distribution_weight: 0.2
+anchor_spacing_horizontal_weight: 0.15
+anchor_spacing_vertical_weight: 0.15

@@ -435,6 +435,7 @@ def test_random_generator_v2_with_quality_evaluator(simple_frame: RailingFrame) 
         evaluator=QualityEvaluatorParameters(
             type="quality",
             max_hole_area_cm2=10000.0,
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,
@@ -533,6 +534,7 @@ def test_random_generator_v2_quality_evaluator_improves_fitness(
         evaluator=QualityEvaluatorParameters(
             type="quality",
             max_hole_area_cm2=10000.0,
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,

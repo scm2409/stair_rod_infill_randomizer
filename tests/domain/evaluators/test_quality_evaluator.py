@@ -4,8 +4,8 @@ import pytest
 from shapely.geometry import LineString, Polygon
 
 from railing_generator.domain.evaluators.quality_evaluator import QualityEvaluator
-from railing_generator.domain.evaluators.quality_evaluator_criteria_defaults import (
-    QualityEvaluatorCriteriaDefaults,
+from railing_generator.domain.evaluators.quality_evaluator_defaults import (
+    QualityEvaluatorDefaults,
 )
 from railing_generator.domain.evaluators.quality_evaluator_parameters import (
     QualityEvaluatorParameters,
@@ -20,6 +20,7 @@ def quality_evaluator_params() -> QualityEvaluatorParameters:
     """Create Quality Evaluator parameters for testing."""
     return QualityEvaluatorParameters(
         max_hole_area_cm2=10000.0,
+        min_hole_area_cm2=10.0,
         hole_uniformity_weight=0.3,
         incircle_uniformity_weight=0.2,
         angle_distribution_weight=0.2,
@@ -101,6 +102,7 @@ class TestQualityEvaluatorParameters:
         """Test creating parameters with valid values."""
         params = QualityEvaluatorParameters(
             max_hole_area_cm2=5000.0,
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,
@@ -110,6 +112,7 @@ class TestQualityEvaluatorParameters:
 
         assert params.type == "quality"
         assert params.max_hole_area_cm2 == 5000.0
+        assert params.min_hole_area_cm2 == 10.0
         assert params.hole_uniformity_weight == 0.3
         assert params.incircle_uniformity_weight == 0.2
         assert params.angle_distribution_weight == 0.2
@@ -120,6 +123,7 @@ class TestQualityEvaluatorParameters:
         """Test that type discriminator is always 'quality'."""
         params = QualityEvaluatorParameters(
             max_hole_area_cm2=10000.0,
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,
@@ -131,23 +135,36 @@ class TestQualityEvaluatorParameters:
 
     def test_from_defaults(self) -> None:
         """Test creating parameters from defaults."""
-        criteria = QualityEvaluatorCriteriaDefaults()
-        params = QualityEvaluatorParameters.from_defaults(
-            max_hole_area_cm2=8000.0, criteria=criteria
-        )
+        defaults = QualityEvaluatorDefaults()
+        params = QualityEvaluatorParameters.from_defaults(defaults)
 
-        assert params.max_hole_area_cm2 == 8000.0
-        assert params.hole_uniformity_weight == criteria.hole_uniformity_weight
-        assert params.incircle_uniformity_weight == criteria.incircle_uniformity_weight
-        assert params.angle_distribution_weight == criteria.angle_distribution_weight
-        assert params.anchor_spacing_horizontal_weight == criteria.anchor_spacing_horizontal_weight
-        assert params.anchor_spacing_vertical_weight == criteria.anchor_spacing_vertical_weight
+        assert params.max_hole_area_cm2 == defaults.max_hole_area_cm2
+        assert params.min_hole_area_cm2 == defaults.min_hole_area_cm2
+        assert params.hole_uniformity_weight == defaults.hole_uniformity_weight
+        assert params.incircle_uniformity_weight == defaults.incircle_uniformity_weight
+        assert params.angle_distribution_weight == defaults.angle_distribution_weight
+        assert params.anchor_spacing_horizontal_weight == defaults.anchor_spacing_horizontal_weight
+        assert params.anchor_spacing_vertical_weight == defaults.anchor_spacing_vertical_weight
 
     def test_invalid_max_hole_area(self) -> None:
         """Test that negative max hole area is rejected."""
         with pytest.raises(ValueError):
             QualityEvaluatorParameters(
                 max_hole_area_cm2=-100.0,
+                min_hole_area_cm2=10.0,
+                hole_uniformity_weight=0.3,
+                incircle_uniformity_weight=0.2,
+                angle_distribution_weight=0.2,
+                anchor_spacing_horizontal_weight=0.15,
+                anchor_spacing_vertical_weight=0.15,
+            )
+
+    def test_invalid_min_hole_area(self) -> None:
+        """Test that negative min hole area is rejected."""
+        with pytest.raises(ValueError):
+            QualityEvaluatorParameters(
+                max_hole_area_cm2=10000.0,
+                min_hole_area_cm2=-10.0,
                 hole_uniformity_weight=0.3,
                 incircle_uniformity_weight=0.2,
                 angle_distribution_weight=0.2,
@@ -160,6 +177,7 @@ class TestQualityEvaluatorParameters:
         with pytest.raises(ValueError):
             QualityEvaluatorParameters(
                 max_hole_area_cm2=10000.0,
+                min_hole_area_cm2=10.0,
                 hole_uniformity_weight=1.5,  # Invalid: > 1.0
                 incircle_uniformity_weight=0.2,
                 angle_distribution_weight=0.2,
@@ -168,13 +186,18 @@ class TestQualityEvaluatorParameters:
             )
 
 
-class TestQualityEvaluatorCriteriaDefaults:
-    """Tests for QualityEvaluatorCriteriaDefaults."""
+class TestQualityEvaluatorDefaults:
+    """Tests for QualityEvaluatorDefaults."""
 
     def test_default_values(self) -> None:
         """Test that default values are set correctly."""
-        defaults = QualityEvaluatorCriteriaDefaults()
+        defaults = QualityEvaluatorDefaults()
 
+        # Acceptance criteria thresholds
+        assert defaults.max_hole_area_cm2 == 10000.0
+        assert defaults.min_hole_area_cm2 == 10.0
+
+        # Quality criteria weights
         assert defaults.hole_uniformity_weight == 0.3
         assert defaults.incircle_uniformity_weight == 0.2
         assert defaults.angle_distribution_weight == 0.2
@@ -183,7 +206,7 @@ class TestQualityEvaluatorCriteriaDefaults:
 
     def test_weights_sum_to_one(self) -> None:
         """Test that default weights sum to approximately 1.0."""
-        defaults = QualityEvaluatorCriteriaDefaults()
+        defaults = QualityEvaluatorDefaults()
 
         total = (
             defaults.hole_uniformity_weight
@@ -483,6 +506,7 @@ class TestHoleIdentification:
         # Create evaluator with small max hole area
         params = QualityEvaluatorParameters(
             max_hole_area_cm2=1000.0,  # Small max area
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,
@@ -548,6 +572,7 @@ class TestHoleIdentification:
         # Create evaluator with large max hole area
         params = QualityEvaluatorParameters(
             max_hole_area_cm2=10000.0,  # Large max area
+            min_hole_area_cm2=10.0,
             hole_uniformity_weight=0.3,
             incircle_uniformity_weight=0.2,
             angle_distribution_weight=0.2,
@@ -586,6 +611,83 @@ class TestHoleIdentification:
 
         # Should accept because all holes are within limit
         assert acceptable is True
+
+    def test_is_acceptable_rejects_tiny_holes(
+        self, quality_evaluator_params: QualityEvaluatorParameters
+    ) -> None:
+        """Test that is_acceptable() rejects arrangements with holes below minimum area."""
+        # Create evaluator with large min hole area
+        params = QualityEvaluatorParameters(
+            max_hole_area_cm2=10000.0,
+            min_hole_area_cm2=1000.0,  # Large min area (rejects holes < 1000 cm²)
+            hole_uniformity_weight=0.3,
+            incircle_uniformity_weight=0.2,
+            angle_distribution_weight=0.2,
+            anchor_spacing_horizontal_weight=0.15,
+            anchor_spacing_vertical_weight=0.15,
+        )
+        evaluator = QualityEvaluator(params)
+
+        # Create a 100x100 frame
+        frame_rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(100, 100), (0, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+            Rod(
+                geometry=LineString([(0, 100), (0, 0)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.5,
+                layer=0,
+            ),
+        ]
+        frame = RailingFrame(rods=frame_rods)
+
+        # Many vertical rods create many small holes (< 1000 cm²)
+        infill_rods = [
+            Rod(
+                geometry=LineString([(i * 10, 0), (i * 10, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            )
+            for i in range(1, 10)  # 9 rods create 10 holes of 10x100=1000 cm² each
+        ]
+        # Add one more rod to create smaller holes
+        infill_rods.append(
+            Rod(
+                geometry=LineString([(5, 0), (5, 100)]),
+                start_cut_angle_deg=0.0,
+                end_cut_angle_deg=0.0,
+                weight_kg_m=0.3,
+                layer=1,
+            )
+        )
+        infill = RailingInfill(rods=infill_rods)
+
+        acceptable = evaluator.is_acceptable(infill, frame)
+
+        # Should reject because some holes are too small
+        assert acceptable is False
 
 
 class TestIncircleUniformity:

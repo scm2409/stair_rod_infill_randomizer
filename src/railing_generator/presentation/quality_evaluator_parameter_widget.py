@@ -2,8 +2,8 @@
 
 from PySide6.QtWidgets import QDoubleSpinBox
 
-from railing_generator.domain.evaluators.quality_evaluator_criteria_defaults import (
-    QualityEvaluatorCriteriaDefaults,
+from railing_generator.domain.evaluators.quality_evaluator_defaults import (
+    QualityEvaluatorDefaults,
 )
 from railing_generator.domain.evaluators.quality_evaluator_parameters import (
     QualityEvaluatorParameters,
@@ -22,7 +22,7 @@ class QualityEvaluatorParameterWidget(EvaluatorParameterWidget):
 
     def __init__(self) -> None:
         """Initialize with default values from configuration."""
-        self._defaults = QualityEvaluatorCriteriaDefaults()
+        self._defaults = QualityEvaluatorDefaults()
         super().__init__()
 
     def _create_widgets(self) -> None:
@@ -34,6 +34,14 @@ class QualityEvaluatorParameterWidget(EvaluatorParameterWidget):
         max_hole_area_spin.setDecimals(1)
         self.form_layout.addRow("Max Hole Area:", max_hole_area_spin)
         self.field_widgets["max_hole_area_cm2"] = max_hole_area_spin
+
+        # Min hole area
+        min_hole_area_spin = QDoubleSpinBox()
+        min_hole_area_spin.setRange(0.1, 10000.0)
+        min_hole_area_spin.setSuffix(" cm²")
+        min_hole_area_spin.setDecimals(1)
+        self.form_layout.addRow("Min Hole Area:", min_hole_area_spin)
+        self.field_widgets["min_hole_area_cm2"] = min_hole_area_spin
 
         # Hole uniformity weight
         hole_uniformity_spin = QDoubleSpinBox()
@@ -77,10 +85,15 @@ class QualityEvaluatorParameterWidget(EvaluatorParameterWidget):
 
     def _load_defaults(self) -> None:
         """Load default values into the widgets."""
-        # Max hole area (default: 10000 cm²)
+        # Max hole area
         widget = self.field_widgets["max_hole_area_cm2"]
         assert isinstance(widget, QDoubleSpinBox)
-        widget.setValue(10000.0)
+        widget.setValue(self._defaults.max_hole_area_cm2)
+
+        # Min hole area
+        widget = self.field_widgets["min_hole_area_cm2"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(self._defaults.min_hole_area_cm2)
 
         # Hole uniformity weight
         widget = self.field_widgets["hole_uniformity_weight"]
@@ -128,6 +141,10 @@ class QualityEvaluatorParameterWidget(EvaluatorParameterWidget):
         assert isinstance(widget, QDoubleSpinBox)
         max_hole_area_cm2 = widget.value()
 
+        widget = self.field_widgets["min_hole_area_cm2"]
+        assert isinstance(widget, QDoubleSpinBox)
+        min_hole_area_cm2 = widget.value()
+
         widget = self.field_widgets["hole_uniformity_weight"]
         assert isinstance(widget, QDoubleSpinBox)
         hole_uniformity_weight = widget.value()
@@ -151,6 +168,7 @@ class QualityEvaluatorParameterWidget(EvaluatorParameterWidget):
         # Create and return validated parameters
         return QualityEvaluatorParameters(
             max_hole_area_cm2=max_hole_area_cm2,
+            min_hole_area_cm2=min_hole_area_cm2,
             hole_uniformity_weight=hole_uniformity_weight,
             incircle_uniformity_weight=incircle_uniformity_weight,
             angle_distribution_weight=angle_distribution_weight,

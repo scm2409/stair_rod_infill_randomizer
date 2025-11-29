@@ -81,6 +81,7 @@ def test_incomplete_infill_flow() -> None:
     # Test with QualityEvaluator
     quality_params = QualityEvaluatorParameters(
         max_hole_area_cm2=10000.0,
+        min_hole_area_cm2=10.0,
         hole_uniformity_weight=0.3,
         incircle_uniformity_weight=0.2,
         angle_distribution_weight=0.2,
