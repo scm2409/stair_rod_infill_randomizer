@@ -166,13 +166,13 @@ def test_random_generator_parameters_validation_max_angle_deviation_min() -> Non
 
 
 def test_random_generator_parameters_validation_max_angle_deviation_max() -> None:
-    """Test validation rejects max_angle_deviation_deg above maximum."""
+    """Test validation rejects max_angle_deviation_deg above maximum (75 degrees)."""
     with pytest.raises(ValidationError):
         RandomGeneratorParameters(
             num_rods=50,
             min_rod_length_cm=50.0,
             max_rod_length_cm=200.0,
-            max_angle_deviation_deg=46.0,  # Above maximum
+            max_angle_deviation_deg=76.0,  # Above maximum of 75
             num_layers=2,
             min_anchor_distance_cm=10.0,
             max_iterations=1000,

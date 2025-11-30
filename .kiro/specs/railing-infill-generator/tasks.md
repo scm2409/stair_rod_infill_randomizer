@@ -319,7 +319,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 ### Phase 10: Add Export and Polish
 
 - [ ] 10. Add export and final features
-  - [ ] 10.1 Implement DXF export
+  - [x] 10.1 Implement DXF export
     - Export to DXF with separate layers
     - Add Export menu action
     - Write tests for DXF export

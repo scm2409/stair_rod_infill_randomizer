@@ -150,6 +150,14 @@ class MainWindow(QMainWindow):
 
             file_menu.addSeparator()
 
+            # Export to DXF action
+            self.export_dxf_action = QAction("&Export to DXF...", self)
+            self.export_dxf_action.triggered.connect(self._on_export_dxf)
+            self.export_dxf_action.setEnabled(False)  # Disabled until a frame exists
+            file_menu.addAction(self.export_dxf_action)
+
+            file_menu.addSeparator()
+
             # Quit action
             self.quit_action = QAction("&Quit", self)
             self.quit_action.setShortcut(QKeySequence.StandardKey.Quit)
@@ -194,6 +202,9 @@ class MainWindow(QMainWindow):
         self.project_model.infill_layers_colored_by_layer_changed.connect(
             self._on_color_mode_changed
         )
+
+        # Connect to frame updates to enable/disable Export DXF action
+        self.project_model.railing_frame_updated.connect(self._on_frame_updated_for_export)
 
     def _connect_controller_signals(self) -> None:
         """Connect to controller signals for generation events."""
@@ -658,6 +669,54 @@ class MainWindow(QMainWindow):
             return True
         else:  # Cancel
             return False
+
+    def _on_frame_updated_for_export(self, frame: object) -> None:
+        """
+        Handle frame updates to enable/disable Export DXF action.
+
+        Args:
+            frame: RailingFrame or None
+        """
+        # Enable Export DXF action only when a frame exists
+        self.export_dxf_action.setEnabled(frame is not None)
+
+    def _on_export_dxf(self) -> None:
+        """Handle Export to DXF action."""
+        # Check if there's anything to export
+        if not self.project_model.has_railing_frame():
+            QMessageBox.warning(
+                self,
+                "Nothing to Export",
+                "Please create a shape before exporting to DXF.",
+            )
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export to DXF",
+            "",
+            "DXF Files (*.dxf);;All Files (*)",
+        )
+
+        if not file_path:
+            return  # User cancelled
+
+        # Ensure .dxf extension
+        if not file_path.lower().endswith(".dxf"):
+            file_path += ".dxf"
+
+        logger.info(f"Exporting DXF to: {file_path}")
+        try:
+            self.controller.export_dxf(Path(file_path))
+            logger.info(f"DXF exported successfully to: {file_path}")
+            self.update_status(f"Exported: {Path(file_path).name}")
+        except Exception as e:
+            logger.exception(f"Failed to export DXF to {file_path}: {e}")
+            QMessageBox.critical(
+                self,
+                "Error Exporting DXF",
+                f"Failed to export DXF:\n{e}",
+            )
 
     def closeEvent(self, event: QCloseEvent) -> None:
         """

@@ -623,3 +623,35 @@ class ApplicationController(QObject):
         writer.writerows(bom_entries)
 
         return output.getvalue()
+
+    # =========================================================================
+    # DXF Export
+    # =========================================================================
+
+    def export_dxf(self, file_path: Path) -> None:
+        """
+        Export the current design to DXF format.
+
+        Exports frame geometry to the "FRAME" layer and infill geometry
+        (if present) to "INFILL_LAYER_N" layers where N is the layer number.
+
+        Args:
+            file_path: Path to save the DXF file
+
+        Raises:
+            ValueError: If no frame exists (nothing to export)
+        """
+        if not self.project_model.has_railing_frame():
+            raise ValueError("Cannot export DXF: no railing frame exists")
+
+        frame = self.project_model.railing_frame
+        infill = self.project_model.railing_infill
+
+        # Type narrowing: we know frame is not None because has_railing_frame() returned True
+        assert frame is not None, "Frame should not be None after has_railing_frame() check"
+
+        from railing_generator.infrastructure.dxf_exporter import DxfExporter
+
+        exporter = DxfExporter(frame, infill)
+        exporter.export(file_path)
+        logger.info(f"DXF exported to {file_path}")
