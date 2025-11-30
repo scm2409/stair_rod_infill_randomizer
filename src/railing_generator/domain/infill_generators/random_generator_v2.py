@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from railing_generator.domain.anchor_point import AnchorPoint
 from railing_generator.domain.evaluators.evaluator import Evaluator
 from railing_generator.domain.evaluators.evaluator_factory import EvaluatorFactory
+from railing_generator.domain.generation_progress import GenerationProgress
 from railing_generator.domain.infill_generators.generation_statistics import (
     GenerationStatistics,
 )
@@ -138,6 +139,14 @@ class RandomGeneratorV2(Generator):
                 logger.info(f"Generating arrangement for attempt {evaluation_attempt}")
                 infill = self._generate_single_arrangement(frame, params)
 
+                # Emit progress update (before checking if acceptable, so we always update)
+                elapsed = time.time() - start_time
+                progress = GenerationProgress(
+                    iteration=evaluation_attempt,
+                    elapsed_sec=elapsed,
+                )
+                self.progress_updated.emit(progress)
+
                 # Check if arrangement is acceptable (e.g., complete, meets constraints)
                 if not self.evaluator.is_acceptable(infill, frame):
                     logger.info(
@@ -171,15 +180,13 @@ class RandomGeneratorV2(Generator):
                     # Emit best result update
                     self.best_result_updated.emit(infill)
 
-                # Emit progress
-                elapsed = time.time() - start_time
-                self.progress_updated.emit(
-                    {
-                        "iteration": evaluation_attempt,
-                        "best_fitness": best_fitness,
-                        "elapsed_sec": elapsed,
-                    }
-                )
+                    # Emit progress update with new best fitness
+                    elapsed = time.time() - start_time
+                    progress = GenerationProgress(
+                        iteration=evaluation_attempt,
+                        elapsed_sec=elapsed,
+                    )
+                    self.progress_updated.emit(progress)
 
                 # Check if fitness is acceptable (early exit)
                 if fitness >= params.min_acceptable_fitness:

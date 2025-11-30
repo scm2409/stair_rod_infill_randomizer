@@ -4,6 +4,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
+from railing_generator.domain.generation_progress import GenerationProgress
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
 )
@@ -45,6 +46,7 @@ class RailingProjectModel(QObject):
     project_file_path_changed = Signal(object)  # Path | None
     project_modified_changed = Signal(bool)  # Dirty flag changed
     rod_annotation_visibility_changed = Signal(bool)  # Rod annotation toggled
+    generation_progress_updated = Signal(GenerationProgress)  # GenerationProgress (never None)
 
     def __init__(self) -> None:
         """Initialize the project model with default state."""
@@ -67,6 +69,9 @@ class RailingProjectModel(QObject):
 
         # UI state
         self._rod_annotation_visible: bool = False
+
+        # Generation progress state
+        self._generation_progress: GenerationProgress = GenerationProgress()
 
     # Property getters for all state fields
 
@@ -114,6 +119,11 @@ class RailingProjectModel(QObject):
     def rod_annotation_visible(self) -> bool:
         """Get whether rod annotation is visible."""
         return self._rod_annotation_visible
+
+    @property
+    def generation_progress(self) -> GenerationProgress:
+        """Get the current generation progress data."""
+        return self._generation_progress
 
     # State setter methods with signal emissions
 
@@ -232,6 +242,16 @@ class RailingProjectModel(QObject):
         if self._rod_annotation_visible != visible:
             self._rod_annotation_visible = visible
             self.rod_annotation_visibility_changed.emit(visible)
+
+    def set_generation_progress(self, progress: GenerationProgress) -> None:
+        """
+        Set the generation progress data.
+
+        Args:
+            progress: GenerationProgress object with iteration, fitness, and elapsed time
+        """
+        self._generation_progress = progress
+        self.generation_progress_updated.emit(progress)
 
     # Utility methods
 

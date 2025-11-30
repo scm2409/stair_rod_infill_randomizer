@@ -19,6 +19,11 @@ Technical standards and tooling requirements for Python development in this work
 - The `Any` type hint defeats the purpose of type checking and must be avoided
 - Only use `Any` as a last resort when no stricter type is possible
 
+### Prefer Typed Classes Over Dictionaries
+
+**CRITICAL**: Use Pydantic models or dataclasses instead of untyped dictionaries for structured data.
+
+
 ### TODO Comments for Future Tasks
 
 **CRITICAL**: When implementing code that depends on classes/features from future tasks:

@@ -4,6 +4,7 @@ from abc import ABCMeta, abstractmethod
 
 from PySide6.QtCore import QObject, Signal
 
+from railing_generator.domain.generation_progress import GenerationProgress
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
 )
@@ -38,9 +39,7 @@ class Generator(QObject, metaclass=QObjectABCMeta):
     PARAMETER_TYPE: type[InfillGeneratorParameters]
 
     # Signals for generation progress and results
-    progress_updated = Signal(
-        dict
-    )  # {"iteration": int, "best_fitness": float, "elapsed_sec": float}
+    progress_updated = Signal(object)  # GenerationProgress
     best_result_updated = Signal(object)  # RailingInfill
     generation_completed = Signal(object)  # RailingInfill
     generation_failed = Signal(str)  # error message

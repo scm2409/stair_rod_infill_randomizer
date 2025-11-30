@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt
 
 from railing_generator.application.application_controller import ApplicationController
 from railing_generator.application.railing_project_model import RailingProjectModel
+from railing_generator.domain.generation_progress import GenerationProgress
 from railing_generator.presentation.bom_table_widget import BOMTableWidget
 from railing_generator.presentation.parameter_panel import ParameterPanel
 from railing_generator.presentation.progress_dialog import ProgressDialog
@@ -254,6 +255,26 @@ class MainWindow(QMainWindow):
             status_bar.showMessage(message)
             logger.debug("Status bar message set successfully")
 
+    def _on_progress_updated(self, progress: GenerationProgress) -> None:
+        """
+        Handle progress updates during generation by updating status bar.
+
+        Args:
+            progress: GenerationProgress object from generator
+        """
+
+        # Store in model for use in completion message
+        self.project_model.set_generation_progress(progress)
+
+        # Get fitness from current RailingInfill (single source of truth)
+        fitness = None
+        if self.project_model.railing_infill is not None:
+            fitness = self.project_model.railing_infill.fitness_score
+
+        # Use the object's formatting method with fitness from RailingInfill
+        status_message = progress.to_status_message(fitness=fitness)
+        self.update_status(status_message)
+
     def _on_generation_completed(self, infill: object) -> None:
         """
         Handle generation completion by updating status.
@@ -263,7 +284,19 @@ class MainWindow(QMainWindow):
         """
         logger.debug("MainWindow._on_generation_completed() called")
         logger.debug("About to call update_status")
-        self.update_status("Generation completed successfully")
+
+        # Get final progress from model
+        progress = self.project_model.generation_progress
+
+        # Get fitness from RailingInfill (single source of truth)
+        fitness = None
+        if self.project_model.railing_infill is not None:
+            fitness = self.project_model.railing_infill.fitness_score
+
+        # Format with "Completed" prefix and fitness from RailingInfill
+        status_message = progress.to_status_message(prefix="Completed", fitness=fitness)
+        self.update_status(status_message)
+
         logger.debug("MainWindow._on_generation_completed() finished successfully")
 
     def _on_generation_failed(self, error_message: str) -> None:
@@ -274,7 +307,19 @@ class MainWindow(QMainWindow):
             error_message: The error message from generation
         """
         logger.debug(f"MainWindow._on_generation_failed() called: {error_message}")
-        self.update_status(f"Generation failed: {error_message}")
+
+        # Get final progress from model
+        progress = self.project_model.generation_progress
+
+        # Get fitness from RailingInfill if available (single source of truth)
+        fitness = None
+        if self.project_model.railing_infill is not None:
+            fitness = self.project_model.railing_infill.fitness_score
+
+        # Format with "Failed" prefix and fitness from RailingInfill
+        status_message = progress.to_status_message(prefix="Failed", fitness=fitness)
+        self.update_status(status_message)
+
         logger.debug("MainWindow._on_generation_failed() finished successfully")
 
     def _on_best_result_updated(self, infill: object) -> None:
@@ -337,6 +382,7 @@ class MainWindow(QMainWindow):
         # Connect generator signals to main window for status updates
         # Qt will automatically use queued connections for cross-thread signals
         logger.debug("Connecting generator signals to main window")
+        generator.progress_updated.connect(self._on_progress_updated)  # type: ignore[attr-defined]
         generator.generation_completed.connect(self._on_generation_completed)  # type: ignore[attr-defined]
         generator.generation_failed.connect(self._on_generation_failed)  # type: ignore[attr-defined]
 
@@ -396,6 +442,11 @@ class MainWindow(QMainWindow):
 
         # Disconnect generator signals from main window
         logger.debug("Disconnecting generator signals from main window")
+        try:
+            generator.progress_updated.disconnect(self._on_progress_updated)  # type: ignore[attr-defined]
+        except (RuntimeError, TypeError):
+            logger.debug("progress_updated already disconnected or object deleted")
+
         try:
             generator.generation_completed.disconnect(self._on_generation_completed)  # type: ignore[attr-defined]
         except (RuntimeError, TypeError):

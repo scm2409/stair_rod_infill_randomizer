@@ -171,3 +171,171 @@ class TestMainWindowStatusUpdate:
         status_bar = main_window.statusBar()
         assert status_bar is not None
         assert status_bar.currentMessage() == "Ready"
+
+    def test_progress_update_with_fitness(self, main_window: MainWindow) -> None:
+        """Test status bar update during generation with fitness score."""
+        from railing_generator.domain.generation_progress import GenerationProgress
+        from railing_generator.domain.railing_infill import RailingInfill
+        from railing_generator.domain.rod import Rod
+        from shapely.geometry import LineString
+
+        # Create progress object
+        progress = GenerationProgress(iteration=42, elapsed_sec=12.3)
+
+        # Create infill with fitness score (single source of truth for fitness)
+        rod = Rod(
+            geometry=LineString([(0.0, 0.0), (100.0, 0.0)]),
+            start_cut_angle_deg=90.0,
+            end_cut_angle_deg=90.0,
+            weight_kg_m=0.5,
+        )
+        infill = RailingInfill(
+            rods=[rod],
+            fitness_score=0.8567,
+            iteration_count=42,
+            duration_sec=12.3,
+            anchor_points=[],
+            is_complete=True,
+        )
+        main_window.project_model.set_railing_infill(infill)
+
+        main_window._on_progress_updated(progress)
+
+        status_bar = main_window.statusBar()
+        assert status_bar is not None
+        message = status_bar.currentMessage()
+        assert "Iteration 42" in message
+        assert "Fitness 0.8567" in message
+        assert "Elapsed 12.3s" in message
+
+    def test_progress_update_without_fitness(self, main_window: MainWindow) -> None:
+        """Test status bar update during generation without fitness score."""
+        from railing_generator.domain.generation_progress import GenerationProgress
+
+        # Create progress object
+        progress = GenerationProgress(iteration=10, elapsed_sec=5.7)
+
+        # No infill set, so fitness will be None
+        main_window._on_progress_updated(progress)
+
+        status_bar = main_window.statusBar()
+        assert status_bar is not None
+        message = status_bar.currentMessage()
+        assert "Iteration 10" in message
+        assert "Elapsed 5.7s" in message
+        assert "Fitness" not in message
+
+    def test_progress_update_formats_correctly(self, main_window: MainWindow) -> None:
+        """Test that progress updates are formatted with separators."""
+        from railing_generator.domain.generation_progress import GenerationProgress
+        from railing_generator.domain.railing_infill import RailingInfill
+        from railing_generator.domain.rod import Rod
+        from shapely.geometry import LineString
+
+        # Create progress object
+        progress = GenerationProgress(iteration=100, elapsed_sec=45.6)
+
+        # Create infill with fitness score
+        rod = Rod(
+            geometry=LineString([(0.0, 0.0), (100.0, 0.0)]),
+            start_cut_angle_deg=90.0,
+            end_cut_angle_deg=90.0,
+            weight_kg_m=0.5,
+        )
+        infill = RailingInfill(
+            rods=[rod],
+            fitness_score=0.9234,
+            iteration_count=100,
+            duration_sec=45.6,
+            anchor_points=[],
+            is_complete=True,
+        )
+        main_window.project_model.set_railing_infill(infill)
+
+        main_window._on_progress_updated(progress)
+
+        status_bar = main_window.statusBar()
+        assert status_bar is not None
+        message = status_bar.currentMessage()
+        # Check that parts are separated by " | "
+        assert " | " in message
+        parts = message.split(" | ")
+        assert len(parts) == 3  # iteration, fitness, elapsed
+
+    def test_generation_completed_shows_final_stats(self, main_window: MainWindow) -> None:
+        """Test that completion message shows final iteration, fitness, and elapsed time."""
+        from railing_generator.domain.generation_progress import GenerationProgress
+        from railing_generator.domain.railing_infill import RailingInfill
+        from railing_generator.domain.rod import Rod
+        from shapely.geometry import LineString
+
+        # Simulate progress updates
+        progress = GenerationProgress(iteration=50, elapsed_sec=12.3)
+        main_window.project_model.set_generation_progress(progress)
+
+        # Set RailingInfill with fitness score (single source of truth)
+        rod = Rod(
+            geometry=LineString([(0.0, 0.0), (100.0, 0.0)]),
+            start_cut_angle_deg=90.0,
+            end_cut_angle_deg=90.0,
+            weight_kg_m=0.5,
+        )
+        infill = RailingInfill(
+            rods=[rod],
+            fitness_score=0.8567,
+            iteration_count=50,
+            duration_sec=12.3,
+            anchor_points=[],
+            is_complete=True,
+        )
+        main_window.project_model.set_railing_infill(infill)
+
+        # Simulate completion
+        main_window._on_generation_completed(None)
+
+        status_bar = main_window.statusBar()
+        assert status_bar is not None
+        message = status_bar.currentMessage()
+        assert "Completed" in message
+        assert "Iteration 50" in message
+        assert "0.8567" in message  # Fitness from RailingInfill
+        assert "12.3s" in message
+
+    def test_generation_failed_shows_final_stats(self, main_window: MainWindow) -> None:
+        """Test that failure message shows final iteration, fitness, and elapsed time."""
+        from railing_generator.domain.generation_progress import GenerationProgress
+        from railing_generator.domain.railing_infill import RailingInfill
+        from railing_generator.domain.rod import Rod
+        from shapely.geometry import LineString
+
+        # Simulate progress updates
+        progress = GenerationProgress(iteration=25, elapsed_sec=6.7)
+        main_window.project_model.set_generation_progress(progress)
+
+        # Set RailingInfill with fitness score (single source of truth)
+        rod = Rod(
+            geometry=LineString([(0.0, 0.0), (100.0, 0.0)]),
+            start_cut_angle_deg=90.0,
+            end_cut_angle_deg=90.0,
+            weight_kg_m=0.5,
+        )
+        infill = RailingInfill(
+            rods=[rod],
+            fitness_score=0.4321,
+            iteration_count=25,
+            duration_sec=6.7,
+            anchor_points=[],
+            is_complete=True,
+        )
+        main_window.project_model.set_railing_infill(infill)
+
+        # Simulate failure
+        main_window._on_generation_failed("Test error")
+
+        status_bar = main_window.statusBar()
+        assert status_bar is not None
+        message = status_bar.currentMessage()
+        assert "Failed" in message
+        assert "Iteration 25" in message
+        assert "0.4321" in message  # Fitness from RailingInfill
+        assert "6.7s" in message
