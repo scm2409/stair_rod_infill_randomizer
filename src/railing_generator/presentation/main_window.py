@@ -401,7 +401,6 @@ class MainWindow(QMainWindow):
         # Connect generator signals to progress dialog
         # Qt will automatically use queued connections for cross-thread signals
         logger.debug("Connecting generator signals to progress dialog")
-        generator.progress_updated.connect(self._progress_dialog.update_progress)  # type: ignore[attr-defined]
         generator.generation_completed.connect(self._progress_dialog.on_operation_completed)  # type: ignore[attr-defined]
         generator.generation_failed.connect(self._progress_dialog.on_operation_failed)  # type: ignore[attr-defined]
 
@@ -450,12 +449,6 @@ class MainWindow(QMainWindow):
 
         # Disconnect all generator signals from dialog
         # Wrap each in try-except to handle RuntimeError and TypeError
-        logger.debug("Disconnecting generator signals from dialog")
-        try:
-            generator.progress_updated.disconnect(self._progress_dialog.update_progress)  # type: ignore[attr-defined]
-        except (RuntimeError, TypeError):
-            logger.debug("progress_updated already disconnected or object deleted")
-
         try:
             generator.generation_completed.disconnect(self._progress_dialog.on_operation_completed)  # type: ignore[attr-defined]
         except (RuntimeError, TypeError):

@@ -35,35 +35,6 @@ def test_progress_dialog_custom_title(qtbot: QtBot) -> None:
     assert dialog.windowTitle() == "Generating Infill"
 
 
-def test_progress_dialog_update_progress(qtbot: QtBot) -> None:
-    """Test that progress updates are displayed correctly."""
-    dialog = ProgressDialog()
-    qtbot.addWidget(dialog)
-
-    # Update progress with iteration and elapsed time
-    progress_data = {"iteration": 10, "best_fitness": None, "elapsed_sec": 1.5}
-    dialog.update_progress(progress_data)
-
-    # Verify log entry added
-    log_text = dialog.log_text.toPlainText()
-    assert "[1.5s] Iteration 10" in log_text
-
-
-def test_progress_dialog_update_progress_with_fitness(qtbot: QtBot) -> None:
-    """Test that progress updates with fitness score are displayed correctly."""
-    dialog = ProgressDialog()
-    qtbot.addWidget(dialog)
-
-    # Update progress with fitness score
-    progress_data = {"iteration": 25, "best_fitness": 0.8765, "elapsed_sec": 3.2}
-    dialog.update_progress(progress_data)
-
-    # Verify log entry includes fitness
-    log_text = dialog.log_text.toPlainText()
-    assert "[3.2s] Iteration 25" in log_text
-    assert "Fitness: 0.8765" in log_text
-
-
 def test_progress_dialog_cancel_button(qtbot: QtBot) -> None:
     """Test that the cancel button emits the cancel_requested signal."""
     dialog = ProgressDialog()

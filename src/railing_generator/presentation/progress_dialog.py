@@ -92,8 +92,7 @@ class ProgressDialog(QDialog):
 
     This dialog:
     - Blocks input to the main window while visible
-    - Shows real-time progress metrics (iteration, fitness, elapsed time)
-    - Displays progress logs and logging messages
+    - Displays logging messages from the application
     - Provides a cancel/close button
     - Stays open after operation completes (user must close manually)
 
@@ -195,27 +194,6 @@ class ProgressDialog(QDialog):
         railing_logger = logging.getLogger("railing_generator")
         railing_logger.removeHandler(self.log_handler)
         super().closeEvent(event)
-
-    @Slot(dict)
-    def update_progress(self, progress_data: dict) -> None:  # type: ignore[type-arg]
-        """
-        Update the progress display with new metrics.
-
-        Args:
-            progress_data: Dictionary containing progress information:
-                - iteration: Current iteration number
-                - best_fitness: Best fitness score found (or None)
-                - elapsed_sec: Elapsed time in seconds
-        """
-        iteration = progress_data.get("iteration", 0)
-        best_fitness = progress_data.get("best_fitness")
-        elapsed_sec = progress_data.get("elapsed_sec", 0.0)
-
-        # Add log entry
-        log_entry = f"[{elapsed_sec:.1f}s] Iteration {iteration}"
-        if best_fitness is not None:
-            log_entry += f" - Fitness: {best_fitness:.4f}"
-        self.log_text.append(log_entry)
 
     @Slot()
     def _on_cancel_clicked(self) -> None:
