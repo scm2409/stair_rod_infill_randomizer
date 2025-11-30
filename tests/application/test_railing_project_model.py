@@ -378,3 +378,78 @@ def test_shape_type_change_only_emits_when_different(model: RailingProjectModel)
     # Setting different value should emit
     model.set_railing_shape_type("rectangular")
     assert signal_spy.call_count == 2
+
+
+def test_infill_layers_colored_by_layer_default(model: RailingProjectModel) -> None:
+    """Test that infill_layers_colored_by_layer defaults to True (colored mode)."""
+    assert model.infill_layers_colored_by_layer is True
+
+
+def test_set_infill_layers_colored_by_layer_emits_signal(model: RailingProjectModel) -> None:
+    """Test that setting infill color mode emits signal."""
+    signal_spy = MagicMock()
+    model.infill_layers_colored_by_layer_changed.connect(signal_spy)
+
+    # Change to monochrome mode
+    model.set_infill_layers_colored_by_layer(False)
+
+    assert model.infill_layers_colored_by_layer is False
+    signal_spy.assert_called_once_with(False)
+
+
+def test_set_infill_layers_colored_by_layer_only_emits_when_different(
+    model: RailingProjectModel,
+) -> None:
+    """Test that color mode signal only emits when value actually changes."""
+    signal_spy = MagicMock()
+    model.infill_layers_colored_by_layer_changed.connect(signal_spy)
+
+    # Setting same value (True) should not emit
+    model.set_infill_layers_colored_by_layer(True)
+    assert signal_spy.call_count == 0
+
+    # Setting different value should emit
+    model.set_infill_layers_colored_by_layer(False)
+    assert signal_spy.call_count == 1
+
+    # Setting same value again should not emit
+    model.set_infill_layers_colored_by_layer(False)
+    assert signal_spy.call_count == 1  # Still 1, not 2
+
+
+def test_toggle_infill_layers_colored_by_layer(model: RailingProjectModel) -> None:
+    """Test that toggle method switches between colored and monochrome modes."""
+    signal_spy = MagicMock()
+    model.infill_layers_colored_by_layer_changed.connect(signal_spy)
+
+    # Initial state is True (colored)
+    assert model.infill_layers_colored_by_layer is True
+
+    # First toggle should switch to False (monochrome)
+    model.toggle_infill_layers_colored_by_layer()
+    assert model.infill_layers_colored_by_layer is False
+    signal_spy.assert_called_once_with(False)
+
+    # Second toggle should switch back to True (colored)
+    model.toggle_infill_layers_colored_by_layer()
+    assert model.infill_layers_colored_by_layer is True
+    assert signal_spy.call_count == 2
+    signal_spy.assert_called_with(True)
+
+
+def test_reset_to_defaults_resets_color_mode(model: RailingProjectModel) -> None:
+    """Test that reset_to_defaults resets color mode to True (colored)."""
+    # Change to monochrome mode
+    model.set_infill_layers_colored_by_layer(False)
+    assert model.infill_layers_colored_by_layer is False
+
+    # Connect signal spy
+    signal_spy = MagicMock()
+    model.infill_layers_colored_by_layer_changed.connect(signal_spy)
+
+    # Reset to defaults
+    model.reset_to_defaults()
+
+    # Verify color mode is reset to True (colored)
+    assert model.infill_layers_colored_by_layer is True
+    signal_spy.assert_called_once_with(True)

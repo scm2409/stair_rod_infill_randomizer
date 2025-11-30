@@ -46,6 +46,7 @@ class RailingProjectModel(QObject):
     project_file_path_changed = Signal(object)  # Path | None
     project_modified_changed = Signal(bool)  # Dirty flag changed
     rod_annotation_visibility_changed = Signal(bool)  # Rod annotation toggled
+    infill_layers_colored_by_layer_changed = Signal(bool)  # Infill color mode toggled
     generation_progress_updated = Signal(GenerationProgress)  # GenerationProgress (never None)
 
     def __init__(self) -> None:
@@ -69,6 +70,7 @@ class RailingProjectModel(QObject):
 
         # UI state
         self._rod_annotation_visible: bool = False
+        self._infill_layers_colored_by_layer: bool = True  # Default: colored mode
 
         # Generation progress state
         self._generation_progress: GenerationProgress = GenerationProgress()
@@ -119,6 +121,11 @@ class RailingProjectModel(QObject):
     def rod_annotation_visible(self) -> bool:
         """Get whether rod annotation is visible."""
         return self._rod_annotation_visible
+
+    @property
+    def infill_layers_colored_by_layer(self) -> bool:
+        """Get whether infill layers are colored by layer."""
+        return self._infill_layers_colored_by_layer
 
     @property
     def generation_progress(self) -> GenerationProgress:
@@ -243,6 +250,22 @@ class RailingProjectModel(QObject):
             self._rod_annotation_visible = visible
             self.rod_annotation_visibility_changed.emit(visible)
 
+    def set_infill_layers_colored_by_layer(self, colored: bool) -> None:
+        """
+        Set the infill layer color mode.
+
+        Args:
+            colored: True for colored mode (each layer distinct color),
+                    False for monochrome mode (all layers same color)
+        """
+        if self._infill_layers_colored_by_layer != colored:
+            self._infill_layers_colored_by_layer = colored
+            self.infill_layers_colored_by_layer_changed.emit(colored)
+
+    def toggle_infill_layers_colored_by_layer(self) -> None:
+        """Toggle the infill layer color mode between colored and monochrome."""
+        self.set_infill_layers_colored_by_layer(not self._infill_layers_colored_by_layer)
+
     def set_generation_progress(self, progress: GenerationProgress) -> None:
         """
         Set the generation progress data.
@@ -277,6 +300,7 @@ class RailingProjectModel(QObject):
 
         # Clear UI state
         self._rod_annotation_visible = False
+        self._infill_layers_colored_by_layer = True  # Reset to default (colored mode)
 
         # Emit all signals
         self.railing_shape_type_changed.emit("")  # Empty string for "no selection"
@@ -288,6 +312,7 @@ class RailingProjectModel(QObject):
         self.project_file_path_changed.emit(None)
         self.project_modified_changed.emit(False)
         self.rod_annotation_visibility_changed.emit(False)
+        self.infill_layers_colored_by_layer_changed.emit(True)
 
     def has_railing_frame(self) -> bool:
         """

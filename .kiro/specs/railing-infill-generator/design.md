@@ -660,7 +660,7 @@ Central state model inheriting from `QObject` for signal/slot support.
 - Evaluator type and parameters (required)
 - Current RailingInfill (immutable reference)
 - Project file path and modified flag
-- UI state (enumeration visibility, etc.)
+- UI state (enumeration visibility, infill layer color mode, etc.)
 
 **Signals (Past Tense Naming):**
 - `railing_shape_type_changed(str)` - Shape type selected
@@ -672,6 +672,7 @@ Central state model inheriting from `QObject` for signal/slot support.
 - `project_file_path_changed(object)` - File path changed
 - `project_modified_changed(bool)` - Dirty flag changed
 - `enumeration_visibility_changed(bool)` - Enumeration toggled
+- `infill_layers_colored_by_layer_changed(bool)` - Infill color mode toggled
 
 **Key Methods:**
 - `set_railing_frame(frame)` - Update frame, emit signal, clear infill, mark modified
@@ -702,10 +703,10 @@ project_model.project_modified_changed.connect(self._update_window_title)
 ```
 
 **Observer Responsibilities:**
-- ViewportWidget: Render frame/infill geometry when signals received
+- ViewportWidget: Render frame/infill geometry when signals received, re-render infill when color mode changes
 - BOMTableModel: Update table data using `beginResetModel()`/`endResetModel()`
 - ParameterPanel: Show/hide parameter widgets based on type changes
-- MainWindow: Update title with filename and asterisk, enable/disable menu actions
+- MainWindow: Update title with filename and asterisk, enable/disable menu actions, sync View menu checkboxes
 
 #### Integration with ApplicationController
 
@@ -826,6 +827,13 @@ Orchestrates application workflows and updates RailingProjectModel.
 - Left: Operation status ("Ready", "Generating...", "Saved")
 - Right: Quick stats (rod count, quality metrics if available)
 
+**View Menu:**
+- "Color Infill Layers by Layer" (checkable menu item)
+  - Checked: Display each infill layer in a distinct color (default)
+  - Unchecked: Display all infill layers in the same color (black)
+  - State stored in RailingProjectModel.infill_layers_colored_by_layer
+  - Triggers viewport re-render when toggled
+
 ### Key UI Components
 
 #### Viewport (QGraphicsView/QGraphicsScene)
@@ -833,7 +841,7 @@ Orchestrates application workflows and updates RailingProjectModel.
 - Zoom with mouse wheel (centered on cursor position)
 - Pan with mouse drag
 - Render frame in distinct color
-- Render infill with layer-specific colors
+- Render infill with layer-specific colors (configurable via View menu)
 - Optional rod enumeration (circles for infill, squares for frame, dashed anchor lines)
 - Part highlighting on BOM selection
 - Performance optimizations:
@@ -841,6 +849,14 @@ Orchestrates application workflows and updates RailingProjectModel.
   - `setItemIndexMethod(QGraphicsScene.NoIndex)` for static scenes
   - `setCacheMode(QGraphicsItem.DeviceCoordinateCache)` for cached rendering
   - Signal throttling (max every 100ms for progress updates)
+
+**Infill Layer Color Modes:**
+- **Colored Mode (Default)**: Each layer rendered in distinct color (red, green, magenta, cyan, blue, etc.)
+- **Monochrome Mode**: All layers rendered in single color (black)
+- Toggle via View menu → "Color Infill Layers by Layer" (checkable menu item)
+- Color mode state stored in RailingProjectModel
+- Viewport observes color mode changes and re-renders infill automatically
+- Yellow excluded from layer colors (reserved for highlighting)
 
 #### Parameter Panel (QFormLayout with Dynamic Widgets)
 - Dynamic form using QFormLayout for automatic label alignment
@@ -1169,6 +1185,50 @@ User clicks Save/Save As → File dialog → Create ZIP archive:
   - Export BOM tables to CSV
 → Mark project as saved → Update window title
 ```
+
+## Correctness Properties
+
+*A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+
+### Infill Layer Color Toggle Properties
+
+Property 1: Toggle behavior
+*For any* current color mode state (colored or monochrome), clicking the "Color Infill Layers by Layer" menu item should switch to the opposite state
+**Validates: Requirements 12.3**
+
+Property 2: Colored mode uses distinct colors
+*For any* infill with multiple layers, when colored mode is active, each layer should be rendered in a distinct color and no layer should use yellow (reserved for highlighting)
+**Validates: Requirements 12.4**
+
+Property 3: Monochrome mode uses single color
+*For any* infill with multiple layers, when monochrome mode is active, all layers should be rendered in black
+**Validates: Requirements 12.5**
+
+Property 4: Viewport updates on mode change
+*For any* infill and any color mode change, the viewport should immediately re-render the infill to reflect the new color scheme
+**Validates: Requirements 12.6**
+
+### Implementation Details
+
+**RailingProjectModel Changes:**
+- Add `infill_layers_colored_by_layer: bool` attribute (default: True)
+- Add `infill_layers_colored_by_layer_changed(bool)` signal
+- Add `set_infill_layers_colored_by_layer(bool)` method
+- Add `toggle_infill_layers_colored_by_layer()` method
+
+**MainWindow Changes:**
+- Populate View menu with "Color Infill Layers by Layer" checkable action
+- Connect action to `toggle_infill_layers_colored_by_layer()` in model
+- Connect model's `infill_layers_colored_by_layer_changed` signal to action's `setChecked()` slot
+- Initialize action checked state from model on startup
+
+**ViewportWidget Changes:**
+- Connect to `infill_layers_colored_by_layer_changed` signal in constructor
+- Modify `set_railing_infill()` to check color mode flag when assigning colors
+- Add `_on_infill_layers_colored_by_layer_changed()` slot that re-renders current infill
+- Define color palettes:
+  - Colored mode: `[Qt.GlobalColor.red, Qt.GlobalColor.green, Qt.GlobalColor.magenta, Qt.GlobalColor.cyan, Qt.GlobalColor.blue, ...]` (exclude yellow)
+  - Monochrome mode: `[Qt.GlobalColor.black]` for all layers
 
 ## Error Handling
 

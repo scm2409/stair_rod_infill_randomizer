@@ -124,8 +124,18 @@ class MainWindow(QMainWindow):
         # View menu
         view_menu = menu_bar.addMenu("&View")
         if view_menu is not None:
-            # Placeholder actions - will be implemented in later tasks
-            pass
+            # Create "Color Infill Layers by Layer" checkable action
+            self.color_infill_layers_action = view_menu.addAction("Color Infill Layers by Layer")
+            if self.color_infill_layers_action is not None:
+                self.color_infill_layers_action.setCheckable(True)
+                # Set initial state from model
+                self.color_infill_layers_action.setChecked(
+                    self.project_model.infill_layers_colored_by_layer
+                )
+                # Connect action to model's toggle method
+                self.color_infill_layers_action.triggered.connect(
+                    self.project_model.toggle_infill_layers_colored_by_layer
+                )
 
         # Help menu
         help_menu = menu_bar.addMenu("&Help")
@@ -144,6 +154,11 @@ class MainWindow(QMainWindow):
         # Connect to project file path and modified state changes
         self.project_model.project_file_path_changed.connect(self._on_project_state_changed)
         self.project_model.project_modified_changed.connect(self._on_project_state_changed)
+
+        # Connect to color mode changes to sync menu checkbox
+        self.project_model.infill_layers_colored_by_layer_changed.connect(
+            self._on_color_mode_changed
+        )
 
     def _connect_controller_signals(self) -> None:
         """Connect to controller signals for generation events."""
@@ -239,6 +254,17 @@ class MainWindow(QMainWindow):
         title += " - Railing Infill Generator"
 
         self.setWindowTitle(title)
+
+    def _on_color_mode_changed(self, colored: bool) -> None:
+        """
+        Handle color mode changes from the model.
+
+        Syncs the menu checkbox with the model state.
+
+        Args:
+            colored: True for colored mode, False for monochrome mode
+        """
+        self.color_infill_layers_action.setChecked(colored)
 
     def update_status(self, message: str) -> None:
         """

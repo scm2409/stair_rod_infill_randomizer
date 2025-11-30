@@ -447,3 +447,18 @@ This document specifies the requirements for a railing infill generator applicat
 6. THE UI Application SHALL use INFO as the default log level for the root logger
 7. THE UI Application SHALL allow log levels to be configured per logger in the hierarchy via configuration files
 8. THE UI Application SHALL support configuring log levels for individual components independently from the root logger
+
+### Requirement 12
+
+**User Story:** As a user, I want to toggle between colored and monochrome infill layer display, so that I can choose the visualization that best suits my current task
+
+#### Acceptance Criteria
+
+1. WHEN the application starts THEN THE UI Application SHALL display infill layers in separate colors by default
+2. WHEN a user opens the View menu THEN THE UI Application SHALL display a checkable menu item labeled "Color Infill Layers by Layer"
+3. WHEN a user clicks the "Color Infill Layers by Layer" menu item THEN THE UI Application SHALL toggle between colored and monochrome display modes
+4. WHEN the colored mode is active THEN THE UI Application SHALL render each infill layer in a distinct color (red, green, magenta, cyan etc.; not yellow as this is the highlight color)
+5. WHEN the monochrome mode is active THEN THE UI Application SHALL render all infill layers in a single color (black)
+6. WHEN the display mode changes THEN THE UI Application SHALL immediately update the viewport to reflect the new color scheme
+7. WHEN the menu item is checked THEN THE UI Application SHALL display infill layers in separate colors
+8. WHEN the menu item is unchecked THEN THE UI Application SHALL display all infill layers in the same color

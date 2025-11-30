@@ -98,6 +98,57 @@ class TestMainWindowMenus:
 
         assert any("Help" in title for title in menu_titles)
 
+    def test_color_infill_layers_action_exists(self, main_window: MainWindow) -> None:
+        """Test that 'Color Infill Layers by Layer' action exists in View menu."""
+        assert hasattr(main_window, "color_infill_layers_action")
+        assert main_window.color_infill_layers_action is not None
+
+    def test_color_infill_layers_action_is_checkable(self, main_window: MainWindow) -> None:
+        """Test that 'Color Infill Layers by Layer' action is checkable."""
+        assert main_window.color_infill_layers_action.isCheckable()
+
+    def test_color_infill_layers_action_initial_state(self, main_window: MainWindow) -> None:
+        """Test that 'Color Infill Layers by Layer' action starts checked (colored mode)."""
+        assert main_window.color_infill_layers_action.isChecked()
+
+    def test_color_infill_layers_action_triggers_model_toggle(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test that triggering the action toggles the model state."""
+        # Initial state is True (colored)
+        assert project_model.infill_layers_colored_by_layer is True
+
+        # Trigger the action
+        main_window.color_infill_layers_action.trigger()
+
+        # Model should now be False (monochrome)
+        assert project_model.infill_layers_colored_by_layer is False
+
+        # Trigger again
+        main_window.color_infill_layers_action.trigger()
+
+        # Model should be back to True (colored)
+        assert project_model.infill_layers_colored_by_layer is True
+
+    def test_model_change_updates_action_checkbox(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test that changing model state updates the action checkbox."""
+        # Initial state is True (colored)
+        assert main_window.color_infill_layers_action.isChecked()
+
+        # Change model directly (not via action)
+        project_model.set_infill_layers_colored_by_layer(False)
+
+        # Action checkbox should update
+        assert not main_window.color_infill_layers_action.isChecked()
+
+        # Change back
+        project_model.set_infill_layers_colored_by_layer(True)
+
+        # Action checkbox should update again
+        assert main_window.color_infill_layers_action.isChecked()
+
 
 class TestMainWindowTitleUpdate:
     """Test window title update functionality via model."""

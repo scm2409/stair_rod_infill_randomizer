@@ -74,6 +74,11 @@ class ViewportWidget(QGraphicsView):
         self.project_model.railing_frame_updated.connect(self._on_railing_frame_updated)
         self.project_model.railing_infill_updated.connect(self._on_railing_infill_updated)
 
+        # Connect to color mode changes
+        self.project_model.infill_layers_colored_by_layer_changed.connect(
+            self._on_color_mode_changed
+        )
+
     def _on_railing_frame_updated(self, frame: RailingFrame | None) -> None:
         """
         Handle railing frame updates from the model.
@@ -216,23 +221,37 @@ class ViewportWidget(QGraphicsView):
         self._railing_infill_group = QGraphicsItemGroup()
         scene.addItem(self._railing_infill_group)
 
-        # Define colors for different layers
-        layer_colors = [
+        # Get color mode from model
+        colored_mode = self.project_model.infill_layers_colored_by_layer
+
+        # Define colors for different layers (exclude yellow - reserved for highlighting)
+        layer_colors_colored = [
             Qt.GlobalColor.red,  # Layer 1
             Qt.GlobalColor.green,  # Layer 2
             Qt.GlobalColor.magenta,  # Layer 3
             Qt.GlobalColor.cyan,  # Layer 4
-            Qt.GlobalColor.yellow,  # Layer 5
+            Qt.GlobalColor.blue,  # Layer 5
         ]
+
+        # Monochrome mode: all layers use black
+        layer_colors_monochrome = [Qt.GlobalColor.black]
+
+        # Select color palette based on mode
+        layer_colors = layer_colors_colored if colored_mode else layer_colors_monochrome
 
         # Render infill rods with layer-specific colors
         for rod in railing_infill.rods:
-            # Get color for this layer (default to red if layer exceeds color list)
-            layer_index = rod.layer - 1  # Layer 1 -> index 0
-            if 0 <= layer_index < len(layer_colors):
-                color = layer_colors[layer_index]
+            # Get color for this layer
+            if colored_mode:
+                # Colored mode: use layer-specific color
+                layer_index = rod.layer - 1  # Layer 1 -> index 0
+                if 0 <= layer_index < len(layer_colors):
+                    color = layer_colors[layer_index]
+                else:
+                    color = Qt.GlobalColor.red
             else:
-                color = Qt.GlobalColor.red
+                # Monochrome mode: all layers use black
+                color = Qt.GlobalColor.black
 
             infill_pen = QPen(color, 1.5)
 
@@ -249,15 +268,20 @@ class ViewportWidget(QGraphicsView):
             scene.addItem(self._anchor_points_group)
 
             for anchor in railing_infill.anchor_points:
-                # Get color for this layer (use layer if assigned, otherwise default to red)
-                if anchor.layer is not None:
-                    layer_index = anchor.layer - 1
-                    if 0 <= layer_index < len(layer_colors):
-                        color = layer_colors[layer_index]
+                # Get color for this layer
+                if colored_mode:
+                    # Colored mode: use layer-specific color
+                    if anchor.layer is not None:
+                        layer_index = anchor.layer - 1
+                        if 0 <= layer_index < len(layer_colors_colored):
+                            color = layer_colors_colored[layer_index]
+                        else:
+                            color = Qt.GlobalColor.red
                     else:
-                        color = Qt.GlobalColor.red
+                        color = Qt.GlobalColor.gray  # Unassigned anchors in gray
                 else:
-                    color = Qt.GlobalColor.gray  # Unassigned anchors in gray
+                    # Monochrome mode: all anchors use black
+                    color = Qt.GlobalColor.black
 
                 # Create small circle (1 pixel width pen, 2cm diameter)
                 anchor_pen = QPen(color, 1)
@@ -357,3 +381,16 @@ class ViewportWidget(QGraphicsView):
         if scene is not None and self._highlight_group is not None:
             scene.removeItem(self._highlight_group)
             self._highlight_group = None
+
+    def _on_color_mode_changed(self, colored: bool) -> None:
+        """
+        Handle color mode changes from the model.
+
+        Re-renders the current infill with the new color scheme.
+
+        Args:
+            colored: True for colored mode, False for monochrome mode
+        """
+        # Re-render current infill if it exists
+        if self._current_infill is not None:
+            self.set_railing_infill(self._current_infill)

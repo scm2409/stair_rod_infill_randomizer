@@ -344,13 +344,47 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - Write integration tests for complete workflows
     - _Requirements: All_
 
-### Phase 11: Optional Advanced Features
+- [x] 11. Implement infill layer color toggle
+  - [x] 11.1 Add color mode to RailingProjectModel
+    - Add state flag, signal, and toggle method
+    - Write unit tests
+    - _Requirements: 12.1_
+  
+  - [x] 11.2 Add View menu toggle
+    - Add checkable menu item
+    - Connect to model
+    - Write test
+    - _Requirements: 12.2_
+  
+  - [ ]* 11.3 Write property test for toggle
+    - **Property 1: Toggle behavior**
+    - **Validates: Requirements 12.3**
+  
+  - [x] 11.4 Update ViewportWidget for color modes
+    - Implement colored and monochrome rendering
+    - **VISUAL MILESTONE**: Toggle infill colors! 🎨
+    - Write tests
+    - _Requirements: 12.4, 12.5, 12.6_
+  
+  - [ ]* 11.5 Write property test for colored mode
+    - **Property 2: Colored mode uses distinct colors**
+    - **Validates: Requirements 12.4**
+  
+  - [ ]* 11.6 Write property test for monochrome mode
+    - **Property 3: Monochrome mode uses single color**
+    - **Validates: Requirements 12.5**
+  
+  - [ ]* 11.7 Write property test for viewport updates
+    - **Property 4: Viewport updates on mode change**
+    - **Validates: Requirements 12.6**
 
-- [ ]* 11. Advanced UI testing with pytest-qt
-  - [ ]* 11.1 Write UI tests for parameter panel
-  - [ ]* 11.2 Write UI tests for viewport
-  - [ ]* 11.3 Write UI tests for BOM table
-  - [ ]* 11.4 Write UI tests for progress dialog
+### Phase 12: Optional Advanced Features
+
+- [ ]* 12. Advanced UI testing with pytest-qt
+  - [ ]* 12.1 Write UI tests for parameter panel
+  - [ ]* 12.2 Write UI tests for viewport
+  - [ ]* 12.3 Write UI tests for BOM table
+  - [ ]* 12.4 Write UI tests for progress dialog
 
 ## Visual Milestones Summary
 
@@ -367,6 +401,7 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 11. 🎯 Highlight parts (Task 8.3)
 12. 🎯 Save/load designs (Task 9.3)
 13. 🎯 Rod numbers (Task 10.2)
+14. 🎯 Toggle infill colors (Task 11.4)
 
 ## Notes
 
