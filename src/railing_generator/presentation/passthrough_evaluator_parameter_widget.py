@@ -2,6 +2,7 @@
 
 from PySide6.QtWidgets import QLabel
 
+from railing_generator.domain.evaluators.evaluator_parameters import EvaluatorParameters
 from railing_generator.domain.evaluators.passthrough_evaluator_parameters import (
     PassThroughEvaluatorParameters,
 )
@@ -37,3 +38,10 @@ class PassThroughEvaluatorParameterWidget(EvaluatorParameterWidget):
             PassThroughEvaluatorParameters with default values
         """
         return PassThroughEvaluatorParameters()
+
+    def set_parameters(
+        self, params: "EvaluatorParameters | PassThroughEvaluatorParameters"
+    ) -> None:
+        """Set parameters (no-op for Pass-Through Evaluator)."""
+        # Pass-Through Evaluator has no configurable parameters
+        pass

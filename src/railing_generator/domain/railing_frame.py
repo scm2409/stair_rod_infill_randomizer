@@ -91,15 +91,3 @@ class RailingFrame(BaseModel):
     def rod_count(self) -> int:
         """Get the number of frame rods."""
         return len(self.rods)
-
-    def model_dump_geometry(self) -> dict[str, object]:
-        """
-        Serialize including geometry data.
-
-        Returns:
-            Dictionary with all fields including rod geometries and boundary
-        """
-        data = self.model_dump()
-        data["rods"] = [rod.model_dump_geometry() for rod in self.rods]
-        data["boundary"] = list(self.boundary.exterior.coords)
-        return data

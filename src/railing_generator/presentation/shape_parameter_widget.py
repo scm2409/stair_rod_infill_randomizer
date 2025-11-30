@@ -88,6 +88,16 @@ class ShapeParameterWidget(QWidget, metaclass=QWidgetABCMeta):
         """
         ...
 
+    @abstractmethod
+    def set_parameters(self, params: RailingShapeParameters) -> None:
+        """
+        Set the widget values from a parameters object.
+
+        Args:
+            params: The parameters to load into the widgets
+        """
+        ...
+
     def _validate_and_update_ui(self) -> None:
         """
         Validate current parameters and update UI with visual feedback.
@@ -250,6 +260,31 @@ class StaircaseParameterWidget(ShapeParameterWidget):
             frame_weight_per_meter_kg_m=frame_weight.value(),
         )
 
+    def set_parameters(self, params: RailingShapeParameters) -> None:
+        """Set the widget values from a StaircaseRailingShapeParameters object."""
+        if not isinstance(params, StaircaseRailingShapeParameters):
+            return
+
+        post_length = self.field_widgets["post_length_cm"]
+        assert isinstance(post_length, QDoubleSpinBox)
+        post_length.setValue(params.post_length_cm)
+
+        stair_width = self.field_widgets["stair_width_cm"]
+        assert isinstance(stair_width, QDoubleSpinBox)
+        stair_width.setValue(params.stair_width_cm)
+
+        stair_height = self.field_widgets["stair_height_cm"]
+        assert isinstance(stair_height, QDoubleSpinBox)
+        stair_height.setValue(params.stair_height_cm)
+
+        num_steps = self.field_widgets["num_steps"]
+        assert isinstance(num_steps, QSpinBox)
+        num_steps.setValue(params.num_steps)
+
+        frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
+        assert isinstance(frame_weight, QDoubleSpinBox)
+        frame_weight.setValue(params.frame_weight_per_meter_kg_m)
+
 
 class RectangularParameterWidget(ShapeParameterWidget):
     """Parameter widget for rectangular-shaped railings."""
@@ -321,3 +356,20 @@ class RectangularParameterWidget(ShapeParameterWidget):
             height_cm=height.value(),
             frame_weight_per_meter_kg_m=frame_weight.value(),
         )
+
+    def set_parameters(self, params: RailingShapeParameters) -> None:
+        """Set the widget values from a RectangularRailingShapeParameters object."""
+        if not isinstance(params, RectangularRailingShapeParameters):
+            return
+
+        width = self.field_widgets["width_cm"]
+        assert isinstance(width, QDoubleSpinBox)
+        width.setValue(params.width_cm)
+
+        height = self.field_widgets["height_cm"]
+        assert isinstance(height, QDoubleSpinBox)
+        height.setValue(params.height_cm)
+
+        frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
+        assert isinstance(frame_weight, QDoubleSpinBox)
+        frame_weight.setValue(params.frame_weight_per_meter_kg_m)

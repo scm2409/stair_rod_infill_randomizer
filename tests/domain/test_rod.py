@@ -306,14 +306,15 @@ class TestRodSerialization:
 
         data = rod.model_dump()
 
-        assert "geometry" not in data
+        # Geometry is now included in model_dump with custom serializer
+        assert "geometry" in data
         assert data["start_cut_angle_deg"] == 0.0
         assert data["end_cut_angle_deg"] == 0.0
         assert data["weight_kg_m"] == 0.5
         assert data["layer"] == 1
 
-    def test_model_dump_geometry_includes_coordinates(self) -> None:
-        """Test that model_dump_geometry includes geometry coordinates."""
+    def test_model_dump_includes_geometry_coordinates(self) -> None:
+        """Test that model_dump includes geometry coordinates."""
         geometry = LineString([(10, 20), (30, 40)])
         rod = Rod(
             geometry=geometry,
@@ -323,10 +324,10 @@ class TestRodSerialization:
             layer=2,
         )
 
-        data = rod.model_dump_geometry()
+        data = rod.model_dump()
 
         assert "geometry" in data
-        assert data["geometry"] == [(10.0, 20.0), (30.0, 40.0)]
+        assert data["geometry"] == [[10.0, 20.0], [30.0, 40.0]]
         assert data["start_cut_angle_deg"] == 45.0
         assert data["end_cut_angle_deg"] == -30.0
         assert data["weight_kg_m"] == 0.5

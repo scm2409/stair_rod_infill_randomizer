@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass
 
+from typing import Literal
+
 from pydantic import Field, computed_field
 from shapely.geometry import LineString
 
@@ -28,6 +30,7 @@ class StaircaseRailingShapeDefaults(RailingShapeDefaults):
 class StaircaseRailingShapeParameters(RailingShapeParameters):
     """Runtime parameters for staircase shape with Pydantic validation."""
 
+    type: Literal["staircase"] = "staircase"
     post_length_cm: float = Field(gt=0, description="Post length in cm")
     stair_width_cm: float = Field(gt=0, description="Stair width (horizontal distance) in cm")
     stair_height_cm: float = Field(gt=0, description="Stair height (vertical distance) in cm")

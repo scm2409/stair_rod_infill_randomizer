@@ -18,6 +18,7 @@ def test_main_window_handles_generation_started_signal(qtbot: QtBot) -> None:
 
     # Create main window
     main_window = MainWindow(project_model, controller)
+    main_window._skip_close_confirmation = True  # Prevent dialog on close during tests
     qtbot.addWidget(main_window)
 
     # Create a real generator instance
@@ -48,6 +49,7 @@ def test_main_window_generation_started_validates_generator_signals_directly(qtb
 
     # Create main window
     main_window = MainWindow(project_model, controller)
+    main_window._skip_close_confirmation = True  # Prevent dialog on close during tests
     qtbot.addWidget(main_window)
 
     # Create a mock generator missing required signals

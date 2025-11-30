@@ -321,3 +321,117 @@ class TestViewportColorMode:
 
         # Still no infill
         assert viewport._current_infill is None
+
+
+class TestViewportCapturePng:
+    """Test viewport PNG capture functionality."""
+
+    def test_capture_as_png_returns_bytes(self, viewport: ViewportWidget) -> None:
+        """Test that capture_as_png returns bytes."""
+        png_data = viewport.capture_as_png()
+        assert isinstance(png_data, bytes)
+        assert len(png_data) > 0
+
+    def test_capture_as_png_returns_valid_png(self, viewport: ViewportWidget) -> None:
+        """Test that capture_as_png returns valid PNG data."""
+        png_data = viewport.capture_as_png()
+
+        # PNG files start with a specific 8-byte signature
+        png_signature = b"\x89PNG\r\n\x1a\n"
+        assert png_data[:8] == png_signature
+
+    def test_capture_as_png_with_custom_dimensions(self, viewport: ViewportWidget) -> None:
+        """Test capture_as_png with custom width and height."""
+        png_data = viewport.capture_as_png(width=800, height=600)
+
+        assert isinstance(png_data, bytes)
+        assert len(png_data) > 0
+        # PNG signature check
+        assert png_data[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_capture_as_png_empty_scene(self, viewport: ViewportWidget) -> None:
+        """Test capture_as_png with empty scene returns valid PNG."""
+        viewport.clear_scene()
+
+        png_data = viewport.capture_as_png()
+
+        assert isinstance(png_data, bytes)
+        assert len(png_data) > 0
+        # PNG signature check
+        assert png_data[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_capture_as_png_with_frame(self, viewport: ViewportWidget) -> None:
+        """Test capture_as_png with a railing frame renders correctly."""
+        from railing_generator.domain.railing_frame import RailingFrame
+        from railing_generator.domain.rod import Rod
+        from shapely.geometry import LineString, Polygon
+
+        # Create a simple frame
+        rods = [
+            Rod(
+                geometry=LineString([(0, 0), (100, 0)]),
+                start_cut_angle_deg=90.0,
+                end_cut_angle_deg=90.0,
+                weight_kg_m=0.5,
+            ),
+            Rod(
+                geometry=LineString([(100, 0), (100, 100)]),
+                start_cut_angle_deg=90.0,
+                end_cut_angle_deg=90.0,
+                weight_kg_m=0.5,
+            ),
+        ]
+        boundary = Polygon([(0, 0), (100, 0), (100, 100), (0, 100)])
+        frame = RailingFrame(rods=rods, boundary=boundary)
+
+        viewport.set_railing_frame(frame)
+
+        png_data = viewport.capture_as_png()
+
+        assert isinstance(png_data, bytes)
+        assert len(png_data) > 0
+        # PNG signature check
+        assert png_data[:8] == b"\x89PNG\r\n\x1a\n"
+
+    def test_capture_as_png_with_infill(
+        self, viewport: ViewportWidget, project_model: RailingProjectModel
+    ) -> None:
+        """Test capture_as_png with railing infill renders correctly."""
+        from railing_generator.domain.railing_infill import RailingInfill
+        from railing_generator.domain.rod import Rod
+        from shapely.geometry import LineString
+
+        # Create infill
+        rods = [
+            Rod(
+                geometry=LineString([(10, 10), (90, 10)]),
+                start_cut_angle_deg=90.0,
+                end_cut_angle_deg=90.0,
+                weight_kg_m=0.5,
+                layer=1,
+            ),
+            Rod(
+                geometry=LineString([(10, 50), (90, 50)]),
+                start_cut_angle_deg=90.0,
+                end_cut_angle_deg=90.0,
+                weight_kg_m=0.5,
+                layer=2,
+            ),
+        ]
+        infill = RailingInfill(
+            rods=rods,
+            fitness_score=0.8,
+            iteration_count=100,
+            duration_sec=5.0,
+            anchor_points=[],
+            is_complete=True,
+        )
+
+        viewport.set_railing_infill(infill)
+
+        png_data = viewport.capture_as_png()
+
+        assert isinstance(png_data, bytes)
+        assert len(png_data) > 0
+        # PNG signature check
+        assert png_data[:8] == b"\x89PNG\r\n\x1a\n"

@@ -210,36 +210,26 @@ class TestRailingFrameComputedFields:
 class TestRailingFrameSerialization:
     """Test RailingFrame serialization."""
 
-    def test_model_dump_includes_boundary(self) -> None:
-        """Test that model_dump includes computed boundary."""
+    def test_model_dump_includes_rods(self) -> None:
+        """Test that model_dump includes rods with geometry."""
         rods = create_closed_rectangular_frame()
         frame = RailingFrame(rods=rods)
         data = frame.model_dump()
 
-        assert "boundary" in data  # Computed field is included
         assert "rods" in data
-
-    def test_model_dump_geometry_includes_all(self) -> None:
-        """Test that model_dump_geometry includes geometry data."""
-        rods = create_closed_rectangular_frame()
-        frame = RailingFrame(rods=rods)
-        data = frame.model_dump_geometry()
-
-        assert "rods" in data
-        assert "boundary" in data
         assert isinstance(data["rods"], list)
         assert len(data["rods"]) == 4
+        # Each rod should have geometry serialized
         assert "geometry" in data["rods"][0]
-        assert isinstance(data["boundary"], list)
 
-    def test_model_dump_geometry_boundary_coordinates(self) -> None:
-        """Test that boundary coordinates are correctly serialized."""
+    def test_model_dump_rod_geometry_coordinates(self) -> None:
+        """Test that rod geometry coordinates are correctly serialized."""
         rods = create_closed_rectangular_frame(width=100.0, height=100.0)
         frame = RailingFrame(rods=rods)
-        data = frame.model_dump_geometry()
+        data = frame.model_dump()
 
-        boundary_coords = data["boundary"]
-        assert isinstance(boundary_coords, list)
-        assert len(boundary_coords) == 5  # Polygon is closed
-        # Check that we have a closed polygon (first == last)
-        assert boundary_coords[0] == boundary_coords[-1]
+        # Check that rod geometries are serialized as coordinate lists
+        for rod_data in data["rods"]:
+            assert "geometry" in rod_data
+            assert isinstance(rod_data["geometry"], list)
+            assert len(rod_data["geometry"]) >= 2  # At least 2 points

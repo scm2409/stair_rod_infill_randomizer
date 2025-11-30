@@ -1,11 +1,15 @@
 """Main application window."""
 
 import logging
+from pathlib import Path
 
+from PySide6.QtGui import QAction, QCloseEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QFileDialog,
     QHBoxLayout,
     QMainWindow,
     QMenuBar,
+    QMessageBox,
     QSplitter,
     QVBoxLayout,
     QWidget,
@@ -118,8 +122,39 @@ class MainWindow(QMainWindow):
         # File menu
         file_menu = menu_bar.addMenu("&File")
         if file_menu is not None:
-            # Placeholder actions - will be implemented in later tasks
-            pass
+            # New Project action
+            self.new_action = QAction("&New Project", self)
+            self.new_action.setShortcut(QKeySequence.StandardKey.New)
+            self.new_action.triggered.connect(self._on_new_project)
+            file_menu.addAction(self.new_action)
+
+            # Open action
+            self.open_action = QAction("&Open...", self)
+            self.open_action.setShortcut(QKeySequence.StandardKey.Open)
+            self.open_action.triggered.connect(self._on_open_project)
+            file_menu.addAction(self.open_action)
+
+            file_menu.addSeparator()
+
+            # Save action
+            self.save_action = QAction("&Save", self)
+            self.save_action.setShortcut(QKeySequence.StandardKey.Save)
+            self.save_action.triggered.connect(self._on_save_project)
+            file_menu.addAction(self.save_action)
+
+            # Save As action
+            self.save_as_action = QAction("Save &As...", self)
+            self.save_as_action.setShortcut(QKeySequence.StandardKey.SaveAs)
+            self.save_as_action.triggered.connect(self._on_save_project_as)
+            file_menu.addAction(self.save_as_action)
+
+            file_menu.addSeparator()
+
+            # Quit action
+            self.quit_action = QAction("&Quit", self)
+            self.quit_action.setShortcut(QKeySequence.StandardKey.Quit)
+            self.quit_action.triggered.connect(self.close)
+            file_menu.addAction(self.quit_action)
 
         # View menu
         view_menu = menu_bar.addMenu("&View")
@@ -491,3 +526,154 @@ class MainWindow(QMainWindow):
         # Clear dialog reference
         self._progress_dialog = None
         logger.debug("MainWindow._cleanup_progress_dialog() completed")
+
+    # =========================================================================
+    # File Menu Actions
+    # =========================================================================
+
+    def _on_new_project(self) -> None:
+        """Handle New Project action."""
+        if not self._check_unsaved_changes():
+            return
+
+        self.controller.create_new_project()
+        self.update_status("New project created")
+
+    def _on_open_project(self) -> None:
+        """Handle Open action."""
+        if not self._check_unsaved_changes():
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Project",
+            "",
+            "Railing Project Files (*.rig.zip);;All Files (*)",
+        )
+
+        if not file_path:
+            return  # User cancelled
+
+        logger.info(f"Opening project from: {file_path}")
+        try:
+            self.controller.load_project(Path(file_path))
+            logger.info(f"Project loaded successfully from: {file_path}")
+            self.update_status(f"Opened: {Path(file_path).name}")
+        except Exception as e:
+            logger.exception(f"Failed to open project from {file_path}: {e}")
+            QMessageBox.critical(
+                self,
+                "Error Opening Project",
+                f"Failed to open project:\n{e}",
+            )
+
+    def _on_save_project(self) -> None:
+        """Handle Save action."""
+        # If no file path, use Save As
+        if self.project_model.project_file_path is None:
+            self._on_save_project_as()
+            return
+
+        self._save_to_path(self.project_model.project_file_path)
+
+    def _on_save_project_as(self) -> None:
+        """Handle Save As action."""
+        # Check if there's anything to save
+        if not self.project_model.has_railing_frame():
+            QMessageBox.warning(
+                self,
+                "Nothing to Save",
+                "Please create a shape before saving.",
+            )
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Project As",
+            "",
+            "Railing Project Files (*.rig.zip);;All Files (*)",
+        )
+
+        if not file_path:
+            return  # User cancelled
+
+        # Ensure .rig.zip extension
+        if not file_path.endswith(".rig.zip"):
+            file_path += ".rig.zip"
+
+        self._save_to_path(Path(file_path))
+
+    def _save_to_path(self, file_path: Path) -> None:
+        """
+        Save the project to the specified path.
+
+        Args:
+            file_path: Path to save the project to
+        """
+        logger.info(f"Saving project to: {file_path}")
+        try:
+            # Capture viewport as PNG
+            logger.debug("Capturing viewport as PNG...")
+            png_data = self.viewport.capture_as_png()
+            logger.debug(f"PNG captured, size: {len(png_data)} bytes")
+
+            logger.debug("Calling controller.save_project...")
+            self.controller.save_project(file_path, png_data=png_data)
+            logger.info(f"Project saved successfully to: {file_path}")
+            self.update_status(f"Saved: {file_path.name}")
+        except Exception as e:
+            logger.exception(f"Failed to save project to {file_path}: {e}")
+            QMessageBox.critical(
+                self,
+                "Error Saving Project",
+                f"Failed to save project:\n{e}",
+            )
+
+    def _check_unsaved_changes(self) -> bool:
+        """
+        Check for unsaved changes and prompt user if necessary.
+
+        Returns:
+            True if it's safe to proceed (no changes or user chose to discard),
+            False if user cancelled the operation
+        """
+        if not self.project_model.project_modified:
+            return True
+
+        result = QMessageBox.question(
+            self,
+            "Unsaved Changes",
+            "You have unsaved changes. Do you want to save before continuing?",
+            QMessageBox.StandardButton.Save
+            | QMessageBox.StandardButton.Discard
+            | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+
+        if result == QMessageBox.StandardButton.Save:
+            self._on_save_project()
+            # If still modified after save attempt, user cancelled save dialog
+            return not self.project_model.project_modified
+        elif result == QMessageBox.StandardButton.Discard:
+            return True
+        else:  # Cancel
+            return False
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        """
+        Handle window close event.
+
+        Prompts user about unsaved changes before closing.
+
+        Args:
+            event: The close event
+        """
+        # Skip unsaved changes check if _skip_close_confirmation is set (for testing)
+        if getattr(self, "_skip_close_confirmation", False):
+            event.accept()
+            return
+
+        if self._check_unsaved_changes():
+            event.accept()
+        else:
+            event.ignore()

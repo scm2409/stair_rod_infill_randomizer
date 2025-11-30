@@ -1,12 +1,16 @@
 """Viewport widget for rendering railing frame and infill."""
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPainter, QPen, QWheelEvent
+import logging
+
+from PySide6.QtCore import QByteArray, QBuffer, QIODevice, Qt
+from PySide6.QtGui import QImage, QPainter, QPen, QWheelEvent
 from PySide6.QtWidgets import QGraphicsItemGroup, QGraphicsScene, QGraphicsView
 
 from railing_generator.application.railing_project_model import RailingProjectModel
 from railing_generator.domain.railing_infill import RailingInfill
 from railing_generator.domain.railing_frame import RailingFrame
+
+logger = logging.getLogger(__name__)
 
 
 class ViewportWidget(QGraphicsView):
@@ -394,3 +398,68 @@ class ViewportWidget(QGraphicsView):
         # Re-render current infill if it exists
         if self._current_infill is not None:
             self.set_railing_infill(self._current_infill)
+
+    def capture_as_png(self, width: int = 1920, height: int = 1080) -> bytes:
+        """
+        Capture the current viewport content as PNG image data.
+
+        The image is rendered with the viewport zoomed to show the entire design.
+
+        Args:
+            width: Width of the output image in pixels (default: 1920)
+            height: Height of the output image in pixels (default: 1080)
+
+        Returns:
+            PNG image data as bytes
+        """
+        logger.debug(f"capture_as_png called with width={width}, height={height}")
+
+        try:
+            scene = self.scene()
+            if scene is None:
+                logger.debug("No scene, creating empty white image")
+                # Return empty PNG if no scene
+                image = QImage(width, height, QImage.Format.Format_ARGB32)
+                image.fill(Qt.GlobalColor.white)
+            else:
+                # Get scene bounding rect
+                scene_rect = scene.itemsBoundingRect()
+                logger.debug(f"Scene bounding rect: {scene_rect}")
+
+                # Add some padding
+                padding = 20
+                scene_rect.adjust(-padding, -padding, padding, padding)
+
+                # Create image
+                image = QImage(width, height, QImage.Format.Format_ARGB32)
+                image.fill(Qt.GlobalColor.white)
+
+                # Create painter and render scene
+                painter = QPainter(image)
+                painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+                # Flip Y-axis for rendering (scene uses mathematical convention)
+                painter.scale(1, -1)
+                painter.translate(0, -height)
+
+                # Render scene to image, fitting the scene rect to the image
+                scene.render(painter, target=image.rect(), source=scene_rect)
+                painter.end()
+
+            # Convert to PNG bytes using QByteArray
+            byte_array = QByteArray()
+            buffer = QBuffer(byte_array)
+            buffer.open(QIODevice.OpenModeFlag.WriteOnly)
+            # PySide6 6.10.0: runtime accepts str "PNG" despite stubs saying bytes
+            success = image.save(buffer, "PNG")  # type: ignore[call-overload]
+            buffer.close()
+            if not success:
+                logger.error("Failed to save image to buffer as PNG")
+                raise RuntimeError("Failed to encode image as PNG")
+
+            png_data = bytes(byte_array.data())
+            logger.debug(f"PNG capture successful, size: {len(png_data)} bytes")
+            return png_data
+        except Exception as e:
+            logger.exception(f"Error in capture_as_png: {e}")
+            raise

@@ -1,7 +1,7 @@
 """Parameters for the random infill generator v2."""
 
 from dataclasses import dataclass
-from typing import Union
+from typing import Literal, Union
 
 from pydantic import Field, field_validator
 from pydantic_core.core_schema import ValidationInfo
@@ -69,12 +69,14 @@ class RandomGeneratorParametersV2(InfillGeneratorParameters, RandomGeneratorPara
     These parameters control the behavior of the random infill generator v2.
     """
 
+    type: Literal["random_v2"] = "random_v2"
+
     # Base parameters
     num_rods: int = Field(ge=1, le=200, description="Number of infill rods")
     min_rod_length_cm: float = Field(gt=0, description="Minimum rod length in cm")
     max_rod_length_cm: float = Field(gt=0, description="Maximum rod length in cm")
     max_angle_deviation_deg: float = Field(
-        ge=0, le=45, description="Max angle deviation from vertical in degrees"
+        ge=0, le=75, description="Max angle deviation from vertical in degrees"
     )
     num_layers: int = Field(ge=1, le=5, description="Number of layers")
     max_iterations: int = Field(ge=1, description="Maximum iterations per arrangement (inner loop)")

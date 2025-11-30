@@ -2,6 +2,7 @@
 
 from PySide6.QtWidgets import QDoubleSpinBox
 
+from railing_generator.domain.evaluators.evaluator_parameters import EvaluatorParameters
 from railing_generator.domain.evaluators.quality_evaluator_defaults import (
     QualityEvaluatorDefaults,
 )
@@ -175,3 +176,36 @@ class QualityEvaluatorParameterWidget(EvaluatorParameterWidget):
             anchor_spacing_horizontal_weight=anchor_spacing_horizontal_weight,
             anchor_spacing_vertical_weight=anchor_spacing_vertical_weight,
         )
+
+    def set_parameters(self, params: "EvaluatorParameters | QualityEvaluatorParameters") -> None:
+        """Set the widget values from a QualityEvaluatorParameters object."""
+        if not isinstance(params, QualityEvaluatorParameters):
+            return
+
+        widget = self.field_widgets["max_hole_area_cm2"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(params.max_hole_area_cm2)
+
+        widget = self.field_widgets["min_hole_area_cm2"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(params.min_hole_area_cm2)
+
+        widget = self.field_widgets["hole_uniformity_weight"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(params.hole_uniformity_weight)
+
+        widget = self.field_widgets["incircle_uniformity_weight"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(params.incircle_uniformity_weight)
+
+        widget = self.field_widgets["angle_distribution_weight"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(params.angle_distribution_weight)
+
+        widget = self.field_widgets["anchor_spacing_horizontal_weight"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(params.anchor_spacing_horizontal_weight)
+
+        widget = self.field_widgets["anchor_spacing_vertical_weight"]
+        assert isinstance(widget, QDoubleSpinBox)
+        widget.setValue(params.anchor_spacing_vertical_weight)

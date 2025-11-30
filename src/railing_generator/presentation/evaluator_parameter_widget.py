@@ -84,6 +84,16 @@ class EvaluatorParameterWidget(QWidget, metaclass=QWidgetABCMeta):
         """
         ...
 
+    @abstractmethod
+    def set_parameters(self, params: EvaluatorParameters) -> None:
+        """
+        Set the widget values from a parameters object.
+
+        Args:
+            params: The parameters to load into the widgets
+        """
+        ...
+
     def _validate_and_update_ui(self) -> None:
         """
         Validate current parameters and update UI with visual feedback.

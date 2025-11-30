@@ -1,6 +1,7 @@
 """Rectangular-shaped railing frame implementation."""
 
 from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import Field
 from shapely.geometry import LineString
@@ -26,6 +27,7 @@ class RectangularRailingShapeDefaults(RailingShapeDefaults):
 class RectangularRailingShapeParameters(RailingShapeParameters):
     """Runtime parameters for rectangular shape with Pydantic validation."""
 
+    type: Literal["rectangular"] = "rectangular"
     width_cm: float = Field(gt=0, description="Width in cm")
     height_cm: float = Field(gt=0, description="Height in cm")
     frame_weight_per_meter_kg_m: float = Field(gt=0, description="Frame weight per meter")

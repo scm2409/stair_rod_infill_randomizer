@@ -2,6 +2,7 @@
 
 from abc import ABC
 from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -72,11 +73,12 @@ class RandomGeneratorParameters(InfillGeneratorParameters, RandomGeneratorParame
     These parameters control the behavior of the random infill generator.
     """
 
+    type: Literal["random"] = "random"
     num_rods: int = Field(ge=1, le=200, description="Number of infill rods")
     min_rod_length_cm: float = Field(gt=0, description="Minimum rod length in cm")
     max_rod_length_cm: float = Field(gt=0, description="Maximum rod length in cm")
     max_angle_deviation_deg: float = Field(
-        ge=0, le=45, description="Max angle deviation from vertical in degrees"
+        ge=0, le=75, description="Max angle deviation from vertical in degrees"
     )
     num_layers: int = Field(ge=1, le=5, description="Number of layers")
     min_anchor_distance_cm: float = Field(

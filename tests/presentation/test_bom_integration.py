@@ -18,6 +18,7 @@ def main_window(qtbot: QtBot) -> MainWindow:
     model = RailingProjectModel()
     controller = ApplicationController(model)
     window = MainWindow(model, controller)
+    window._skip_close_confirmation = True  # Prevent dialog on close during tests
     qtbot.addWidget(window)
     return window
 

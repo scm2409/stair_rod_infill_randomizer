@@ -1,7 +1,7 @@
 """Rod model for railing frame and infill elements."""
 
 from typing import Any
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_serializer, field_validator
 from shapely.geometry import LineString, Point
 
 
@@ -18,13 +18,30 @@ class Rod(BaseModel):
         layer: Layer number (0=frame, >=1=infill)
     """
 
-    geometry: LineString = Field(exclude=True)
+    geometry: LineString
     start_cut_angle_deg: float = Field(ge=-90, le=90, description="Cut angle at start point")
     end_cut_angle_deg: float = Field(ge=-90, le=90, description="Cut angle at end point")
     weight_kg_m: float = Field(gt=0, description="Weight per meter")
     layer: int = Field(ge=0, default=0, description="Layer (0=frame, >=1=infill)")
 
     model_config = {"arbitrary_types_allowed": True}
+
+    @field_serializer("geometry")
+    def serialize_geometry(self, geom: LineString) -> list[list[float]]:
+        """Serialize LineString to coordinate list for JSON."""
+        return [list(coord) for coord in geom.coords]
+
+    @field_validator("geometry", mode="before")
+    @classmethod
+    def parse_geometry(
+        cls, v: LineString | list[list[float]] | list[tuple[float, float]]
+    ) -> LineString:
+        """Parse geometry from LineString or coordinate list."""
+        if isinstance(v, LineString):
+            return v
+        if isinstance(v, list):
+            return LineString(v)
+        raise ValueError(f"Cannot parse geometry from {type(v)}")
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -38,16 +55,14 @@ class Rod(BaseModel):
         """Calculate rod weight from length and weight per meter."""
         return (self.length_cm / 100.0) * self.weight_kg_m
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def start_point(self) -> Point:
-        """Get start point of rod."""
+        """Get start point of rod (not serialized - Shapely type)."""
         return Point(self.geometry.coords[0])
 
-    @computed_field  # type: ignore[prop-decorator]
     @property
     def end_point(self) -> Point:
-        """Get end point of rod."""
+        """Get end point of rod (not serialized - Shapely type)."""
         return Point(self.geometry.coords[-1])
 
     @computed_field  # type: ignore[prop-decorator]
@@ -112,14 +127,3 @@ class Rod(BaseModel):
             "end_cut_angle_deg": round(self.end_cut_angle_deg, 1),
             "weight_kg": round(self.weight_kg, 3),
         }
-
-    def model_dump_geometry(self) -> dict[str, Any]:
-        """
-        Serialize including geometry as coordinate list.
-
-        Returns:
-            Dictionary with all fields including geometry coordinates
-        """
-        data = self.model_dump()
-        data["geometry"] = list(self.geometry.coords)
-        return data

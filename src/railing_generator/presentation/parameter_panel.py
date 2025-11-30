@@ -236,6 +236,66 @@ class ParameterPanel(QWidget):
 
     def _connect_model_signals(self) -> None:
         """Connect to model signals for observing state changes."""
-        # Currently no signals to observe for this panel
-        # Future: Could observe shape type/parameters changes from model
-        pass
+        # Connect to shape type and parameters changes
+        self.project_model.railing_shape_type_changed.connect(self._on_model_shape_type_changed)
+        self.project_model.railing_shape_parameters_changed.connect(
+            self._on_model_shape_parameters_changed
+        )
+
+        # Connect to generator type and parameters changes
+        self.project_model.infill_generator_type_changed.connect(
+            self._on_model_generator_type_changed
+        )
+        self.project_model.infill_generator_parameters_changed.connect(
+            self._on_model_generator_parameters_changed
+        )
+
+    def _on_model_shape_type_changed(self, shape_type: str) -> None:
+        """Handle shape type change from model (e.g., when loading a project)."""
+        # Find the index for this shape type
+        for i in range(self.shape_type_combo.count()):
+            if self.shape_type_combo.itemData(i) == shape_type:
+                # Block signals to avoid triggering _on_shape_type_changed twice
+                self.shape_type_combo.blockSignals(True)
+                self.shape_type_combo.setCurrentIndex(i)
+                self.shape_type_combo.blockSignals(False)
+                # Manually trigger widget creation for the new type
+                self._on_shape_type_changed(i)
+                break
+
+    def _on_model_shape_parameters_changed(self, params: object) -> None:
+        """Handle shape parameters change from model (e.g., when loading a project)."""
+        from railing_generator.domain.shapes.railing_shape_parameters import (
+            RailingShapeParameters,
+        )
+
+        if params is None or self.current_shape_param_widget is None:
+            return
+
+        if isinstance(params, RailingShapeParameters):
+            self.current_shape_param_widget.set_parameters(params)
+
+    def _on_model_generator_type_changed(self, generator_type: str) -> None:
+        """Handle generator type change from model (e.g., when loading a project)."""
+        # Find the index for this generator type
+        for i in range(self.generator_type_combo.count()):
+            if self.generator_type_combo.itemData(i) == generator_type:
+                # Block signals to avoid triggering _on_generator_type_changed twice
+                self.generator_type_combo.blockSignals(True)
+                self.generator_type_combo.setCurrentIndex(i)
+                self.generator_type_combo.blockSignals(False)
+                # Manually trigger widget creation for the new type
+                self._on_generator_type_changed(i)
+                break
+
+    def _on_model_generator_parameters_changed(self, params: object) -> None:
+        """Handle generator parameters change from model (e.g., when loading a project)."""
+        from railing_generator.domain.infill_generators.generator_parameters import (
+            InfillGeneratorParameters,
+        )
+
+        if params is None or self.current_generator_param_widget is None:
+            return
+
+        if isinstance(params, InfillGeneratorParameters):
+            self.current_generator_param_widget.set_parameters(params)

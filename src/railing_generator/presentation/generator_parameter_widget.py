@@ -105,6 +105,16 @@ class GeneratorParameterWidget(QWidget, metaclass=QWidgetABCMeta):
         """
         ...
 
+    @abstractmethod
+    def set_parameters(self, params: InfillGeneratorParameters) -> None:
+        """
+        Set the widget values from a parameters object.
+
+        Args:
+            params: The parameters to load into the widgets
+        """
+        ...
+
     def _validate_and_update_ui(self) -> None:
         """
         Validate current parameters and update UI with visual feedback.
@@ -207,7 +217,7 @@ class RandomGeneratorParameterWidget(GeneratorParameterWidget):
 
         # Max angle deviation
         max_angle_spin = QDoubleSpinBox()
-        max_angle_spin.setRange(0.0, 45.0)
+        max_angle_spin.setRange(0.0, 75.0)
         max_angle_spin.setSuffix(" °")
         max_angle_spin.setDecimals(1)
         self.form_layout.addRow("Max Angle Deviation:", max_angle_spin)
@@ -334,6 +344,47 @@ class RandomGeneratorParameterWidget(GeneratorParameterWidget):
             infill_weight_per_meter_kg_m=infill_weight.value(),
         )
 
+    def set_parameters(self, params: InfillGeneratorParameters) -> None:
+        """Set the widget values from a RandomGeneratorParameters object."""
+        if not isinstance(params, RandomGeneratorParameters):
+            return
+
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+        num_rods.setValue(params.num_rods)
+
+        min_rod_length = self.field_widgets["min_rod_length_cm"]
+        assert isinstance(min_rod_length, QDoubleSpinBox)
+        min_rod_length.setValue(params.min_rod_length_cm)
+
+        max_rod_length = self.field_widgets["max_rod_length_cm"]
+        assert isinstance(max_rod_length, QDoubleSpinBox)
+        max_rod_length.setValue(params.max_rod_length_cm)
+
+        max_angle = self.field_widgets["max_angle_deviation_deg"]
+        assert isinstance(max_angle, QDoubleSpinBox)
+        max_angle.setValue(params.max_angle_deviation_deg)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+        num_layers.setValue(params.num_layers)
+
+        min_anchor_distance = self.field_widgets["min_anchor_distance_cm"]
+        assert isinstance(min_anchor_distance, QDoubleSpinBox)
+        min_anchor_distance.setValue(params.min_anchor_distance_cm)
+
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+        max_iterations.setValue(params.max_iterations)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+        max_duration.setValue(params.max_duration_sec)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+        infill_weight.setValue(params.infill_weight_per_meter_kg_m)
+
 
 class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
     """
@@ -379,7 +430,7 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
 
         # Max angle deviation
         max_angle_spin = QDoubleSpinBox()
-        max_angle_spin.setRange(0.0, 45.0)
+        max_angle_spin.setRange(0.0, 75.0)
         max_angle_spin.setSuffix(" °")
         max_angle_spin.setDecimals(1)
         self.form_layout.addRow("Max Angle Deviation:", max_angle_spin)
@@ -455,13 +506,13 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
 
         # Max evaluation attempts
         max_eval_attempts_spin = QSpinBox()
-        max_eval_attempts_spin.setRange(1, 100000)
+        max_eval_attempts_spin.setRange(1, 10000000)
         self.form_layout.addRow("Max Evaluation Attempts:", max_eval_attempts_spin)
         self.field_widgets["max_evaluation_attempts"] = max_eval_attempts_spin
 
         # Max evaluation duration
         max_eval_duration_spin = QDoubleSpinBox()
-        max_eval_duration_spin.setRange(1, 36000.0)
+        max_eval_duration_spin.setRange(1, 60000.0)
         max_eval_duration_spin.setSuffix(" sec")
         max_eval_duration_spin.setDecimals(0)
         self.form_layout.addRow("Max Evaluation Duration:", max_eval_duration_spin)
@@ -682,3 +733,83 @@ class RandomGeneratorParameterWidgetV2(GeneratorParameterWidget):
             infill_weight_per_meter_kg_m=infill_weight.value(),
             evaluator=evaluator_params_typed,  # Nested evaluator parameters
         )
+
+    def set_parameters(self, params: InfillGeneratorParameters) -> None:
+        """Set the widget values from a RandomGeneratorParametersV2 object."""
+        if not isinstance(params, RandomGeneratorParametersV2):
+            return
+
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+        num_rods.setValue(params.num_rods)
+
+        min_rod_length = self.field_widgets["min_rod_length_cm"]
+        assert isinstance(min_rod_length, QDoubleSpinBox)
+        min_rod_length.setValue(params.min_rod_length_cm)
+
+        max_rod_length = self.field_widgets["max_rod_length_cm"]
+        assert isinstance(max_rod_length, QDoubleSpinBox)
+        max_rod_length.setValue(params.max_rod_length_cm)
+
+        max_angle = self.field_widgets["max_angle_deviation_deg"]
+        assert isinstance(max_angle, QDoubleSpinBox)
+        max_angle.setValue(params.max_angle_deviation_deg)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+        num_layers.setValue(params.num_layers)
+
+        min_anchor_distance_vertical = self.field_widgets["min_anchor_distance_vertical_cm"]
+        assert isinstance(min_anchor_distance_vertical, QDoubleSpinBox)
+        min_anchor_distance_vertical.setValue(params.min_anchor_distance_vertical_cm)
+
+        min_anchor_distance_other = self.field_widgets["min_anchor_distance_other_cm"]
+        assert isinstance(min_anchor_distance_other, QDoubleSpinBox)
+        min_anchor_distance_other.setValue(params.min_anchor_distance_other_cm)
+
+        main_direction_min = self.field_widgets["main_direction_range_min_deg"]
+        assert isinstance(main_direction_min, QDoubleSpinBox)
+        main_direction_min.setValue(params.main_direction_range_min_deg)
+
+        main_direction_max = self.field_widgets["main_direction_range_max_deg"]
+        assert isinstance(main_direction_max, QDoubleSpinBox)
+        main_direction_max.setValue(params.main_direction_range_max_deg)
+
+        random_angle_deviation = self.field_widgets["random_angle_deviation_deg"]
+        assert isinstance(random_angle_deviation, QDoubleSpinBox)
+        random_angle_deviation.setValue(params.random_angle_deviation_deg)
+
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+        max_iterations.setValue(params.max_iterations)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+        max_duration.setValue(params.max_duration_sec)
+
+        max_eval_attempts = self.field_widgets["max_evaluation_attempts"]
+        assert isinstance(max_eval_attempts, QSpinBox)
+        max_eval_attempts.setValue(params.max_evaluation_attempts)
+
+        max_eval_duration = self.field_widgets["max_evaluation_duration_sec"]
+        assert isinstance(max_eval_duration, QDoubleSpinBox)
+        max_eval_duration.setValue(params.max_evaluation_duration_sec)
+
+        min_fitness = self.field_widgets["min_acceptable_fitness"]
+        assert isinstance(min_fitness, QDoubleSpinBox)
+        min_fitness.setValue(params.min_acceptable_fitness)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+        infill_weight.setValue(params.infill_weight_per_meter_kg_m)
+
+        # Set evaluator type and parameters
+        if params.evaluator is not None and self.evaluator_type_combo is not None:
+            evaluator_type = params.evaluator.type  # 'type' field is the discriminator
+            # Set combo box to correct evaluator type
+            index = self.evaluator_type_combo.findText(evaluator_type)
+            if index >= 0:
+                self.evaluator_type_combo.setCurrentIndex(index)
+            # Set evaluator parameters
+            if evaluator_type in self.evaluator_widgets:
+                self.evaluator_widgets[evaluator_type].set_parameters(params.evaluator)

@@ -36,6 +36,7 @@ def viewport(qtbot, project_model: RailingProjectModel):  # type: ignore[no-unty
 def main_window(qtbot, project_model: RailingProjectModel, controller: ApplicationController):  # type: ignore[no-untyped-def]
     """Create a MainWindow for testing."""
     window = MainWindow(project_model, controller)
+    window._skip_close_confirmation = True  # Prevent dialog on close during tests
     qtbot.addWidget(window)
     return window
 
