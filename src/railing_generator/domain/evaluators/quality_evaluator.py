@@ -6,6 +6,7 @@ import shapely
 from shapely.geometry import Polygon
 from shapely.ops import polygonize
 
+from railing_generator.domain.evaluators.evaluation_result import EvaluationResult
 from railing_generator.domain.evaluators.evaluator import Evaluator
 from railing_generator.domain.evaluators.quality_evaluator_parameters import (
     QualityEvaluatorParameters,
@@ -91,7 +92,7 @@ class QualityEvaluator(Evaluator):
 
         return fitness
 
-    def is_acceptable(self, infill: RailingInfill, frame: RailingFrame) -> bool:
+    def check_acceptance(self, infill: RailingInfill, frame: RailingFrame) -> EvaluationResult:
         """
         Check if an infill arrangement meets minimum acceptance criteria.
 
@@ -104,23 +105,42 @@ class QualityEvaluator(Evaluator):
             frame: The railing frame containing the infill
 
         Returns:
-            True if the arrangement is acceptable, False otherwise
+            EvaluationResult with acceptance status and detailed rejection counts
         """
-        # Reject incomplete infills (not all requested rods were generated)
+        import logging
+
+        from railing_generator.domain.evaluators.evaluation_result import RejectionReasons
+
+        logger = logging.getLogger(__name__)
+
+        reasons = RejectionReasons()
+
+        # Check if incomplete (not all requested rods were generated)
         if not infill.is_complete:
-            return False
+            reasons.incomplete = 1
+            logger.debug(f"Arrangement incomplete: {len(infill.rods)} rods generated")
 
         # Identify holes in the arrangement
         holes = self._identify_holes(infill, frame)
 
         # Check hole area constraints (both maximum and minimum)
-        for hole in holes:
+        for idx, hole in enumerate(holes):
             if hole.area > self.params.max_hole_area_cm2:
-                return False
+                reasons.hole_too_large += 1
+                logger.debug(
+                    f"Hole {idx} too large: {hole.area:.1f}cm² > {self.params.max_hole_area_cm2:.1f}cm²"
+                )
             if hole.area < self.params.min_hole_area_cm2:
-                return False
+                reasons.hole_too_small += 1
+                logger.debug(
+                    f"Hole {idx} too small: {hole.area:.1f}cm² < {self.params.min_hole_area_cm2:.1f}cm²"
+                )
 
-        return True
+        # Return result
+        if reasons.has_rejections:
+            return EvaluationResult.rejected(reasons)
+        else:
+            return EvaluationResult.accepted()
 
     def _identify_holes(self, infill: RailingInfill, frame: RailingFrame) -> list[Polygon]:
         """

@@ -148,9 +148,24 @@ class RandomGeneratorV2(Generator):
                 self.progress_updated.emit(progress)
 
                 # Check if arrangement is acceptable (e.g., complete, meets constraints)
-                if not self.evaluator.is_acceptable(infill, frame):
+                eval_result = self.evaluator.check_acceptance(infill, frame)
+                if not eval_result.is_acceptable:
+                    # Track rejection statistics - accumulate detailed counts
+                    self.statistics.evaluator_rejections_total += 1
+                    self.statistics.evaluator_rejections_incomplete += (
+                        eval_result.rejection_reasons.incomplete
+                    )
+                    self.statistics.evaluator_rejections_hole_too_large += (
+                        eval_result.rejection_reasons.hole_too_large
+                    )
+                    self.statistics.evaluator_rejections_hole_too_small += (
+                        eval_result.rejection_reasons.hole_too_small
+                    )
+
+                    # Log detailed rejection reasons
                     logger.info(
-                        f"Arrangement rejected by evaluator (attempt {evaluation_attempt}/{params.max_evaluation_attempts}, incomplete={not infill.is_complete})"
+                        f"Arrangement rejected by evaluator: {eval_result.rejection_reasons} "
+                        f"(attempt {evaluation_attempt}/{params.max_evaluation_attempts})"
                     )
                     continue  # Skip this arrangement and try again
 
@@ -197,15 +212,35 @@ class RandomGeneratorV2(Generator):
 
             # Return best result
             if best_infill is None:
-                raise RuntimeError("Failed to generate any valid arrangement")
+                # Update statistics before failing
+                self.statistics.iterations_used = evaluation_attempt
+                self.statistics.duration_sec = time.time() - start_time
+
+                # Log statistics separately
+                logger.error(f"Failed to generate any valid arrangement:\n{self.statistics}")
+
+                error_msg = (
+                    f"Failed to generate any valid arrangement after {evaluation_attempt} attempts"
+                )
+                self.generation_failed.emit(error_msg)
+                raise RuntimeError(error_msg)
 
             # Check if best result is acceptable
             if not self.evaluator.is_acceptable(best_infill, frame):
+                # Update statistics before failing
+                self.statistics.rods_created = len(best_infill.rods)
+                self.statistics.iterations_used = evaluation_attempt
+                self.statistics.duration_sec = time.time() - start_time
+
+                # Log statistics separately
+                logger.error(
+                    f"Failed to generate acceptable arrangement after {evaluation_attempt} attempts:\n{self.statistics}"
+                )
+
                 error_msg = (
                     f"Failed to generate acceptable arrangement after {evaluation_attempt} attempts. "
-                    f"Best result was incomplete or did not meet quality criteria."
+                    f"Best result was incomplete or did not meet quality criteria"
                 )
-                logger.error(error_msg)
                 self.generation_failed.emit(error_msg)
                 raise RuntimeError(error_msg)
 
@@ -222,6 +257,9 @@ class RandomGeneratorV2(Generator):
 
             return best_infill
 
+        except RuntimeError:
+            # Re-raise our own RuntimeErrors without additional processing
+            raise
         except Exception as e:
             # Return best result if available AND acceptable
             if best_infill is not None and self.evaluator.is_acceptable(best_infill, frame):
@@ -231,8 +269,14 @@ class RandomGeneratorV2(Generator):
                 self.generation_completed.emit(best_infill)
                 return best_infill
 
+            # Update statistics before failing
+            self.statistics.iterations_used = evaluation_attempt
+            self.statistics.duration_sec = time.time() - start_time
+
+            # Log statistics separately
+            logger.error(f"Generation failed with exception:\n{self.statistics}")
+
             error_msg = f"Generation failed: {str(e)}"
-            logger.error(error_msg)
             self.generation_failed.emit(error_msg)
             raise RuntimeError(error_msg) from e
 

@@ -93,6 +93,35 @@ Implements the `Generator` interface with the following key methods:
 
 ## Data Models
 
+### GenerationStatistics
+
+Tracks metrics during generation for debugging and analysis:
+
+**Rod Generation Metrics:**
+- `rods_created`: Number of rods successfully generated
+- `rods_requested`: Number of rods requested
+- `success_rate`: Percentage of requested rods created
+
+**Rod Failure Reasons:**
+- `too_short`: Rods rejected for being too short
+- `too_long`: Rods rejected for being too long
+- `outside_boundary`: Rods rejected for being outside frame boundary
+- `angle_too_large`: Rods rejected for exceeding max angle deviation
+- `crosses_same_layer`: Rods rejected for crossing same-layer rods
+- `no_anchors_left`: Failures due to exhausted anchor pool
+
+**Evaluator Rejection Tracking:**
+- `evaluator_rejections_total`: Total arrangements rejected by evaluator
+- `evaluator_rejections_incomplete`: Count of incomplete arrangement rejections
+- `evaluator_rejections_hole_too_large`: Total holes that exceeded max area (accumulated across all rejected arrangements)
+- `evaluator_rejections_hole_too_small`: Total holes that were below min area (accumulated across all rejected arrangements)
+
+**Generation Metadata:**
+- `iterations_used`: Total iterations across all layers
+- `duration_sec`: Total generation duration
+
+**Logging:** Statistics are logged at INFO level on success, ERROR level on failure. Statistics are always populated even when generation fails, enabling diagnosis of why generation could not produce an acceptable result.
+
 ### AnchorPoint (Internal)
 
 Represents an anchor point on the frame boundary with the following attributes:

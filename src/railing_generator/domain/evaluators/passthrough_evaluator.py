@@ -1,5 +1,6 @@
 """Pass-Through Evaluator implementation."""
 
+from railing_generator.domain.evaluators.evaluation_result import EvaluationResult
 from railing_generator.domain.evaluators.evaluator import Evaluator
 from railing_generator.domain.evaluators.passthrough_evaluator_parameters import (
     PassThroughEvaluatorParameters,
@@ -18,7 +19,7 @@ class PassThroughEvaluator(Evaluator):
 
     Behavior:
         - evaluate(): Always returns 1.0 (neutral score)
-        - is_acceptable(): Always returns True (accepts all arrangements)
+        - check_acceptance(): Always returns accepted result
     """
 
     def __init__(self, params: PassThroughEvaluatorParameters) -> None:
@@ -43,7 +44,7 @@ class PassThroughEvaluator(Evaluator):
         """
         return 1.0
 
-    def is_acceptable(self, infill: RailingInfill, frame: RailingFrame) -> bool:
+    def check_acceptance(self, infill: RailingInfill, frame: RailingFrame) -> EvaluationResult:
         """
         Accept all arrangements without checking.
 
@@ -52,6 +53,6 @@ class PassThroughEvaluator(Evaluator):
             frame: The railing frame (not used)
 
         Returns:
-            Always returns True (accepts all arrangements)
+            Always returns accepted result
         """
-        return True
+        return EvaluationResult.accepted()

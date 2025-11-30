@@ -275,37 +275,37 @@ class RandomGeneratorV2:
 - **Quality Evaluator**: Multi-criteria fitness scoring for optimal visual quality
 - **Future**: Structural evaluator, aesthetic evaluator, cost evaluator, custom evaluators
 
+**Evaluator Interface:**
+
+All evaluators implement three methods:
+- `evaluate(infill, frame) -> float`: Returns fitness score (higher = better)
+- `check_acceptance(infill, frame) -> EvaluationResult`: Checks acceptance with detailed rejection breakdown
+- `is_acceptable(infill, frame) -> bool`: Convenience wrapper returning only boolean status
+
+**Acceptance Checking with Detailed Rejection Tracking:**
+
+The `check_acceptance()` method returns an `EvaluationResult` containing:
+- `is_acceptable`: Boolean indicating if arrangement meets criteria
+- `rejection_reasons`: Detailed breakdown with counts for each rejection criterion:
+  - `incomplete`: Count of incomplete arrangement flags (0 or 1)
+  - `hole_too_large`: Count of holes exceeding max area threshold
+  - `hole_too_small`: Count of holes below min area threshold
+
+This enables generators to accumulate detailed statistics about why arrangements are rejected, helping diagnose generation issues.
+
 **Pass-Through Evaluator:**
 
-Returns first valid arrangement without scoring.
-
-**Behavior:**
-- `evaluate()`: Always returns 1.0
-- `is_acceptable()`: Always returns True
-
-**Parameters:**
-```python
-class PassThroughEvaluatorParameters(BaseModel):
-    type: Literal["passthrough"] = "passthrough"  # No other params
-```
+Returns first valid arrangement without scoring. Always accepts all arrangements.
 
 **Quality Evaluator:**
 
-Scores infill arrangements using weighted criteria.
+Scores arrangements using weighted criteria and enforces hole area constraints. Rejects arrangements that are incomplete or have holes outside the configured area range. Returns detailed counts of which criteria failed.
 
 **Evaluation Criteria:**
 1. Hole Uniformity
 2. Incircle Uniformity
 3. Angle Distribution
 4. Anchor Spacing (horizontal and vertical weights)
-
-**Parameters:**
-```python
-class QualityEvaluatorParameters(BaseModel):
-    type: Literal["quality"] = "quality"
-    max_hole_area_cm2: float
-    hole_uniformity_weight: float  # ... other weights
-```
 
 **EvaluatorFactory:**
 

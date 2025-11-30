@@ -1,6 +1,6 @@
 """Statistics for infill generation process."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -23,6 +23,12 @@ class GenerationStatistics:
     angle_too_large: int = 0
     crosses_same_layer: int = 0
     no_anchors_left: int = 0
+
+    # Evaluator rejection tracking
+    evaluator_rejections_total: int = 0
+    evaluator_rejections_incomplete: int = 0
+    evaluator_rejections_hole_too_large: int = 0
+    evaluator_rejections_hole_too_small: int = 0
 
     # Generation metadata
     iterations_used: int = 0
@@ -63,5 +69,11 @@ class GenerationStatistics:
             f"  Crosses same layer: {self.crosses_same_layer}",
             f"  No anchors left: {self.no_anchors_left}",
             f"  Total failures: {self.total_failures}",
+            "",
+            "Evaluator Rejections:",
+            f"  Total arrangements rejected: {self.evaluator_rejections_total}",
+            f"  Incomplete: {self.evaluator_rejections_incomplete}",
+            f"  Hole too large: {self.evaluator_rejections_hole_too_large}",
+            f"  Hole too small: {self.evaluator_rejections_hole_too_small}",
         ]
         return "\n".join(lines)

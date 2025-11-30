@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 
+from railing_generator.domain.evaluators.evaluation_result import EvaluationResult
 from railing_generator.domain.railing_frame import RailingFrame
 from railing_generator.domain.railing_infill import RailingInfill
 
@@ -12,11 +13,11 @@ class Evaluator(ABC):
 
     Evaluators assess the quality of infill arrangements and determine
     whether they meet acceptance criteria. They provide fitness scores
-    for optimization and boolean acceptance checks for validation.
+    for optimization and detailed acceptance checks for validation.
 
     Subclasses must implement:
         - evaluate(): Calculate fitness score for an arrangement
-        - is_acceptable(): Check if arrangement meets minimum criteria
+        - check_acceptance(): Check if arrangement meets minimum criteria with detailed reason
     """
 
     @abstractmethod
@@ -36,7 +37,7 @@ class Evaluator(ABC):
         pass
 
     @abstractmethod
-    def is_acceptable(self, infill: RailingInfill, frame: RailingFrame) -> bool:
+    def check_acceptance(self, infill: RailingInfill, frame: RailingFrame) -> EvaluationResult:
         """
         Check if an infill arrangement meets minimum acceptance criteria.
 
@@ -45,6 +46,23 @@ class Evaluator(ABC):
             frame: The railing frame containing the infill
 
         Returns:
-            True if the arrangement is acceptable, False otherwise
+            EvaluationResult with acceptance status and rejection reason (if rejected)
         """
         pass
+
+    def is_acceptable(self, infill: RailingInfill, frame: RailingFrame) -> bool:
+        """
+        Check if an infill arrangement is acceptable (convenience method).
+
+        This is a convenience wrapper around check_acceptance() that only
+        returns the boolean status. Use check_acceptance() directly if you
+        need the rejection reason.
+
+        Args:
+            infill: The infill arrangement to check
+            frame: The railing frame containing the infill
+
+        Returns:
+            True if the arrangement is acceptable, False otherwise
+        """
+        return self.check_acceptance(infill, frame).is_acceptable
