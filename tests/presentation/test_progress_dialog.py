@@ -92,14 +92,16 @@ def test_progress_dialog_operation_failed(qtbot: QtBot) -> None:
 
 
 def test_progress_dialog_multiple_progress_updates(qtbot: QtBot) -> None:
-    """Test that multiple progress updates accumulate in the log."""
+    """Test that multiple log messages accumulate in the log."""
     dialog = ProgressDialog()
     qtbot.addWidget(dialog)
 
-    # Send multiple progress updates
+    # Send multiple log messages via the log proxy
     for i in range(1, 4):
-        progress_data = {"iteration": i * 10, "best_fitness": None, "elapsed_sec": i * 1.0}
-        dialog.update_progress(progress_data)
+        dialog.log_proxy.emit_log(f"[{i}.0s] Iteration {i * 10}")
+
+    # Process events to ensure signals are delivered
+    qtbot.wait(10)
 
     # Verify all entries in log
     log_text = dialog.log_text.toPlainText()

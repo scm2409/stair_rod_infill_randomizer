@@ -291,17 +291,20 @@ class QualityEvaluator(Evaluator):
 
     def _calculate_angle_distribution(self, infill: RailingInfill) -> float:
         """
-        Calculate rod angle distribution score (0.0-1.0).
+        Calculate rod angle distribution score using bin-based uniformity (0.0-1.0).
 
-        Measures the standard deviation of angles. Lower standard deviation
-        means angles are clustered together (bad), higher standard deviation
-        means angles are spread out (good).
+        Divides the observed angle range into bins and measures how evenly
+        rods are distributed across bins. A uniform distribution (equal rods
+        per bin) scores 1.0, while all rods in one bin scores 0.0.
+
+        Uses coefficient of variation (CV) of bin counts to measure uniformity.
+        Lower CV means more uniform distribution across bins.
 
         Args:
             infill: The infill arrangement to evaluate
 
         Returns:
-            Score between 0.0 and 1.0 (higher is better)
+            Score between 0.0 and 1.0 (higher is better, 1.0 = perfect uniformity)
         """
         if len(infill.rods) <= 1:
             return 1.0  # Single rod or no rods = perfect distribution
@@ -309,20 +312,46 @@ class QualityEvaluator(Evaluator):
         # Calculate angle from vertical for each rod
         angles = [rod.angle_from_vertical_deg for rod in infill.rods]
 
-        # Calculate standard deviation
-        mean_angle = sum(angles) / len(angles)
-        variance = sum((a - mean_angle) ** 2 for a in angles) / len(angles)
+        # Determine the angle range from observed angles
+        min_angle = min(angles)
+        max_angle = max(angles)
+        angle_range = max_angle - min_angle
+
+        # If all angles are the same (or very close), distribution is poor
+        if angle_range < 1.0:  # Less than 1 degree spread
+            return 0.0
+
+        # Number of bins: use sqrt(n) as a reasonable default, minimum 3, maximum 10
+        num_bins = max(3, min(10, int(math.sqrt(len(angles)))))
+
+        # Create bins and count rods in each
+        bin_width = angle_range / num_bins
+        bin_counts = [0] * num_bins
+
+        for angle in angles:
+            # Calculate which bin this angle falls into
+            bin_index = int((angle - min_angle) / bin_width)
+            # Handle edge case where angle == max_angle
+            if bin_index >= num_bins:
+                bin_index = num_bins - 1
+            bin_counts[bin_index] += 1
+
+        # Calculate coefficient of variation (CV) of bin counts
+        mean_count = len(angles) / num_bins  # Expected count per bin for uniform distribution
+
+        variance = sum((count - mean_count) ** 2 for count in bin_counts) / num_bins
         std_dev = math.sqrt(variance)
 
-        # Convert std_dev to score
-        # Higher std_dev = better distribution (up to a point)
-        # Use sigmoid-like function: score = 1 - exp(-k * std_dev)
-        # k=0.05 gives good sensitivity:
-        #   std_dev=0° → score=0.0 (all same angle)
-        #   std_dev=10° → score=0.39
-        #   std_dev=20° → score=0.63
-        #   std_dev=30° → score=0.78
-        score = 1.0 - math.exp(-0.05 * std_dev)
+        # CV = std_dev / mean
+        cv = std_dev / mean_count
+
+        # Convert CV to score (0-1 range, lower CV = higher score)
+        # Use exponential decay: score = e^(-k * CV)
+        # k=2 gives good sensitivity:
+        #   CV=0 → score=1.0 (perfect uniformity)
+        #   CV=0.5 → score=0.37
+        #   CV=1.0 → score=0.14
+        score = math.exp(-2.0 * cv)
 
         return score
 
