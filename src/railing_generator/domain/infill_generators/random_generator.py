@@ -4,7 +4,7 @@ import logging
 import random
 import time
 
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from railing_generator.domain.anchor_point import AnchorPoint
 from railing_generator.domain.infill_generators.generation_statistics import (
@@ -331,9 +331,9 @@ class RandomGenerator(Generator):
                 # Use random.sample for efficiency (no need to remove and re-add)
                 anchor1_idx, anchor2_idx = random.sample(available_anchors, 2)
 
-                # Get the anchor points
-                anchor1 = Point(anchor_points[anchor1_idx])
-                anchor2 = Point(anchor_points[anchor2_idx])
+                # Get the anchor points (already Point objects)
+                anchor1 = anchor_points[anchor1_idx]
+                anchor2 = anchor_points[anchor2_idx]
 
                 # Create rod geometry
                 rod_geometry = LineString([anchor1.coords[0], anchor2.coords[0]])
@@ -438,7 +438,7 @@ class RandomGenerator(Generator):
 
     def _generate_anchor_points(
         self, frame_boundary: LineString, frame_length: float, num_points: int, min_distance: float
-    ) -> list[tuple[float, float]]:
+    ) -> list[Point]:
         """
         Pre-generate anchor points along the frame with minimum distance constraint.
 
@@ -453,7 +453,7 @@ class RandomGenerator(Generator):
             min_distance: Minimum distance between anchor points
 
         Returns:
-            List of anchor point coordinates as (x, y) tuples
+            List of anchor points as Shapely Points
         """
         # Calculate even spacing between points
         even_spacing = frame_length / num_points
@@ -464,7 +464,7 @@ class RandomGenerator(Generator):
             num_points = int(frame_length / min_distance)
             even_spacing = frame_length / num_points
 
-        anchor_points: list[tuple[float, float]] = []
+        anchor_points: list[Point] = []
 
         # Generate evenly distributed points with random displacement
         for i in range(num_points):
@@ -489,7 +489,7 @@ class RandomGenerator(Generator):
 
             # Get point at this position
             point = frame_boundary.interpolate(position)
-            anchor_points.append((point.x, point.y))
+            anchor_points.append(Point(point.x, point.y))
 
         return anchor_points
 

@@ -2,7 +2,7 @@
 
 import pytest
 from PySide6.QtCore import SignalInstance
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from railing_generator.application.manual_edit_controller import ManualEditController
 from railing_generator.application.railing_project_model import RailingProjectModel
@@ -103,7 +103,7 @@ class TestSelectAnchorAt:
         self, controller: ManualEditController, model: RailingProjectModel
     ) -> None:
         """Test selection when no infill exists."""
-        result = controller.select_anchor_at((0.0, 0.0))
+        result = controller.select_anchor_at(Point(0.0, 0.0))
         assert result is False
         assert controller.selected_anchor is None
 
@@ -114,7 +114,7 @@ class TestSelectAnchorAt:
         infill = RailingInfill(rods=[], anchor_points=None)
         model.set_railing_infill(infill)
 
-        result = controller.select_anchor_at((0.0, 0.0))
+        result = controller.select_anchor_at(Point(0.0, 0.0))
         assert result is False
         assert controller.selected_anchor is None
 
@@ -143,10 +143,11 @@ class TestSelectAnchorAt:
         infill = RailingInfill(rods=[rod], anchor_points=[anchor])
         model.set_railing_infill(infill)
 
-        result = controller.select_anchor_at((1.0, 0.0))  # Near (0, 0)
+        result = controller.select_anchor_at(Point(1.0, 0.0))  # Near (0, 0)
         assert result is True
         assert controller.selected_anchor is not None
-        assert controller.selected_anchor.position == (0.0, 0.0)
+        assert controller.selected_anchor.position.x == 0.0
+        assert controller.selected_anchor.position.y == 0.0
         assert controller.has_selection is True
 
     def test_select_anchor_emits_signal(
@@ -177,7 +178,7 @@ class TestSelectAnchorAt:
 
         # Use qtbot to wait for signal
         with qtbot.waitSignal(controller.selection_changed, timeout=1000):  # type: ignore[union-attr]
-            controller.select_anchor_at((1.0, 0.0))
+            controller.select_anchor_at(Point(1.0, 0.0))
 
     def test_select_anchor_skips_unconnected(
         self,
@@ -189,7 +190,7 @@ class TestSelectAnchorAt:
         model.set_railing_infill(sample_infill)
 
         # Search near the unconnected anchor at (50, 0)
-        result = controller.select_anchor_at((50.0, 0.0))
+        result = controller.select_anchor_at(Point(50.0, 0.0))
         # Should not find anything (unconnected anchors are skipped)
         assert result is False
 
@@ -219,7 +220,7 @@ class TestSelectAnchorAt:
         model.set_railing_infill(infill)
 
         # Search far from any anchor
-        result = controller.select_anchor_at((0.0, 0.0))
+        result = controller.select_anchor_at(Point(0.0, 0.0))
         assert result is False
         assert controller.selected_anchor is None
 
@@ -248,7 +249,7 @@ class TestSelectAnchorAt:
         infill = RailingInfill(rods=[rod], anchor_points=[anchor])
         model.set_railing_infill(infill)
 
-        controller.select_anchor_at((0.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
         assert controller.selected_rod_index == 0
 
 
@@ -294,7 +295,7 @@ class TestClearSelection:
         )
         infill = RailingInfill(rods=[rod], anchor_points=[anchor])
         model.set_railing_infill(infill)
-        controller.select_anchor_at((0.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
 
         assert controller.has_selection is True
 
@@ -326,7 +327,7 @@ class TestClearSelection:
         )
         infill = RailingInfill(rods=[rod], anchor_points=[anchor])
         model.set_railing_infill(infill)
-        controller.select_anchor_at((0.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
 
         # Clear and check signal
         with qtbot.waitSignal(controller.selection_changed, timeout=1000):  # type: ignore[union-attr]
@@ -394,7 +395,7 @@ class TestReconnectToAnchorAt:
         self, controller: ManualEditController, model: RailingProjectModel
     ) -> None:
         """Test reconnection fails when no anchor is selected."""
-        result = controller.reconnect_to_anchor_at((100.0, 0.0))
+        result = controller.reconnect_to_anchor_at(Point(100.0, 0.0))
         assert result is False
 
     def test_reconnect_no_infill(
@@ -412,7 +413,7 @@ class TestReconnectToAnchorAt:
         )
         controller._selected_rod_index = 0
 
-        result = controller.reconnect_to_anchor_at((100.0, 0.0))
+        result = controller.reconnect_to_anchor_at(Point(100.0, 0.0))
         assert result is False
 
     def test_reconnect_success(
@@ -425,11 +426,11 @@ class TestReconnectToAnchorAt:
         model.set_railing_infill(infill_with_rod)
 
         # Select the start anchor (0, 0)
-        controller.select_anchor_at((0.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
         assert controller.has_selection
 
         # Reconnect to target anchor (100, 0)
-        result = controller.reconnect_to_anchor_at((100.0, 0.0))
+        result = controller.reconnect_to_anchor_at(Point(100.0, 0.0))
         assert result is True
 
         # Verify new infill
@@ -459,19 +460,23 @@ class TestReconnectToAnchorAt:
         model.set_railing_infill(infill_with_rod)
 
         # Select the start anchor (0, 0)
-        controller.select_anchor_at((0.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
 
         # Reconnect to target anchor (100, 0)
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         # Verify anchor states
         new_infill = model.railing_infill
         assert new_infill is not None
         assert new_infill.anchor_points is not None
 
-        # Find anchors by position
-        source_anchor = next(ap for ap in new_infill.anchor_points if ap.position == (0.0, 0.0))
-        target_anchor = next(ap for ap in new_infill.anchor_points if ap.position == (100.0, 0.0))
+        # Find anchors by position (position is now a Shapely Point)
+        source_anchor = next(
+            ap for ap in new_infill.anchor_points if ap.position.equals(Point(0.0, 0.0))
+        )
+        target_anchor = next(
+            ap for ap in new_infill.anchor_points if ap.position.equals(Point(100.0, 0.0))
+        )
 
         # Source should be marked as unused
         assert source_anchor.used is False
@@ -490,8 +495,8 @@ class TestReconnectToAnchorAt:
         assert controller.undo_stack_size == 0
 
         # Select and reconnect
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         assert controller.undo_stack_size == 1
         assert controller.can_undo is True
@@ -506,10 +511,10 @@ class TestReconnectToAnchorAt:
         model.set_railing_infill(infill_with_rod)
 
         # Select the start anchor
-        controller.select_anchor_at((0.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
 
         # Try to reconnect to position far from any anchor
-        result = controller.reconnect_to_anchor_at((500.0, 500.0))
+        result = controller.reconnect_to_anchor_at(Point(500.0, 500.0))
         assert result is False
 
         # Undo stack should be empty
@@ -592,8 +597,8 @@ class TestUndoRedo:
         original_rod_start = infill_with_rod.rods[0].start_point
 
         # Perform edit
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         # Verify state changed
         assert model.railing_infill is not None
@@ -618,8 +623,8 @@ class TestUndoRedo:
         model.set_railing_infill(infill_with_rod)
 
         # Perform edit
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         # Get the edited state
         edited_infill = model.railing_infill
@@ -664,16 +669,16 @@ class TestUndoRedo:
         model.set_railing_infill(infill)
 
         # Perform first edit
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         # Undo
         controller.undo()
         assert controller.can_redo is True
 
         # Perform new edit (should clear redo)
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((150.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(150.0, 0.0))
 
         assert controller.can_redo is False
 
@@ -687,8 +692,8 @@ class TestUndoRedo:
         model.set_railing_infill(infill_with_rod)
 
         # Perform edit
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         # Undo to populate redo stack
         controller.undo()
@@ -758,8 +763,8 @@ class TestUndoRedo:
         model.set_railing_infill(infill_with_rod)
 
         # Perform edit
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         # Undo and check fitness signal is emitted
         with qtbot.waitSignal(controller.fitness_scores_updated, timeout=1000):  # type: ignore[union-attr]
@@ -776,8 +781,8 @@ class TestUndoRedo:
         model.set_railing_infill(infill_with_rod)
 
         # Perform edit and undo
-        controller.select_anchor_at((0.0, 0.0))
-        controller.reconnect_to_anchor_at((100.0, 0.0))
+        controller.select_anchor_at(Point(0.0, 0.0))
+        controller.reconnect_to_anchor_at(Point(100.0, 0.0))
         controller.undo()
 
         # Redo and check fitness signal is emitted

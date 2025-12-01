@@ -1,6 +1,7 @@
 """Tests for MainWindow."""
 
 import pytest
+from shapely.geometry import Point
 
 from railing_generator.application.application_controller import ApplicationController
 from railing_generator.application.railing_project_model import RailingProjectModel
@@ -284,8 +285,8 @@ class TestMainWindowEditMenu:
         project_model.set_railing_infill(infill)
 
         # Perform an edit to populate undo stack
-        main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-        main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+        main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+        main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
         # Undo should be available now
         assert main_window.undo_action.isEnabled()
@@ -344,8 +345,8 @@ class TestMainWindowEditMenu:
         project_model.set_railing_infill(infill)
 
         # Perform an edit and undo it
-        main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-        main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+        main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+        main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
         main_window.manual_edit_controller.undo()
 
         # Redo should be available now

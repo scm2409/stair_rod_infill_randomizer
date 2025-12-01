@@ -60,35 +60,9 @@ class TestAnchorPointMargins:
 
             for anchor in anchors:
                 # Calculate distance along the segment for this anchor
-                # We need to project the anchor position onto the frame rod
-                anchor_point_geom = LineString([anchor.position, anchor.position]).buffer(0.01)
-
-                # Get the start and end points of the frame rod
-                start_point = frame_rod.geometry.coords[0]
-                end_point = frame_rod.geometry.coords[-1]
-
-                # Calculate distances from anchor to start and end
-                import math
-
-                dist_to_start = math.sqrt(
-                    (anchor.position[0] - start_point[0]) ** 2
-                    + (anchor.position[1] - start_point[1]) ** 2
-                )
-                dist_to_end = math.sqrt(
-                    (anchor.position[0] - end_point[0]) ** 2
-                    + (anchor.position[1] - end_point[1]) ** 2
-                )
-
-                # For a point on a line segment, the sum of distances to endpoints
-                # should approximately equal the segment length
-                # But we can use a simpler check: project the point onto the line
-                # and check its position parameter
-
                 # Use shapely's project method to get distance along line
-                from shapely.geometry import Point
-
-                anchor_shapely = Point(anchor.position)
-                distance_along_segment = frame_rod.geometry.project(anchor_shapely)
+                # anchor.position is already a Shapely Point
+                distance_along_segment = frame_rod.geometry.project(anchor.position)
 
                 # Check that anchor is at least min_margin_cm from both ends
                 assert distance_along_segment >= min_margin_cm - 0.1, (

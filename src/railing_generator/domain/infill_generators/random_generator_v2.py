@@ -4,6 +4,8 @@ import logging
 import random
 from typing import TYPE_CHECKING
 
+from shapely.geometry import Point
+
 from railing_generator.domain.anchor_point import AnchorPoint
 from railing_generator.domain.evaluators.evaluator import Evaluator
 from railing_generator.domain.evaluators.evaluator_factory import EvaluatorFactory
@@ -471,7 +473,7 @@ class RandomGeneratorV2(Generator):
                 point = frame_rod.geometry.interpolate(position)
 
                 anchor = AnchorPoint(
-                    position=(point.x, point.y),
+                    position=Point(point.x, point.y),
                     frame_segment_index=segment_idx,
                     is_vertical_segment=is_vertical,
                     frame_segment_angle_deg=frame_segment_angle,
@@ -539,10 +541,8 @@ class RandomGeneratorV2(Generator):
                     # Get first anchor of current segment
                     first_curr = anchors[0]
 
-                    # Calculate distance
-                    dx = first_curr.position[0] - last_prev.position[0]
-                    dy = first_curr.position[1] - last_prev.position[1]
-                    distance = math.sqrt(dx * dx + dy * dy)
+                    # Calculate distance using Shapely Point
+                    distance = first_curr.position.distance(last_prev.position)
 
                     # Determine minimum distance based on segment types
                     # Use the more restrictive (smaller) of the two distances
@@ -740,8 +740,8 @@ class RandomGeneratorV2(Generator):
         # Create line extending in both directions from start point
         projected_line = LineString(
             [
-                (start_anchor.position[0] - dx, start_anchor.position[1] - dy),
-                (start_anchor.position[0] + dx, start_anchor.position[1] + dy),
+                (start_anchor.position.x - dx, start_anchor.position.y - dy),
+                (start_anchor.position.x + dx, start_anchor.position.y + dy),
             ]
         )
 
@@ -758,7 +758,7 @@ class RandomGeneratorV2(Generator):
             intersection_points = [intersection]
 
         # Find the intersection point that is NOT near the start anchor (opposite side)
-        start_point = Point(start_anchor.position)
+        start_point = start_anchor.position
         selected_intersection = None
         max_distance = 0.0
 
@@ -779,8 +779,7 @@ class RandomGeneratorV2(Generator):
             if anchor is start_anchor:
                 continue
 
-            anchor_point = Point(anchor.position)
-            distance = anchor_point.distance(selected_intersection)
+            distance = anchor.position.distance(selected_intersection)
 
             if distance < min_distance:
                 min_distance = distance
@@ -962,7 +961,9 @@ class RandomGeneratorV2(Generator):
                 continue  # No suitable end anchor found
 
             # Create rod geometry
-            rod_geometry = LineString([start_anchor.position, end_anchor.position])
+            rod_geometry = LineString(
+                [start_anchor.position.coords[0], end_anchor.position.coords[0]]
+            )
 
             # Create temporary rod to get its angle
             temp_rod = Rod(

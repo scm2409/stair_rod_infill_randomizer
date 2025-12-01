@@ -5,6 +5,7 @@ import logging
 from PySide6.QtCore import QByteArray, QBuffer, QIODevice, Qt, Signal
 from PySide6.QtGui import QImage, QMouseEvent, QPainter, QPen, QWheelEvent
 from PySide6.QtWidgets import QGraphicsItemGroup, QGraphicsScene, QGraphicsView
+from shapely.geometry import Point
 
 from railing_generator.application.railing_project_model import RailingProjectModel
 from railing_generator.domain.railing_infill import RailingInfill
@@ -380,7 +381,7 @@ class ViewportWidget(QGraphicsView):
 
                 # Create small circle (1 pixel width pen, 2cm diameter)
                 anchor_pen = QPen(color, 1)
-                x, y = anchor.position
+                x, y = anchor.position.x, anchor.position.y
                 circle = scene.addEllipse(x - 1, y - 1, 2, 2, anchor_pen)
                 self._anchor_points_group.addToGroup(circle)
 
@@ -477,12 +478,12 @@ class ViewportWidget(QGraphicsView):
             scene.removeItem(self._highlight_group)
             self._highlight_group = None
 
-    def highlight_anchor(self, position: tuple[float, float] | None) -> None:
+    def highlight_anchor(self, position: Point | None) -> None:
         """
         Highlight an anchor point at the given position.
 
         Args:
-            position: (x, y) coordinates of the anchor to highlight, or None to clear
+            position: Shapely Point or None to clear highlight
         """
         scene = self.scene()
         if scene is None:
@@ -504,8 +505,8 @@ class ViewportWidget(QGraphicsView):
         highlight_pen = QPen(Qt.GlobalColor.darkYellow, 2)
         highlight_brush = QBrush(Qt.GlobalColor.yellow)
 
-        x, y = position
         # Draw a larger circle (radius 3cm) with fill
+        x, y = position.x, position.y
         circle = scene.addEllipse(x - 3, y - 3, 6, 6, highlight_pen, highlight_brush)
         self._highlight_group.addToGroup(circle)
 

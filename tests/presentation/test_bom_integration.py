@@ -2,7 +2,7 @@
 
 import pytest
 from pytestqt.qtbot import QtBot
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Point, Polygon
 
 from railing_generator.application.application_controller import ApplicationController
 from railing_generator.application.railing_project_model import RailingProjectModel
@@ -205,8 +205,8 @@ def test_bom_updates_after_manual_edit(
     assert initial_row_count == 1
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # BOM should still have 1 rod (we moved it, not added/removed)
     assert main_window.bom_table.infill_table.rowCount() == 1
@@ -227,8 +227,8 @@ def test_project_marked_modified_after_manual_edit(
     assert not main_window.project_model.project_modified
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # Project should be marked as modified
     assert main_window.project_model.project_modified
@@ -246,8 +246,8 @@ def test_bom_totals_recalculate_after_manual_edit(
     assert "Infill Totals:" in initial_totals_text
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # Get new totals label text
     new_totals_text = main_window.bom_table.infill_totals_label.text()
@@ -269,8 +269,8 @@ def test_viewport_updates_after_manual_edit(
     assert main_window.viewport._railing_infill_group is not None
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # Viewport should still have infill rendered (updated)
     assert main_window.viewport._railing_infill_group is not None
@@ -284,8 +284,8 @@ def test_viewport_updates_on_undo(
     main_window.project_model.set_railing_infill(infill_with_anchors)
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # Get current infill rod start point
     current_infill = main_window.project_model.railing_infill
@@ -309,8 +309,8 @@ def test_viewport_updates_on_redo(
     main_window.project_model.set_railing_infill(infill_with_anchors)
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # Get edited state
     edited_infill = main_window.project_model.railing_infill
@@ -335,8 +335,8 @@ def test_bom_updates_on_undo(main_window: MainWindow, infill_with_anchors: Raili
     main_window.project_model.set_railing_infill(infill_with_anchors)
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # BOM should have 1 rod
     assert main_window.bom_table.infill_table.rowCount() == 1
@@ -364,8 +364,8 @@ def test_fitness_display_updates_on_undo(
     main_window.project_model.set_railing_infill(infill_with_anchors)
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # Fitness display should show comparison in status bar
     assert "Fitness:" in get_status_message()
@@ -420,8 +420,8 @@ def test_history_cleared_on_new_generation(main_window: MainWindow) -> None:
     main_window.project_model.set_railing_infill(infill)
 
     # Perform manual edit
-    main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
-    main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+    main_window.manual_edit_controller.select_anchor_at(Point(0.0, 0.0))
+    main_window.manual_edit_controller.reconnect_to_anchor_at(Point(100.0, 0.0))
 
     # Undo should be available
     assert main_window.manual_edit_controller.can_undo

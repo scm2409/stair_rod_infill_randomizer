@@ -3,7 +3,7 @@
 from datetime import datetime
 
 from PySide6.QtCore import QObject, Signal
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 
 from railing_generator.application.railing_project_model import RailingProjectModel
 from railing_generator.domain.anchor_point import AnchorPoint
@@ -90,7 +90,7 @@ class ManualEditController(QObject):
         """Check if an anchor point is currently selected."""
         return self._selected_anchor is not None
 
-    def select_anchor_at(self, position: tuple[float, float]) -> bool:
+    def select_anchor_at(self, position: Point) -> bool:
         """
         Select a connected anchor point near the given position.
 
@@ -99,7 +99,7 @@ class ManualEditController(QObject):
         which rod endpoint will be moved during reconnection.
 
         Args:
-            position: (x, y) coordinates of the search center
+            position: Shapely Point of the search center
 
         Returns:
             True if an anchor was selected, False otherwise
@@ -131,21 +131,19 @@ class ManualEditController(QObject):
 
     def _find_nearest_connected(
         self,
-        position: tuple[float, float],
+        position: Point,
         anchor_points: list[AnchorPoint],
     ) -> AnchorPoint | None:
         """
         Find the nearest connected (used) anchor point within search radius.
 
         Args:
-            position: (x, y) coordinates of the search center
+            position: Shapely Point of the search center
             anchor_points: List of all anchor points
 
         Returns:
             Nearest connected anchor point, or None if none found
         """
-        import math
-
         nearest: AnchorPoint | None = None
         nearest_distance: float = float("inf")
 
@@ -154,10 +152,8 @@ class ManualEditController(QObject):
             if not anchor.used:
                 continue
 
-            # Calculate Euclidean distance
-            dx = anchor.position[0] - position[0]
-            dy = anchor.position[1] - position[1]
-            distance = math.sqrt(dx * dx + dy * dy)
+            # Calculate Euclidean distance using Shapely
+            distance = position.distance(anchor.position)
 
             # Check if within search radius and closer than current nearest
             if distance <= self._anchor_finder.search_radius_cm and distance < nearest_distance:
@@ -189,21 +185,9 @@ class ManualEditController(QObject):
 
         # Search through rods to find one that has this anchor as an endpoint
         for i, rod in enumerate(infill.rods):
-            start = rod.start_point
-            end = rod.end_point
-
-            # Check if anchor position matches either endpoint
-            # Use small tolerance for floating point comparison
-            tolerance = 0.001
-            if (
-                abs(start.x - anchor.position[0]) < tolerance
-                and abs(start.y - anchor.position[1]) < tolerance
-            ):
+            if anchor.position.equals_exact(rod.start_point, tolerance=0.001):
                 return i
-            if (
-                abs(end.x - anchor.position[0]) < tolerance
-                and abs(end.y - anchor.position[1]) < tolerance
-            ):
+            if anchor.position.equals_exact(rod.end_point, tolerance=0.001):
                 return i
 
         return None
@@ -232,7 +216,7 @@ class ManualEditController(QObject):
 
     # Rod reconnection
 
-    def reconnect_to_anchor_at(self, position: tuple[float, float]) -> bool:
+    def reconnect_to_anchor_at(self, position: Point) -> bool:
         """
         Reconnect the selected rod endpoint to an anchor near the position.
 
@@ -244,7 +228,7 @@ class ManualEditController(QObject):
         5. Updates the project model with the new infill
 
         Args:
-            position: (x, y) coordinates of the target position
+            position: Shapely Point of the target position
 
         Returns:
             True if reconnection was successful, False otherwise
@@ -275,21 +259,20 @@ class ManualEditController(QObject):
         rod = infill.rods[self._selected_rod_index]
 
         # Determine which endpoint to move (start or end)
-        tolerance = 0.001
-        start = rod.start_point
-        is_start_endpoint = (
-            abs(start.x - self._selected_anchor.position[0]) < tolerance
-            and abs(start.y - self._selected_anchor.position[1]) < tolerance
+        is_start_endpoint = self._selected_anchor.position.equals_exact(
+            rod.start_point, tolerance=0.001
         )
 
         # Create new rod geometry
         if is_start_endpoint:
             # Move start point to target anchor
-            new_geometry = LineString([target_anchor.position, (rod.end_point.x, rod.end_point.y)])
+            new_geometry = LineString(
+                [target_anchor.position.coords[0], (rod.end_point.x, rod.end_point.y)]
+            )
         else:
             # Move end point to target anchor
             new_geometry = LineString(
-                [(rod.start_point.x, rod.start_point.y), target_anchor.position]
+                [(rod.start_point.x, rod.start_point.y), target_anchor.position.coords[0]]
             )
 
         # Create new rod with updated geometry
@@ -362,12 +345,8 @@ class ManualEditController(QObject):
         self, anchor: AnchorPoint, anchor_points: list[AnchorPoint]
     ) -> int | None:
         """Find the index of an anchor in the anchor points list."""
-        tolerance = 0.001
         for i, ap in enumerate(anchor_points):
-            if (
-                abs(ap.position[0] - anchor.position[0]) < tolerance
-                and abs(ap.position[1] - anchor.position[1]) < tolerance
-            ):
+            if ap.position.equals_exact(anchor.position, tolerance=0.001):
                 return i
         return None
 

@@ -314,7 +314,8 @@ def test_random_generator_v2_anchor_points_generated(
     # Verify anchor points have correct attributes
     for anchor in infill.anchor_points:
         assert anchor.position is not None
-        assert len(anchor.position) == 2
+        # Position is now a Shapely Point
+        assert hasattr(anchor.position, "x") and hasattr(anchor.position, "y")
         assert anchor.frame_segment_index is not None
         assert anchor.layer is not None
         assert anchor.layer >= 1

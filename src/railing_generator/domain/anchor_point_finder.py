@@ -1,6 +1,6 @@
 """Anchor point finder for manual rod editing."""
 
-import math
+from shapely.geometry import Point
 
 from railing_generator.domain.anchor_point import AnchorPoint
 
@@ -29,14 +29,14 @@ class AnchorPointFinder:
 
     def find_nearest_unconnected(
         self,
-        position: tuple[float, float],
+        position: Point,
         anchor_points: list[AnchorPoint],
     ) -> AnchorPoint | None:
         """
         Find the nearest unconnected anchor point within search radius.
 
         Args:
-            position: (x, y) coordinates of the search center
+            position: Shapely Point of the search center
             anchor_points: List of all anchor points to search
 
         Returns:
@@ -45,7 +45,6 @@ class AnchorPointFinder:
         """
         if not anchor_points:
             return None
-
         nearest: AnchorPoint | None = None
         nearest_distance: float = float("inf")
 
@@ -54,8 +53,8 @@ class AnchorPointFinder:
             if anchor.used:
                 continue
 
-            # Calculate Euclidean distance
-            distance = self._calculate_distance(position, anchor.position)
+            # Calculate distance using Shapely
+            distance = position.distance(anchor.position)
 
             # Check if within search radius and closer than current nearest
             if distance <= self.search_radius_cm and distance < nearest_distance:
@@ -66,14 +65,14 @@ class AnchorPointFinder:
 
     def find_all_unconnected_within_radius(
         self,
-        position: tuple[float, float],
+        position: Point,
         anchor_points: list[AnchorPoint],
     ) -> list[tuple[AnchorPoint, float]]:
         """
         Find all unconnected anchor points within search radius.
 
         Args:
-            position: (x, y) coordinates of the search center
+            position: Shapely Point of the search center
             anchor_points: List of all anchor points to search
 
         Returns:
@@ -82,7 +81,6 @@ class AnchorPointFinder:
         """
         if not anchor_points:
             return []
-
         results: list[tuple[AnchorPoint, float]] = []
 
         for anchor in anchor_points:
@@ -90,8 +88,8 @@ class AnchorPointFinder:
             if anchor.used:
                 continue
 
-            # Calculate Euclidean distance
-            distance = self._calculate_distance(position, anchor.position)
+            # Calculate distance using Shapely
+            distance = position.distance(anchor.position)
 
             # Check if within search radius
             if distance <= self.search_radius_cm:
@@ -100,22 +98,3 @@ class AnchorPointFinder:
         # Sort by distance (nearest first)
         results.sort(key=lambda x: x[1])
         return results
-
-    @staticmethod
-    def _calculate_distance(
-        pos1: tuple[float, float],
-        pos2: tuple[float, float],
-    ) -> float:
-        """
-        Calculate Euclidean distance between two points.
-
-        Args:
-            pos1: First point (x, y)
-            pos2: Second point (x, y)
-
-        Returns:
-            Euclidean distance between the points
-        """
-        dx = pos2[0] - pos1[0]
-        dy = pos2[1] - pos1[1]
-        return math.sqrt(dx * dx + dy * dy)

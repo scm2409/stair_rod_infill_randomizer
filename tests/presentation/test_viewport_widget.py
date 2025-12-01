@@ -1,6 +1,7 @@
 """Tests for ViewportWidget."""
 
 import pytest
+from shapely.geometry import Point
 
 from railing_generator.application.railing_project_model import RailingProjectModel
 from railing_generator.presentation.viewport_widget import ViewportWidget
@@ -469,7 +470,7 @@ class TestViewportAnchorHighlighting:
     ) -> None:
         """Test that highlight_anchor creates a visible highlight."""
         # Highlight an anchor at position (50, 50)
-        viewport.highlight_anchor((50.0, 50.0))
+        viewport.highlight_anchor(Point(50.0, 50.0))
 
         # Highlight group should exist
         assert viewport._highlight_group is not None
@@ -484,7 +485,7 @@ class TestViewportAnchorHighlighting:
     ) -> None:
         """Test that highlight_anchor(None) clears the highlight."""
         # First create a highlight
-        viewport.highlight_anchor((50.0, 50.0))
+        viewport.highlight_anchor(Point(50.0, 50.0))
         assert viewport._highlight_group is not None
 
         # Clear highlight
@@ -498,11 +499,11 @@ class TestViewportAnchorHighlighting:
     ) -> None:
         """Test that highlighting a new anchor replaces the previous highlight."""
         # Highlight first anchor
-        viewport.highlight_anchor((50.0, 50.0))
+        viewport.highlight_anchor(Point(50.0, 50.0))
         first_group = viewport._highlight_group
 
         # Highlight second anchor
-        viewport.highlight_anchor((100.0, 100.0))
+        viewport.highlight_anchor(Point(100.0, 100.0))
 
         # Should have a new highlight group
         assert viewport._highlight_group is not None

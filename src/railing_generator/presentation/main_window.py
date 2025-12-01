@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+from shapely.geometry import Point
+
 from railing_generator.application.application_controller import ApplicationController
 from railing_generator.application.manual_edit_controller import ManualEditController
 from railing_generator.application.railing_project_model import RailingProjectModel
@@ -280,7 +282,7 @@ class MainWindow(QMainWindow):
             y: Y coordinate in scene space
         """
         logger.debug(f"Viewport anchor clicked at ({x}, {y})")
-        selected = self.manual_edit_controller.select_anchor_at((x, y))
+        selected = self.manual_edit_controller.select_anchor_at(Point(x, y))
         if selected:
             logger.debug("Anchor selected")
         else:
@@ -295,7 +297,7 @@ class MainWindow(QMainWindow):
             y: Y coordinate in scene space
         """
         logger.debug(f"Viewport anchor shift-clicked at ({x}, {y})")
-        reconnected = self.manual_edit_controller.reconnect_to_anchor_at((x, y))
+        reconnected = self.manual_edit_controller.reconnect_to_anchor_at(Point(x, y))
         if reconnected:
             logger.debug("Rod reconnected successfully")
         else:
@@ -309,7 +311,7 @@ class MainWindow(QMainWindow):
             anchor: The selected anchor point, or None if selection cleared
         """
         if anchor is not None:
-            logger.debug(f"Anchor selected at {anchor.position}")
+            logger.debug(f"Anchor selected at ({anchor.position.x}, {anchor.position.y})")
             self.viewport.highlight_anchor(anchor.position)
         else:
             logger.debug("Anchor selection cleared")
