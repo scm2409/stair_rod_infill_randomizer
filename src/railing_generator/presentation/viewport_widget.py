@@ -2,8 +2,8 @@
 
 import logging
 
-from PySide6.QtCore import QByteArray, QBuffer, QIODevice, Qt
-from PySide6.QtGui import QImage, QPainter, QPen, QWheelEvent
+from PySide6.QtCore import QByteArray, QBuffer, QIODevice, Qt, Signal
+from PySide6.QtGui import QImage, QMouseEvent, QPainter, QPen, QWheelEvent
 from PySide6.QtWidgets import QGraphicsItemGroup, QGraphicsScene, QGraphicsView
 
 from railing_generator.application.railing_project_model import RailingProjectModel
@@ -19,10 +19,16 @@ class ViewportWidget(QGraphicsView):
 
     Features:
     - Zoom with mouse wheel (centered on cursor)
-    - Pan with mouse drag
+    - Pan with middle mouse button drag
+    - Left-click for anchor selection
+    - Shift+left-click for rod reconnection
     - Hardware-accelerated rendering
     - Observes RailingProjectModel for automatic updates
     """
+
+    # Signals for mouse interactions (scene coordinates)
+    anchor_clicked = Signal(float, float)  # Left-click: x, y position
+    anchor_shift_clicked = Signal(float, float)  # Shift+left-click: x, y position
 
     def __init__(self, project_model: RailingProjectModel) -> None:
         """
@@ -46,12 +52,20 @@ class ViewportWidget(QGraphicsView):
         self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorViewCenter)
 
-        # Enable drag mode for panning
-        self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+        # Disable default drag mode - we handle panning manually with middle mouse button
+        self.setDragMode(QGraphicsView.DragMode.NoDrag)
+
+        # Set default cursor to arrow (not hand)
+        self.setCursor(Qt.CursorShape.ArrowCursor)
 
         # Flip Y-axis to match mathematical convention (Y increases upward)
         # Qt's default has Y increasing downward
         self.scale(1, -1)
+
+        # Panning state
+        self._is_panning = False
+        self._pan_start_x = 0
+        self._pan_start_y = 0
 
         # Zoom settings
         self._zoom_factor = 1.15
@@ -106,6 +120,83 @@ class ViewportWidget(QGraphicsView):
             self.clear_railing_infill()
         else:
             self.set_railing_infill(infill)
+
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        """
+        Handle mouse press events.
+
+        Middle button starts panning.
+        Left button emits signals for selection/editing.
+
+        Args:
+            event: Mouse event
+        """
+        if event.button() == Qt.MouseButton.MiddleButton:
+            # Start panning
+            self._is_panning = True
+            self._pan_start_x = event.x()
+            self._pan_start_y = event.y()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+            event.accept()
+        elif event.button() == Qt.MouseButton.LeftButton:
+            # Convert to scene coordinates
+            scene_pos = self.mapToScene(event.pos())
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                # Shift+left-click: reconnect to target anchor
+                self.anchor_shift_clicked.emit(scene_pos.x(), scene_pos.y())
+            else:
+                # Left-click: select anchor
+                self.anchor_clicked.emit(scene_pos.x(), scene_pos.y())
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        """
+        Handle mouse move events.
+
+        If panning, scroll the viewport.
+
+        Args:
+            event: Mouse event
+        """
+        if self._is_panning:
+            # Calculate delta
+            dx = event.x() - self._pan_start_x
+            dy = event.y() - self._pan_start_y
+
+            # Update start position
+            self._pan_start_x = event.x()
+            self._pan_start_y = event.y()
+
+            # Scroll the viewport
+            h_bar = self.horizontalScrollBar()
+            v_bar = self.verticalScrollBar()
+            if h_bar is not None:
+                h_bar.setValue(h_bar.value() - dx)
+            if v_bar is not None:
+                v_bar.setValue(v_bar.value() - dy)
+
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        """
+        Handle mouse release events.
+
+        Middle button ends panning.
+
+        Args:
+            event: Mouse event
+        """
+        if event.button() == Qt.MouseButton.MiddleButton and self._is_panning:
+            # End panning
+            self._is_panning = False
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
 
     def wheelEvent(self, event: QWheelEvent) -> None:
         """
@@ -385,6 +476,38 @@ class ViewportWidget(QGraphicsView):
         if scene is not None and self._highlight_group is not None:
             scene.removeItem(self._highlight_group)
             self._highlight_group = None
+
+    def highlight_anchor(self, position: tuple[float, float] | None) -> None:
+        """
+        Highlight an anchor point at the given position.
+
+        Args:
+            position: (x, y) coordinates of the anchor to highlight, or None to clear
+        """
+        scene = self.scene()
+        if scene is None:
+            return
+
+        # Clear existing highlight
+        self.clear_highlight()
+
+        if position is None:
+            return
+
+        # Create highlight group
+        self._highlight_group = QGraphicsItemGroup()
+        scene.addItem(self._highlight_group)
+
+        # Highlight pen (orange circle, larger than normal anchors)
+        from PySide6.QtGui import QBrush
+
+        highlight_pen = QPen(Qt.GlobalColor.darkYellow, 2)
+        highlight_brush = QBrush(Qt.GlobalColor.yellow)
+
+        x, y = position
+        # Draw a larger circle (radius 3cm) with fill
+        circle = scene.addEllipse(x - 3, y - 3, 6, 6, highlight_pen, highlight_brush)
+        self._highlight_group.addToGroup(circle)
 
     def _on_color_mode_changed(self, colored: bool) -> None:
         """

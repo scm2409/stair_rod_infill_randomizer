@@ -17,7 +17,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from railing_generator.application.application_controller import ApplicationController
+from railing_generator.application.manual_edit_controller import ManualEditController
 from railing_generator.application.railing_project_model import RailingProjectModel
+from railing_generator.domain.anchor_point import AnchorPoint
+from railing_generator.infrastructure.ui_settings import load_ui_settings
 from railing_generator.domain.generation_progress import GenerationProgress
 from railing_generator.presentation.bom_table_widget import BOMTableWidget
 from railing_generator.presentation.parameter_panel import ParameterPanel
@@ -54,6 +57,16 @@ class MainWindow(QMainWindow):
         # Store references to model and controller
         self.project_model = project_model
         self.controller = controller
+
+        # Load UI settings
+        ui_settings = load_ui_settings()
+
+        # Create manual edit controller for interactive rod editing
+        self.manual_edit_controller = ManualEditController(
+            project_model,
+            search_radius_cm=ui_settings.manual_editing.search_radius_cm,
+            max_history_size=ui_settings.manual_editing.max_undo_history,
+        )
 
         # Progress dialog (created on demand)
         self._progress_dialog: ProgressDialog | None = None
@@ -112,6 +125,9 @@ class MainWindow(QMainWindow):
         # Connect BOM table to model signals
         self._connect_bom_table_signals()
 
+        # Connect viewport to manual edit controller
+        self._connect_manual_edit_signals()
+
     def _create_menu_bar(self) -> None:
         """Create the menu bar with File, View, and Help menus."""
         menu_bar = self.menuBar()
@@ -163,6 +179,23 @@ class MainWindow(QMainWindow):
             self.quit_action.setShortcut(QKeySequence.StandardKey.Quit)
             self.quit_action.triggered.connect(self.close)
             file_menu.addAction(self.quit_action)
+
+        # Edit menu
+        edit_menu = menu_bar.addMenu("&Edit")
+        if edit_menu is not None:
+            # Undo action
+            self.undo_action = QAction("&Undo", self)
+            self.undo_action.setShortcut(QKeySequence.StandardKey.Undo)
+            self.undo_action.triggered.connect(self._on_undo)
+            self.undo_action.setEnabled(False)  # Disabled until undo is available
+            edit_menu.addAction(self.undo_action)
+
+            # Redo action
+            self.redo_action = QAction("&Redo", self)
+            self.redo_action.setShortcut(QKeySequence.StandardKey.Redo)
+            self.redo_action.triggered.connect(self._on_redo)
+            self.redo_action.setEnabled(False)  # Disabled until redo is available
+            edit_menu.addAction(self.redo_action)
 
         # View menu
         view_menu = menu_bar.addMenu("&View")
@@ -221,6 +254,154 @@ class MainWindow(QMainWindow):
         self.bom_table.frame_rod_selected.connect(self._on_frame_rod_selected)
         self.bom_table.infill_rod_selected.connect(self._on_infill_rod_selected)
         self.bom_table.selection_cleared.connect(self._on_bom_selection_cleared)
+
+    def _connect_manual_edit_signals(self) -> None:
+        """Connect viewport to manual edit controller for interactive editing."""
+        # Connect viewport click signals to manual edit controller
+        self.viewport.anchor_clicked.connect(self._on_viewport_anchor_clicked)
+        self.viewport.anchor_shift_clicked.connect(self._on_viewport_anchor_shift_clicked)
+
+        # Connect manual edit controller signals to viewport
+        self.manual_edit_controller.selection_changed.connect(self._on_anchor_selection_changed)
+
+        # Connect undo/redo availability signals to menu action enable state
+        self.manual_edit_controller.undo_available_changed.connect(self._on_undo_available_changed)
+        self.manual_edit_controller.redo_available_changed.connect(self._on_redo_available_changed)
+
+        # Connect fitness scores signal to status bar display
+        self.manual_edit_controller.fitness_scores_updated.connect(self._on_fitness_scores_updated)
+
+    def _on_viewport_anchor_clicked(self, x: float, y: float) -> None:
+        """
+        Handle left-click in viewport for anchor selection.
+
+        Args:
+            x: X coordinate in scene space
+            y: Y coordinate in scene space
+        """
+        logger.debug(f"Viewport anchor clicked at ({x}, {y})")
+        selected = self.manual_edit_controller.select_anchor_at((x, y))
+        if selected:
+            logger.debug("Anchor selected")
+        else:
+            logger.debug("No anchor found at position")
+
+    def _on_viewport_anchor_shift_clicked(self, x: float, y: float) -> None:
+        """
+        Handle Shift+left-click in viewport for rod reconnection.
+
+        Args:
+            x: X coordinate in scene space
+            y: Y coordinate in scene space
+        """
+        logger.debug(f"Viewport anchor shift-clicked at ({x}, {y})")
+        reconnected = self.manual_edit_controller.reconnect_to_anchor_at((x, y))
+        if reconnected:
+            logger.debug("Rod reconnected successfully")
+        else:
+            logger.debug("Reconnection failed - no valid target anchor")
+
+    def _on_anchor_selection_changed(self, anchor: AnchorPoint | None) -> None:
+        """
+        Handle anchor selection changes from manual edit controller.
+
+        Args:
+            anchor: The selected anchor point, or None if selection cleared
+        """
+        if anchor is not None:
+            logger.debug(f"Anchor selected at {anchor.position}")
+            self.viewport.highlight_anchor(anchor.position)
+        else:
+            logger.debug("Anchor selection cleared")
+            self.viewport.highlight_anchor(None)
+
+    def _on_undo_available_changed(self, available: bool) -> None:
+        """
+        Handle undo availability changes from manual edit controller.
+
+        Args:
+            available: True if undo is available, False otherwise
+        """
+        self.undo_action.setEnabled(available)
+
+    def _on_redo_available_changed(self, available: bool) -> None:
+        """
+        Handle redo availability changes from manual edit controller.
+
+        Args:
+            available: True if redo is available, False otherwise
+        """
+        self.redo_action.setEnabled(available)
+
+    def _on_undo(self) -> None:
+        """Handle Undo action triggered."""
+        logger.debug("Undo action triggered")
+        if self.manual_edit_controller.undo():
+            logger.debug("Undo successful")
+        else:
+            logger.debug("Nothing to undo")
+
+    def _on_redo(self) -> None:
+        """Handle Redo action triggered."""
+        logger.debug("Redo action triggered")
+        if self.manual_edit_controller.redo():
+            logger.debug("Redo successful")
+        else:
+            logger.debug("Nothing to redo")
+
+    def _on_fitness_scores_updated(self, update: object) -> None:
+        """
+        Handle fitness score updates from manual edit controller.
+
+        Updates the main status bar message with a fitness comparison display.
+        Format: "Fitness: 0.72 → 0.78 (+8.3%)" or with warning if not acceptable.
+
+        Args:
+            update: FitnessUpdate object with old_score, new_score, and is_acceptable
+        """
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        # Type check the update object
+        if not isinstance(update, FitnessUpdate):
+            logger.warning(f"Expected FitnessUpdate, got {type(update)}")
+            return
+
+        old = update.old_score
+        new = update.new_score
+        acceptable = update.is_acceptable
+
+        logger.info(
+            f"_on_fitness_scores_updated called: old={old}, new={new}, acceptable={acceptable}"
+        )
+
+        # Don't update if no scores available
+        if old is None and new is None:
+            return
+
+        # Build display text
+        if old is not None and new is not None:
+            # Calculate percentage change
+            if old > 0:
+                change_pct = ((new - old) / old) * 100
+                sign = "+" if change_pct >= 0 else ""
+                text = f"Fitness: {old:.4f} → {new:.4f} ({sign}{change_pct:.1f}%)"
+            else:
+                text = f"Fitness: {old:.4f} → {new:.4f}"
+        elif new is not None:
+            text = f"Fitness: {new:.4f}"
+        elif old is not None:
+            # Only old score available (after edit, new score not yet calculated)
+            text = f"Fitness: {old:.4f} (before edit)"
+        else:
+            text = ""
+
+        # Add warning if infill is not acceptable
+        if acceptable is False:
+            text = f"⚠️ INVALID INFILL - {text}"
+
+        # Update the main status bar message
+        self.update_status(text)
+        logger.info(f"Status bar updated with fitness: '{text}'")
 
     def _on_frame_updated_for_bom(self, frame: object) -> None:
         """
@@ -368,6 +549,9 @@ class MainWindow(QMainWindow):
         # Format with "Completed" prefix and fitness from RailingInfill
         status_message = progress.to_status_message(prefix="Completed", fitness=fitness)
         self.update_status(status_message)
+
+        # Clear manual edit history when new infill is generated
+        self.manual_edit_controller.clear_history()
 
         logger.debug("MainWindow._on_generation_completed() finished successfully")
 

@@ -378,13 +378,142 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
     - **Property 4: Viewport updates on mode change**
     - **Validates: Requirements 12.6**
 
-### Phase 12: Optional Advanced Features
+### Phase 12: Manual Rod Editing (Interactive infill modification!)
 
-- [ ]* 12. Advanced UI testing with pytest-qt
-  - [ ]* 12.1 Write UI tests for parameter panel
-  - [ ]* 12.2 Write UI tests for viewport
-  - [ ]* 12.3 Write UI tests for BOM table
-  - [ ]* 12.4 Write UI tests for progress dialog
+- [x] 12. Implement manual rod editing system
+  - [x] 12.1 Create AnchorPointFinder class
+    - Implement `find_nearest_unconnected()` method
+    - Use Euclidean distance calculation
+    - Filter by search radius (configurable, default 10.0 cm)
+    - Return nearest unconnected anchor or None
+    - Write unit tests for search algorithm
+    - _Requirements: 13.1, 13.4_
+  
+  - [ ]* 12.2 Write property test for anchor search
+    - **Property 5: Nearest anchor search correctness**
+    - **Validates: Requirements 13.1, 13.4**
+  
+  - [x] 12.3 Create InfillEditOperation model
+    - Define Pydantic model with previous/new infill states
+    - Include fitness scores (old and new)
+    - Include edit metadata (anchor indices, rod index, timestamp)
+    - Write unit tests for model
+    - _Requirements: 14.4, 14.5_
+  
+  - [x] 12.4 Implement ManualEditController
+    - Create controller class with project model reference
+    - Implement selection state management
+    - Implement `select_anchor_at()` method
+    - Implement `clear_selection()` method
+    - Define signals: selection_changed, fitness_scores_updated
+    - Write unit tests for selection logic
+    - _Requirements: 13.1, 13.2, 13.3, 13.5_
+  
+  - [ ]* 12.5 Write property test for selection persistence
+    - **Property 6: Selection persistence**
+    - **Validates: Requirements 13.5**
+  
+  - [x] 12.6 Implement rod reconnection logic
+    - Implement `reconnect_to_anchor_at()` method
+    - Create new RailingInfill with modified rod geometry
+    - Update anchor point states (used flags, layer assignment)
+    - Run evaluator and store fitness scores
+    - Create InfillEditOperation and push to undo stack
+    - Update project model with new infill
+    - Write unit tests for reconnection
+    - _Requirements: 13.1.1, 13.1.2, 13.1.3, 13.1.4, 13.1.5, 13.1.6, 13.1.7, 13.1.8_
+  
+  - [ ]* 12.7 Write property test for rod reconnection invariants
+    - **Property 7: Rod reconnection invariants**
+    - **Validates: Requirements 13.1.2, 13.1.3, 13.1.4, 13.1.5, 13.1.6, 13.1.7**
+  
+  - [x] 12.8 Implement undo/redo functionality
+    - Implement undo/redo stacks in ManualEditController
+    - Implement `undo()` method - restore previous state
+    - Implement `redo()` method - restore undone state
+    - Implement `clear_history()` method
+    - Define signals: undo_available_changed, redo_available_changed
+    - Handle max history size (50 operations)
+    - Write unit tests for undo/redo logic
+    - _Requirements: 14.5, 14.6, 14.7, 14.8, 14.9, 14.10, 14.15_
+  
+  - [ ]* 12.9 Write property tests for undo/redo
+    - **Property 9: Undo restores complete state**
+    - **Property 10: Redo restores undone state**
+    - **Property 11: Undo/redo history stack behavior**
+    - **Validates: Requirements 14.5, 14.6, 14.7, 14.8, 14.9, 14.10, 14.15**
+
+- [x] 13. Integrate manual editing with UI
+  - [x] 13.1 Update ViewportWidget for manual editing
+    - Change panning from left-click to middle-click drag
+    - Implement `mousePressEvent()` for left-click anchor selection
+    - Implement Shift+left-click for reconnection
+    - Add `highlight_selected_anchor()` method
+    - Add `clear_anchor_highlight()` method
+    - Define signals: anchor_clicked, anchor_shift_clicked
+    - Write unit tests for mouse event handling
+    - **VISUAL MILESTONE**: Click to select anchors! 🎯
+    - _Requirements: 7.2.3, 7.2.5, 13.1, 13.3_
+  
+  - [x] 13.2 Add Edit menu to MainWindow
+    - Create Edit menu with Undo and Redo actions
+    - Set keyboard shortcuts: Ctrl+Z for Undo, Ctrl+Y for Redo
+    - Connect actions to ManualEditController
+    - Connect undo/redo_available_changed signals to action enable state
+    - Write unit tests for menu actions
+    - _Requirements: 14.1, 14.2, 14.3, 14.13, 14.14_
+  
+  - [ ]* 13.3 Write property test for action enable state
+    - **Property 12: Action enable state reflects history**
+    - **Validates: Requirements 14.13, 14.14**
+  
+  - [x] 13.4 Add fitness score display to status bar
+    - Add fitness comparison label to status bar
+    - Connect to ManualEditController.fitness_scores_updated signal
+    - Format display: "Fitness: 0.72 → 0.78 (+8.3%)"
+    - Hide when no evaluator configured
+    - Write unit tests for status bar updates
+    - **VISUAL MILESTONE**: See fitness change after edits! 📊
+    - _Requirements: 13.3.1, 13.3.2, 13.3.3, 13.3.4, 13.3.5_
+  
+  - [x] 13.5 Connect manual editing to BOM updates
+    - Ensure BOM table updates after manual edits
+    - Ensure BOM totals recalculate correctly
+    - Ensure project is marked as modified
+    - Write integration tests for BOM updates
+    - _Requirements: 13.2.1, 13.2.2, 13.2.3, 13.2.4_
+  
+  - [ ]* 13.6 Write property test for BOM consistency
+    - **Property 8: BOM consistency after edit**
+    - **Validates: Requirements 13.2.2, 13.2.3**
+  
+  - [x] 13.7 Connect undo/redo to UI updates
+    - Ensure viewport updates on undo/redo
+    - Ensure BOM table updates on undo/redo
+    - Ensure fitness display updates on undo/redo
+    - Clear history when new infill is generated
+    - Write integration tests for undo/redo UI updates
+    - **VISUAL MILESTONE**: Undo/redo with full UI sync! ↩️
+    - _Requirements: 14.11, 14.12, 14.15_
+  
+  - [x] 13.8 Add configuration for manual editing
+    - Add search_radius_cm to conf/ui/settings.yaml
+    - Add max_undo_history to conf/ui/settings.yaml
+    - Load configuration in ManualEditController
+    - Write tests for configuration loading
+    - _Requirements: 13.1_
+
+- [ ] 14. Checkpoint - Manual editing complete
+  - Ensure all tests pass, ask the user if questions arise.
+
+### Phase 15: Optional Advanced Features
+
+- [ ]* 15. Advanced UI testing with pytest-qt
+  - [ ]* 15.1 Write UI tests for parameter panel
+  - [ ]* 15.2 Write UI tests for viewport
+  - [ ]* 15.3 Write UI tests for BOM table
+  - [ ]* 15.4 Write UI tests for progress dialog
+  - [ ]* 15.5 Write UI tests for manual editing interactions
 
 ## Visual Milestones Summary
 
@@ -402,6 +531,9 @@ _This phase is intentionally empty to keep phase numbers aligned with task numbe
 12. 🎯 Save/load designs (Task 9.3)
 13. 🎯 Rod numbers (Task 10.2)
 14. 🎯 Toggle infill colors (Task 11.4)
+15. 🎯 Click to select anchors (Task 13.1)
+16. 🎯 See fitness change after edits (Task 13.4)
+17. 🎯 Undo/redo with full UI sync (Task 13.7)
 
 ## Notes
 

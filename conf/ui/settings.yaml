@@ -16,3 +16,8 @@ export:
   png_resolution_dpi: 300
   png_width_px: 1920
   png_height_px: 1080
+
+# Manual editing settings
+manual_editing:
+  search_radius_cm: 10.0    # Maximum distance to search for anchor points (cm)
+  max_undo_history: 50      # Maximum number of operations in undo history

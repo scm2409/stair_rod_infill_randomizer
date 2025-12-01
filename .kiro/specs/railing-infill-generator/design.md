@@ -811,7 +811,7 @@ Orchestrates application workflows and updates RailingProjectModel.
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Title: project.rig.zip* - Railing Infill Generator         │
-│  Menu Bar: File | View | Help                               │
+│  Menu Bar: File | Edit | View | Help                        │
 ├──────────────┬──────────────────────────────────────────────┤
 │  Parameter   │      Viewport (zoom, pan, render)            │
 │  Panel       │                                              │
@@ -819,12 +819,19 @@ Orchestrates application workflows and updates RailingProjectModel.
 │  - Generator │  BOM Table (2 tabs: Frame | Infill)         │
 │  - Buttons   │  - ID, Length, Start Angle, End Angle, Weight│
 ├──────────────┴──────────────────────────────────────────────┤
-│  Status Bar: Ready | Rods: 50                               │
+│  Status Bar: Ready | Fitness: 0.72 → 0.78 (+8.3%) | Rods: 50│
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**Menu Bar:**
+- File: New, Open, Save, Save As, Export DXF, Quit
+- Edit: Undo (Ctrl+Z), Redo (Ctrl+Y)
+- View: Color Infill Layers by Layer (checkable)
+- Help: About
+
 **Status Bar:**
 - Left: Operation status ("Ready", "Generating...", "Saved")
+- Center: Fitness score comparison after manual edits (e.g., "Fitness: 0.72 → 0.78 (+8.3%)")
 - Right: Quick stats (rod count, quality metrics if available)
 
 **View Menu:**
@@ -839,11 +846,15 @@ Orchestrates application workflows and updates RailingProjectModel.
 #### Viewport (QGraphicsView/QGraphicsScene)
 - Vector-based rendering using QGraphicsScene
 - Zoom with mouse wheel (centered on cursor position)
-- Pan with mouse drag
+- Pan with middle mouse button drag (left mouse reserved for editing)
 - Render frame in distinct color
 - Render infill with layer-specific colors (configurable via View menu)
 - Optional rod enumeration (circles for infill, squares for frame, dashed anchor lines)
 - Part highlighting on BOM selection
+- Manual editing interactions:
+  - Left-click: Select nearest unconnected anchor point
+  - Shift+Left-click: Reconnect selected rod to target anchor
+  - Selected anchor highlighted with orange circle
 - Performance optimizations:
   - `setViewportUpdateMode(QGraphicsView.MinimalViewportUpdate)` for efficient updates
   - `setItemIndexMethod(QGraphicsScene.NoIndex)` for static scenes
@@ -1467,6 +1478,360 @@ uv run pytest
 railing-generator
 ```
 
+## Manual Rod Editing System
+
+### Overview
+
+The manual rod editing system allows users to interactively modify infill rod arrangements using mouse interactions in the viewport. This enables fine-tuning of generated infill patterns without regenerating the entire arrangement.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   PRESENTATION LAYER                        │
+│  • ViewportWidget (mouse events, selection highlighting)    │
+│  • MainWindow (Edit menu, status bar fitness display)       │
+└─────────────────────────────────────────────────────────────┘
+                            ↕
+┌─────────────────────────────────────────────────────────────┐
+│                   APPLICATION LAYER                         │
+│  • ManualEditController (edit operations, undo/redo)        │
+│  • RailingProjectModel (state, signals)                     │
+└─────────────────────────────────────────────────────────────┘
+                            ↕
+┌─────────────────────────────────────────────────────────────┐
+│                     DOMAIN LAYER                            │
+│  • InfillEditOperation (edit command pattern)               │
+│  • AnchorPointFinder (spatial search)                       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+#### 1. AnchorPointFinder
+
+Responsible for finding anchor points near a given position.
+
+```python
+class AnchorPointFinder:
+    """Finds anchor points within a search radius."""
+    
+    def __init__(self, search_radius_cm: float = 10.0):
+        self.search_radius_cm = search_radius_cm
+    
+    def find_nearest_unconnected(
+        self, 
+        position: tuple[float, float], 
+        anchor_points: list[AnchorPoint]
+    ) -> AnchorPoint | None:
+        """
+        Find the nearest unconnected anchor point within search radius.
+        
+        Args:
+            position: (x, y) coordinates of the search center
+            anchor_points: List of all anchor points
+            
+        Returns:
+            Nearest unconnected anchor point, or None if none found
+        """
+        ...
+```
+
+**Algorithm:**
+1. Filter anchor points to only unconnected ones (`used == False`)
+2. Calculate distance from search position to each anchor
+3. Filter to anchors within `search_radius_cm`
+4. Return the nearest one, or None if none found
+
+#### 2. InfillEditOperation (Command Pattern)
+
+Encapsulates a single edit operation for undo/redo support.
+
+```python
+class InfillEditOperation(BaseModel):
+    """Represents a single manual edit operation."""
+    
+    # State before the edit
+    previous_infill: RailingInfill
+    previous_fitness_score: float | None
+    
+    # State after the edit
+    new_infill: RailingInfill
+    new_fitness_score: float | None
+    
+    # Edit metadata
+    source_anchor_index: int
+    target_anchor_index: int
+    rod_index: int
+    timestamp: datetime
+```
+
+#### 3. ManualEditController
+
+Orchestrates manual editing operations and manages undo/redo history.
+
+```python
+class ManualEditController:
+    """Controls manual rod editing operations."""
+    
+    def __init__(
+        self, 
+        project_model: RailingProjectModel,
+        evaluator_factory: EvaluatorFactory
+    ):
+        self.project_model = project_model
+        self.evaluator_factory = evaluator_factory
+        self.anchor_finder = AnchorPointFinder()
+        
+        # Selection state
+        self._selected_anchor: AnchorPoint | None = None
+        self._selected_rod_index: int | None = None
+        
+        # Undo/redo history
+        self._undo_stack: list[InfillEditOperation] = []
+        self._redo_stack: list[InfillEditOperation] = []
+        self._max_history_size: int = 50
+    
+    # Signals
+    selection_changed = Signal(object)  # AnchorPoint | None
+    fitness_scores_updated = Signal(float, float)  # old, new
+    undo_available_changed = Signal(bool)
+    redo_available_changed = Signal(bool)
+    
+    def select_anchor_at(self, position: tuple[float, float]) -> bool:
+        """
+        Select an unconnected anchor point near the given position.
+        
+        Returns True if an anchor was selected.
+        """
+        ...
+    
+    def reconnect_to_anchor_at(self, position: tuple[float, float]) -> bool:
+        """
+        Reconnect the selected rod endpoint to an anchor near the position.
+        
+        Returns True if reconnection was successful.
+        """
+        ...
+    
+    def undo(self) -> bool:
+        """Undo the most recent edit. Returns True if successful."""
+        ...
+    
+    def redo(self) -> bool:
+        """Redo the most recently undone edit. Returns True if successful."""
+        ...
+    
+    def clear_history(self) -> None:
+        """Clear both undo and redo histories."""
+        ...
+    
+    def clear_selection(self) -> None:
+        """Clear the current anchor selection."""
+        ...
+```
+
+#### 4. ViewportWidget Extensions
+
+The viewport widget is extended to handle mouse events for manual editing.
+
+**Mouse Event Handling:**
+- **Left-click**: Select nearest unconnected anchor point
+- **Shift+Left-click**: Reconnect selected rod to target anchor
+- **Middle-click drag**: Pan viewport (changed from left-click)
+
+**Visual Feedback:**
+- Selected anchor point highlighted with distinct color (e.g., orange circle)
+- Potential target anchors highlighted on hover during Shift key press
+
+```python
+class ViewportWidget(QGraphicsView):
+    # New signals
+    anchor_clicked = Signal(float, float)  # x, y position
+    anchor_shift_clicked = Signal(float, float)  # x, y position
+    
+    def mousePressEvent(self, event: QMouseEvent) -> None:
+        if event.button() == Qt.MouseButton.LeftButton:
+            scene_pos = self.mapToScene(event.pos())
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                self.anchor_shift_clicked.emit(scene_pos.x(), scene_pos.y())
+            else:
+                self.anchor_clicked.emit(scene_pos.x(), scene_pos.y())
+        elif event.button() == Qt.MouseButton.MiddleButton:
+            # Start panning
+            self._pan_start = event.pos()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        super().mousePressEvent(event)
+    
+    def highlight_selected_anchor(self, anchor: AnchorPoint | None) -> None:
+        """Highlight the selected anchor point."""
+        ...
+```
+
+#### 5. RailingProjectModel Extensions
+
+New state and signals for manual editing.
+
+```python
+class RailingProjectModel(QObject):
+    # New signals
+    selected_anchor_changed = Signal(object)  # AnchorPoint | None
+    fitness_comparison_updated = Signal(object, object)  # old, new (float | None)
+    undo_available_changed = Signal(bool)
+    redo_available_changed = Signal(bool)
+    
+    # New state
+    _selected_anchor: AnchorPoint | None = None
+    _previous_fitness_score: float | None = None
+```
+
+#### 6. MainWindow Extensions
+
+**Edit Menu:**
+```
+Edit
+├── Undo (Ctrl+Z)
+└── Redo (Ctrl+Y)
+```
+
+**Status Bar:**
+- Displays fitness score comparison after manual edits
+- Format: `Fitness: 0.72 → 0.78 (+8.3%)`
+
+### Rod Reconnection Algorithm
+
+When reconnecting a rod endpoint to a new anchor:
+
+1. **Validate preconditions:**
+   - Source anchor is selected
+   - Source anchor belongs to a rod
+   - Target anchor is unconnected
+   - Target anchor is different from source
+
+2. **Create new infill state:**
+   - Clone current RailingInfill (deep copy)
+   - Find the rod connected to source anchor
+   - Determine which endpoint (start or end) is at source anchor
+   - Update rod geometry to connect opposite endpoint to target anchor
+   - Update source anchor: `used = False`
+   - Update target anchor: `used = True`, `layer = source_rod.layer`
+
+3. **Evaluate new state:**
+   - Run current evaluator on new infill
+   - Store both old and new fitness scores
+
+4. **Create edit operation:**
+   - Store previous and new states in InfillEditOperation
+   - Push to undo stack
+   - Clear redo stack
+
+5. **Update model:**
+   - Set new infill in project model
+   - Emit signals for UI updates
+
+### Undo/Redo Implementation
+
+**Undo:**
+1. Pop operation from undo stack
+2. Push current state to redo stack
+3. Restore `previous_infill` to model
+4. Update fitness display with previous scores
+5. Emit signals for UI updates
+
+**Redo:**
+1. Pop operation from redo stack
+2. Push current state to undo stack
+3. Restore `new_infill` to model
+4. Update fitness display with new scores
+5. Emit signals for UI updates
+
+**History Management:**
+- Maximum history size: 50 operations (configurable)
+- Clear both stacks when new infill is generated
+- Clear redo stack when new edit is performed
+
+### Mutable vs Immutable Infill
+
+The current `RailingInfill` is frozen (immutable). For manual editing, we need to create new instances:
+
+```python
+def create_modified_infill(
+    original: RailingInfill,
+    modified_rods: list[Rod],
+    modified_anchors: list[AnchorPoint] | None
+) -> RailingInfill:
+    """Create a new RailingInfill with modified rods."""
+    return RailingInfill(
+        rods=modified_rods,
+        fitness_score=None,  # Will be recalculated
+        iteration_count=original.iteration_count,
+        duration_sec=original.duration_sec,
+        anchor_points=modified_anchors,
+        is_complete=original.is_complete
+    )
+```
+
+### Configuration
+
+**Search Radius:**
+- Default: 10.0 cm
+- Configurable via `conf/ui/settings.yaml`
+
+```yaml
+# conf/ui/settings.yaml
+manual_editing:
+  search_radius_cm: 10.0
+  max_undo_history: 50
+```
+
+## Correctness Properties (Manual Rod Editing)
+
+*A property is a characteristic or behavior that should hold true across all valid executions of a system-essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
+
+### Property 5: Nearest anchor search correctness
+*For any* click position and set of anchor points, the search algorithm should return the nearest unconnected anchor within the search radius, or None if no unconnected anchor exists within the radius
+**Validates: Requirements 13.1, 13.4**
+
+### Property 6: Selection persistence
+*For any* selected anchor point, the selection should persist until either a reconnection operation is performed or the selection is explicitly cleared
+**Validates: Requirements 13.5**
+
+### Property 7: Rod reconnection invariants
+*For any* valid reconnection operation (source anchor selected, target anchor unconnected and within radius), the following invariants should hold:
+- The target anchor's layer should equal the source rod's layer
+- The rod geometry should connect the original opposite endpoint to the target anchor position
+- The source anchor should be marked as unconnected (used=False)
+- The target anchor should be marked as connected (used=True)
+- The selection should be cleared
+**Validates: Requirements 13.1.2, 13.1.3, 13.1.4, 13.1.5, 13.1.6, 13.1.7**
+
+### Property 8: BOM consistency after edit
+*For any* manual rod edit, the BOM table should reflect the current rod lengths and weights, and totals should equal the sum of all individual parts
+**Validates: Requirements 13.2.2, 13.2.3**
+
+### Property 9: Undo restores complete state
+*For any* sequence of manual edits followed by undo operations, each undo should restore the complete previous state including all rod positions, anchor point states, and fitness scores
+**Validates: Requirements 14.5, 14.6**
+
+### Property 10: Redo restores undone state
+*For any* undo operation followed by redo, the redo should restore the exact state that was undone
+**Validates: Requirements 14.7**
+
+### Property 11: Undo/redo history stack behavior
+*For any* sequence of edits and undo/redo operations:
+- Each edit should push to undo stack
+- Undo should pop from undo stack and push to redo stack
+- Redo should pop from redo stack and push to undo stack
+- New edit after undo should clear redo stack
+- New infill generation should clear both stacks
+**Validates: Requirements 14.4, 14.8, 14.9, 14.10, 14.15**
+
+### Property 12: Action enable state reflects history
+*For any* state of the undo/redo history:
+- Undo action should be enabled if and only if undo stack is non-empty
+- Redo action should be enabled if and only if redo stack is non-empty
+**Validates: Requirements 14.13, 14.14**
+
 ## Future Enhancements
 
 - Additional shape types (curved, custom polygons)
@@ -1476,12 +1841,10 @@ railing-generator
   - Adaptive anchor density based on segment curvature
   - Optional quality evaluation integration
   - Spatial indexing (STRtree) for faster nearest-anchor search
-- Undo/redo functionality
 - 3D visualization
 - Material cost calculation
 - Structural analysis integration
 - Recent files list
-- Keyboard shortcuts
 - Print functionality
 
 ## Code Examples

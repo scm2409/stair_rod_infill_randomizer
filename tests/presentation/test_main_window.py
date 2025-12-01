@@ -151,6 +151,329 @@ class TestMainWindowMenus:
         assert main_window.color_infill_layers_action.isChecked()
 
 
+class TestMainWindowEditMenu:
+    """Test Edit menu functionality."""
+
+    def test_edit_menu_exists(self, main_window: MainWindow) -> None:
+        """Test that Edit menu exists."""
+        menu_bar = main_window.menuBar()
+        assert menu_bar is not None
+
+        menus = menu_bar.findChildren(type(menu_bar.addMenu("test")))
+        menu_titles = [menu.title() for menu in menus if menu.title()]
+
+        assert any("Edit" in title for title in menu_titles)
+
+    def test_undo_action_exists(self, main_window: MainWindow) -> None:
+        """Test that Undo action exists."""
+        assert hasattr(main_window, "undo_action")
+        assert main_window.undo_action is not None
+
+    def test_redo_action_exists(self, main_window: MainWindow) -> None:
+        """Test that Redo action exists."""
+        assert hasattr(main_window, "redo_action")
+        assert main_window.redo_action is not None
+
+    def test_undo_action_initially_disabled(self, main_window: MainWindow) -> None:
+        """Test that Undo action is initially disabled."""
+        assert not main_window.undo_action.isEnabled()
+
+    def test_redo_action_initially_disabled(self, main_window: MainWindow) -> None:
+        """Test that Redo action is initially disabled."""
+        assert not main_window.redo_action.isEnabled()
+
+    def test_undo_action_has_shortcut(self, main_window: MainWindow) -> None:
+        """Test that Undo action has Ctrl+Z shortcut."""
+        from PySide6.QtGui import QKeySequence
+
+        shortcut = main_window.undo_action.shortcut()
+        expected = QKeySequence(QKeySequence.StandardKey.Undo)
+        assert shortcut == expected
+
+    def test_redo_action_has_shortcut(self, main_window: MainWindow) -> None:
+        """Test that Redo action has Ctrl+Y shortcut."""
+        from PySide6.QtGui import QKeySequence
+
+        shortcut = main_window.redo_action.shortcut()
+        expected = QKeySequence(QKeySequence.StandardKey.Redo)
+        assert shortcut == expected
+
+    def test_undo_available_enables_action(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test that undo_available_changed signal enables/disables action."""
+        # Initially disabled
+        assert not main_window.undo_action.isEnabled()
+
+        # Emit signal that undo is available
+        main_window.manual_edit_controller.undo_available_changed.emit(True)
+
+        # Action should be enabled
+        assert main_window.undo_action.isEnabled()
+
+        # Emit signal that undo is not available
+        main_window.manual_edit_controller.undo_available_changed.emit(False)
+
+        # Action should be disabled
+        assert not main_window.undo_action.isEnabled()
+
+    def test_redo_available_enables_action(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test that redo_available_changed signal enables/disables action."""
+        # Initially disabled
+        assert not main_window.redo_action.isEnabled()
+
+        # Emit signal that redo is available
+        main_window.manual_edit_controller.redo_available_changed.emit(True)
+
+        # Action should be enabled
+        assert main_window.redo_action.isEnabled()
+
+        # Emit signal that redo is not available
+        main_window.manual_edit_controller.redo_available_changed.emit(False)
+
+        # Action should be disabled
+        assert not main_window.redo_action.isEnabled()
+
+    def test_undo_action_calls_controller(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test that triggering Undo action calls controller.undo()."""
+        from shapely.geometry import LineString
+
+        from railing_generator.domain.anchor_point import AnchorPoint
+        from railing_generator.domain.railing_infill import RailingInfill
+        from railing_generator.domain.rod import Rod
+
+        # Set up infill with rod and anchors for editing
+        anchors = [
+            AnchorPoint(
+                position=(0.0, 0.0),
+                frame_segment_index=0,
+                is_vertical_segment=True,
+                frame_segment_angle_deg=0.0,
+                layer=1,
+                used=True,
+            ),
+            AnchorPoint(
+                position=(50.0, 50.0),
+                frame_segment_index=1,
+                is_vertical_segment=False,
+                frame_segment_angle_deg=45.0,
+                layer=1,
+                used=True,
+            ),
+            AnchorPoint(
+                position=(100.0, 0.0),
+                frame_segment_index=2,
+                is_vertical_segment=True,
+                frame_segment_angle_deg=0.0,
+                layer=None,
+                used=False,
+            ),
+        ]
+        rod = Rod(
+            geometry=LineString([(0, 0), (50, 50)]),
+            start_cut_angle_deg=0.0,
+            end_cut_angle_deg=0.0,
+            weight_kg_m=0.5,
+            layer=1,
+        )
+        infill = RailingInfill(rods=[rod], anchor_points=anchors, fitness_score=0.72)
+        project_model.set_railing_infill(infill)
+
+        # Perform an edit to populate undo stack
+        main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
+        main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+
+        # Undo should be available now
+        assert main_window.undo_action.isEnabled()
+
+        # Trigger undo action
+        main_window.undo_action.trigger()
+
+        # Undo should have been performed (undo stack should be empty now)
+        assert not main_window.manual_edit_controller.can_undo
+
+    def test_redo_action_calls_controller(
+        self, main_window: MainWindow, project_model: RailingProjectModel
+    ) -> None:
+        """Test that triggering Redo action calls controller.redo()."""
+        from shapely.geometry import LineString
+
+        from railing_generator.domain.anchor_point import AnchorPoint
+        from railing_generator.domain.railing_infill import RailingInfill
+        from railing_generator.domain.rod import Rod
+
+        # Set up infill with rod and anchors for editing
+        anchors = [
+            AnchorPoint(
+                position=(0.0, 0.0),
+                frame_segment_index=0,
+                is_vertical_segment=True,
+                frame_segment_angle_deg=0.0,
+                layer=1,
+                used=True,
+            ),
+            AnchorPoint(
+                position=(50.0, 50.0),
+                frame_segment_index=1,
+                is_vertical_segment=False,
+                frame_segment_angle_deg=45.0,
+                layer=1,
+                used=True,
+            ),
+            AnchorPoint(
+                position=(100.0, 0.0),
+                frame_segment_index=2,
+                is_vertical_segment=True,
+                frame_segment_angle_deg=0.0,
+                layer=None,
+                used=False,
+            ),
+        ]
+        rod = Rod(
+            geometry=LineString([(0, 0), (50, 50)]),
+            start_cut_angle_deg=0.0,
+            end_cut_angle_deg=0.0,
+            weight_kg_m=0.5,
+            layer=1,
+        )
+        infill = RailingInfill(rods=[rod], anchor_points=anchors, fitness_score=0.72)
+        project_model.set_railing_infill(infill)
+
+        # Perform an edit and undo it
+        main_window.manual_edit_controller.select_anchor_at((0.0, 0.0))
+        main_window.manual_edit_controller.reconnect_to_anchor_at((100.0, 0.0))
+        main_window.manual_edit_controller.undo()
+
+        # Redo should be available now
+        assert main_window.redo_action.isEnabled()
+
+        # Trigger redo action
+        main_window.redo_action.trigger()
+
+        # Redo should have been performed (redo stack should be empty now)
+        assert not main_window.manual_edit_controller.can_redo
+
+
+class TestMainWindowFitnessDisplay:
+    """Test fitness score display in status bar."""
+
+    def _get_status_message(self, main_window: MainWindow) -> str:
+        """Helper to get the current status bar message."""
+        status_bar = main_window.statusBar()
+        if status_bar is not None:
+            return status_bar.currentMessage()
+        return ""
+
+    def test_status_bar_exists(self, main_window: MainWindow) -> None:
+        """Test that status bar exists."""
+        assert main_window.statusBar() is not None
+
+    def test_status_bar_initially_ready(self, main_window: MainWindow) -> None:
+        """Test that status bar initially shows 'Ready'."""
+        assert self._get_status_message(main_window) == "Ready"
+
+    def test_fitness_display_with_both_scores(self, main_window: MainWindow) -> None:
+        """Test fitness display with both old and new scores."""
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        # Emit fitness scores signal with FitnessUpdate
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=0.72, new_score=0.78, is_acceptable=True)
+        )
+
+        # Check text format in status bar
+        text = self._get_status_message(main_window)
+        assert "Fitness:" in text
+        assert "0.72" in text
+        assert "0.78" in text
+        assert "→" in text
+        assert "%" in text
+
+    def test_fitness_display_shows_percentage_increase(self, main_window: MainWindow) -> None:
+        """Test that fitness display shows positive percentage change."""
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=0.72, new_score=0.78, is_acceptable=True)
+        )
+
+        text = self._get_status_message(main_window)
+        # 0.78 - 0.72 = 0.06, 0.06 / 0.72 = 8.33%
+        assert "+" in text  # Positive change should have + sign
+
+    def test_fitness_display_shows_percentage_decrease(self, main_window: MainWindow) -> None:
+        """Test that fitness display shows negative percentage change."""
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=0.78, new_score=0.72, is_acceptable=True)
+        )
+
+        text = self._get_status_message(main_window)
+        # Negative change should not have + sign (just -)
+        assert "-" in text
+
+    def test_fitness_display_with_only_new_score(self, main_window: MainWindow) -> None:
+        """Test fitness display with only new score."""
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=None, new_score=0.85, is_acceptable=True)
+        )
+
+        text = self._get_status_message(main_window)
+        assert "0.85" in text
+
+    def test_fitness_display_with_only_old_score(self, main_window: MainWindow) -> None:
+        """Test fitness display with only old score (new is None)."""
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=0.72, new_score=None, is_acceptable=None)
+        )
+
+        text = self._get_status_message(main_window)
+        assert "0.72" in text
+        assert "before edit" in text
+
+    def test_fitness_display_unchanged_when_no_scores(self, main_window: MainWindow) -> None:
+        """Test that status bar is unchanged when both scores are None."""
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        # First show fitness
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=0.72, new_score=0.78, is_acceptable=True)
+        )
+        text_before = self._get_status_message(main_window)
+        assert "Fitness:" in text_before
+
+        # Emit None, None, None - should not change the message
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=None, new_score=None, is_acceptable=None)
+        )
+        text_after = self._get_status_message(main_window)
+        # Message should remain unchanged (not cleared)
+        assert text_after == text_before
+
+    def test_fitness_display_shows_warning_when_not_acceptable(
+        self, main_window: MainWindow
+    ) -> None:
+        """Test that fitness display shows warning when infill is not acceptable."""
+        from railing_generator.domain.fitness_update import FitnessUpdate
+
+        main_window.manual_edit_controller.fitness_scores_updated.emit(
+            FitnessUpdate(old_score=0.72, new_score=0.78, is_acceptable=False)
+        )
+
+        text = self._get_status_message(main_window)
+        assert "INVALID" in text
+        assert "Fitness:" in text
+
+
 class TestMainWindowTitleUpdate:
     """Test window title update functionality via model."""
 

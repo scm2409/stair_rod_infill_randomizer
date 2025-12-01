@@ -50,6 +50,24 @@ This document specifies the requirements for a railing infill generator applicat
 
 - **UI Application**: The graphical user interface for interacting with the generator, visualizing results, and managing projects
 
+### Manual Editing
+
+- **Unconnected Anchor Point**: An anchor point on the frame boundary that is not currently used as an endpoint for any infill rod
+
+- **Connected Anchor Point**: An anchor point on the frame boundary that is currently used as an endpoint for an infill rod
+
+- **Source Anchor Point**: The anchor point selected by the user as the starting point for a rod reconnection operation
+
+- **Target Anchor Point**: The anchor point selected by the user as the destination for a rod reconnection operation
+
+- **Rod Reconnection**: The operation of moving one endpoint of an infill rod from its current anchor point to a different anchor point
+
+- **Search Radius**: The maximum distance from the mouse click position within which the system searches for anchor points
+
+- **Undo History**: A stack of previous infill states that can be restored using the Undo action
+
+- **Redo History**: A stack of undone infill states that can be reapplied using the Redo action
+
 ## Requirements
 
 ### Requirement 1
@@ -280,8 +298,9 @@ This document specifies the requirements for a railing infill generator applicat
 
 1. WHEN the user scrolls the mouse wheel, THE UI Application SHALL zoom the viewport in or out
 2. THE UI Application SHALL use the mouse cursor position as the zoom origin
-3. THE UI Application SHALL support panning the viewport using mouse drag operations
+3. THE UI Application SHALL support panning the viewport using middle mouse button drag operations
 4. THE UI Application SHALL maintain smooth viewport navigation during zoom and pan operations
+5. THE UI Application SHALL reserve the left mouse button for selection and editing operations
 
 ### Requirement 7.3
 
@@ -462,3 +481,75 @@ This document specifies the requirements for a railing infill generator applicat
 6. WHEN the display mode changes THEN THE UI Application SHALL immediately update the viewport to reflect the new color scheme
 7. WHEN the menu item is checked THEN THE UI Application SHALL display infill layers in separate colors
 8. WHEN the menu item is unchecked THEN THE UI Application SHALL display all infill layers in the same color
+
+### Requirement 13
+
+**User Story:** As a user, I want to manually edit infill rods using the mouse interactively in the viewport, so that I can fine-tune the generated infill arrangement to my specific needs
+
+#### Acceptance Criteria
+
+1. WHEN a user left-clicks in the viewport near an unconnected anchor point THEN THE UI Application SHALL search for the nearest unconnected anchor point within a configurable maximum radius
+2. WHEN an unconnected anchor point is found within the search radius THEN THE UI Application SHALL select that anchor point as the source rod endpoint to move
+3. WHEN an unconnected anchor point is found within the search radius THEN THE UI Application SHALL visually highlight the selected anchor point
+4. WHEN no unconnected anchor point is found within the search radius THEN THE UI Application SHALL not select any anchor point
+5. THE UI Application SHALL store the selected source anchor point until a target anchor point is selected or the selection is cleared
+
+### Requirement 13.1
+
+**User Story:** As a user, I want to reconnect a selected rod endpoint to a different anchor point, so that I can adjust rod positions manually
+
+#### Acceptance Criteria
+
+1. WHEN a source anchor point is selected AND a user Shift+left-clicks near another unconnected anchor point THEN THE UI Application SHALL search for the nearest unconnected anchor point within the maximum radius
+2. WHEN a target unconnected anchor point is found THEN THE UI Application SHALL move the target anchor point into the same layer as the source rod
+3. WHEN a target unconnected anchor point is found THEN THE UI Application SHALL reconnect the source rod endpoint to the target anchor point
+4. WHEN a rod is reconnected THEN THE UI Application SHALL update the rod geometry to connect the original opposite endpoint to the new target anchor point
+5. WHEN a rod is reconnected THEN THE UI Application SHALL mark the original source anchor point as unconnected
+6. WHEN a rod is reconnected THEN THE UI Application SHALL mark the new target anchor point as connected
+7. WHEN a rod is reconnected THEN THE UI Application SHALL clear the source anchor point selection
+8. WHEN no target unconnected anchor point is found within the search radius THEN THE UI Application SHALL not modify any rod
+
+### Requirement 13.2
+
+**User Story:** As a user, I want all related UI components to update after manual rod edits, so that I can see accurate information about the modified design
+
+#### Acceptance Criteria
+
+1. WHEN a rod is manually edited THEN THE UI Application SHALL update the viewport visualization immediately
+2. WHEN a rod is manually edited THEN THE UI Application SHALL update the BOM table with the new rod length and weight
+3. WHEN a rod is manually edited THEN THE UI Application SHALL recalculate and update the BOM totals
+4. WHEN a rod is manually edited THEN THE UI Application SHALL mark the project as modified
+
+### Requirement 13.3
+
+**User Story:** As a user, I want to see the fitness score change after manual edits, so that I can evaluate whether my changes improved the design quality
+
+#### Acceptance Criteria
+
+1. WHEN a rod is manually edited THEN THE UI Application SHALL run the current evaluator on the modified infill
+2. WHEN the evaluator completes THEN THE UI Application SHALL display the previous fitness score in the status bar
+3. WHEN the evaluator completes THEN THE UI Application SHALL display the new fitness score in the status bar
+4. THE UI Application SHALL format the fitness score display to show both old and new values for comparison
+5. WHEN no evaluator is configured THEN THE UI Application SHALL not display fitness scores in the status bar
+
+### Requirement 14
+
+**User Story:** As a user, I want to undo and redo manual rod edits, so that I can experiment with changes and revert mistakes
+
+#### Acceptance Criteria
+
+1. THE UI Application SHALL provide an Edit menu with Undo and Redo actions
+2. THE UI Application SHALL support the keyboard shortcut Ctrl+Z for Undo
+3. THE UI Application SHALL support the keyboard shortcut Ctrl+Y for Redo
+4. WHEN a manual rod edit is performed THEN THE UI Application SHALL add the edit to the undo history
+5. WHEN Undo is triggered THEN THE UI Application SHALL revert the most recent manual rod edit
+6. WHEN Undo is triggered THEN THE UI Application SHALL restore the previous infill state including all rod positions and anchor point states
+7. WHEN Redo is triggered THEN THE UI Application SHALL reapply the most recently undone edit
+8. THE UI Application SHALL maintain an undo history stack for multiple sequential edits
+9. THE UI Application SHALL maintain a redo history stack for undone edits
+10. WHEN a new manual edit is performed after an undo THEN THE UI Application SHALL clear the redo history
+11. WHEN Undo is triggered THEN THE UI Application SHALL update all related UI components (viewport, BOM table, fitness score)
+12. WHEN Redo is triggered THEN THE UI Application SHALL update all related UI components (viewport, BOM table, fitness score)
+13. THE UI Application SHALL disable the Undo action when the undo history is empty
+14. THE UI Application SHALL disable the Redo action when the redo history is empty
+15. WHEN a new infill is generated THEN THE UI Application SHALL clear both undo and redo histories

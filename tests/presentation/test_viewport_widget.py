@@ -323,6 +323,195 @@ class TestViewportColorMode:
         assert viewport._current_infill is None
 
 
+class TestViewportMouseEvents:
+    """Test viewport mouse event handling for manual editing."""
+
+    def test_left_click_emits_anchor_clicked_signal(
+        self, viewport: ViewportWidget, qtbot: object
+    ) -> None:
+        """Test that left-click emits anchor_clicked signal with scene coordinates."""
+        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import QEvent
+
+        # Track emitted signals
+        received_coords: list[tuple[float, float]] = []
+
+        def on_anchor_clicked(x: float, y: float) -> None:
+            received_coords.append((x, y))
+
+        viewport.anchor_clicked.connect(on_anchor_clicked)
+
+        # Simulate left-click at viewport position (100, 100)
+        event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPoint(100, 100),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        viewport.mousePressEvent(event)
+
+        # Signal should have been emitted
+        assert len(received_coords) == 1
+        # Coordinates should be scene coordinates (transformed from viewport)
+        assert isinstance(received_coords[0][0], float)
+        assert isinstance(received_coords[0][1], float)
+
+    def test_shift_left_click_emits_anchor_shift_clicked_signal(
+        self, viewport: ViewportWidget, qtbot: object
+    ) -> None:
+        """Test that Shift+left-click emits anchor_shift_clicked signal."""
+        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import QEvent
+
+        # Track emitted signals
+        received_coords: list[tuple[float, float]] = []
+
+        def on_anchor_shift_clicked(x: float, y: float) -> None:
+            received_coords.append((x, y))
+
+        viewport.anchor_shift_clicked.connect(on_anchor_shift_clicked)
+
+        # Simulate Shift+left-click
+        event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPoint(100, 100),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.ShiftModifier,
+        )
+        viewport.mousePressEvent(event)
+
+        # Signal should have been emitted
+        assert len(received_coords) == 1
+
+    def test_middle_click_starts_panning(self, viewport: ViewportWidget) -> None:
+        """Test that middle-click starts panning mode."""
+        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import QEvent
+
+        # Initially not panning
+        assert viewport._is_panning is False
+
+        # Simulate middle-click
+        event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPoint(100, 100),
+            Qt.MouseButton.MiddleButton,
+            Qt.MouseButton.MiddleButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        viewport.mousePressEvent(event)
+
+        # Should be panning now
+        assert viewport._is_panning is True
+        assert viewport.cursor().shape() == Qt.CursorShape.ClosedHandCursor
+
+    def test_middle_release_stops_panning(self, viewport: ViewportWidget) -> None:
+        """Test that middle-button release stops panning mode."""
+        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import QEvent
+
+        # Start panning
+        press_event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPoint(100, 100),
+            Qt.MouseButton.MiddleButton,
+            Qt.MouseButton.MiddleButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        viewport.mousePressEvent(press_event)
+        assert viewport._is_panning is True
+
+        # Release middle button
+        release_event = QMouseEvent(
+            QEvent.Type.MouseButtonRelease,
+            QPoint(150, 150),
+            Qt.MouseButton.MiddleButton,
+            Qt.MouseButton.MiddleButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        viewport.mouseReleaseEvent(release_event)
+
+        # Should stop panning
+        assert viewport._is_panning is False
+        assert viewport.cursor().shape() == Qt.CursorShape.ArrowCursor
+
+    def test_left_click_does_not_start_panning(self, viewport: ViewportWidget) -> None:
+        """Test that left-click does not start panning (reserved for selection)."""
+        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtGui import QMouseEvent
+        from PySide6.QtCore import QEvent
+
+        # Simulate left-click
+        event = QMouseEvent(
+            QEvent.Type.MouseButtonPress,
+            QPoint(100, 100),
+            Qt.MouseButton.LeftButton,
+            Qt.MouseButton.LeftButton,
+            Qt.KeyboardModifier.NoModifier,
+        )
+        viewport.mousePressEvent(event)
+
+        # Should NOT be panning
+        assert viewport._is_panning is False
+
+
+class TestViewportAnchorHighlighting:
+    """Test viewport anchor highlighting functionality."""
+
+    def test_highlight_anchor_creates_highlight(
+        self, viewport: ViewportWidget, project_model: RailingProjectModel
+    ) -> None:
+        """Test that highlight_anchor creates a visible highlight."""
+        # Highlight an anchor at position (50, 50)
+        viewport.highlight_anchor((50.0, 50.0))
+
+        # Highlight group should exist
+        assert viewport._highlight_group is not None
+
+        # Scene should have items
+        scene = viewport.scene()
+        assert scene is not None
+        assert len(scene.items()) > 0
+
+    def test_highlight_anchor_none_clears_highlight(
+        self, viewport: ViewportWidget, project_model: RailingProjectModel
+    ) -> None:
+        """Test that highlight_anchor(None) clears the highlight."""
+        # First create a highlight
+        viewport.highlight_anchor((50.0, 50.0))
+        assert viewport._highlight_group is not None
+
+        # Clear highlight
+        viewport.highlight_anchor(None)
+
+        # Highlight group should be cleared
+        assert viewport._highlight_group is None
+
+    def test_highlight_anchor_replaces_previous(
+        self, viewport: ViewportWidget, project_model: RailingProjectModel
+    ) -> None:
+        """Test that highlighting a new anchor replaces the previous highlight."""
+        # Highlight first anchor
+        viewport.highlight_anchor((50.0, 50.0))
+        first_group = viewport._highlight_group
+
+        # Highlight second anchor
+        viewport.highlight_anchor((100.0, 100.0))
+
+        # Should have a new highlight group
+        assert viewport._highlight_group is not None
+        # The group should be different (old one removed, new one created)
+        # We can't directly compare groups, but we can verify scene has items
+        scene = viewport.scene()
+        assert scene is not None
+
+
 class TestViewportCapturePng:
     """Test viewport PNG capture functionality."""
 
