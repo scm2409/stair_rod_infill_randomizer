@@ -5,6 +5,10 @@ from abc import ABCMeta, abstractmethod
 from pydantic import ValidationError
 from PySide6.QtWidgets import QDoubleSpinBox, QFormLayout, QSpinBox, QWidget
 
+from railing_generator.domain.shapes.parallelogram_railing_shape import (
+    ParallelogramRailingShapeDefaults,
+    ParallelogramRailingShapeParameters,
+)
 from railing_generator.domain.shapes.railing_shape_parameters import RailingShapeParameters
 from railing_generator.domain.shapes.rectangular_railing_shape import (
     RectangularRailingShapeDefaults,
@@ -369,6 +373,114 @@ class RectangularParameterWidget(ShapeParameterWidget):
         height = self.field_widgets["height_cm"]
         assert isinstance(height, QDoubleSpinBox)
         height.setValue(params.height_cm)
+
+        frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
+        assert isinstance(frame_weight, QDoubleSpinBox)
+        frame_weight.setValue(params.frame_weight_per_meter_kg_m)
+
+
+class ParallelogramParameterWidget(ShapeParameterWidget):
+    """Parameter widget for parallelogram-shaped railings."""
+
+    def __init__(self) -> None:
+        """Initialize the parallelogram parameter widget."""
+        self._defaults = ParallelogramRailingShapeDefaults()
+        super().__init__()
+
+    def _create_widgets(self) -> None:
+        """Create input widgets for parallelogram parameters."""
+        # Post length
+        post_length_spin = QDoubleSpinBox()
+        post_length_spin.setRange(1.0, 10000.0)
+        post_length_spin.setSuffix(" cm")
+        self.form_layout.addRow("Post Length:", post_length_spin)
+        self.field_widgets["post_length_cm"] = post_length_spin
+
+        # Slope width
+        slope_width_spin = QDoubleSpinBox()
+        slope_width_spin.setRange(1.0, 10000.0)
+        slope_width_spin.setSuffix(" cm")
+        self.form_layout.addRow("Slope Width:", slope_width_spin)
+        self.field_widgets["slope_width_cm"] = slope_width_spin
+
+        # Slope height
+        slope_height_spin = QDoubleSpinBox()
+        slope_height_spin.setRange(1.0, 10000.0)
+        slope_height_spin.setSuffix(" cm")
+        self.form_layout.addRow("Slope Height:", slope_height_spin)
+        self.field_widgets["slope_height_cm"] = slope_height_spin
+
+        # Frame weight per meter
+        frame_weight_spin = QDoubleSpinBox()
+        frame_weight_spin.setRange(0.01, 100.0)
+        frame_weight_spin.setSuffix(" kg/m")
+        frame_weight_spin.setDecimals(2)
+        self.form_layout.addRow("Frame Weight:", frame_weight_spin)
+        self.field_widgets["frame_weight_per_meter_kg_m"] = frame_weight_spin
+
+    def _load_defaults(self) -> None:
+        """Load default values into the widgets."""
+        post_length = self.field_widgets["post_length_cm"]
+        assert isinstance(post_length, QDoubleSpinBox)
+        post_length.setValue(self._defaults.post_length_cm)
+
+        slope_width = self.field_widgets["slope_width_cm"]
+        assert isinstance(slope_width, QDoubleSpinBox)
+        slope_width.setValue(self._defaults.slope_width_cm)
+
+        slope_height = self.field_widgets["slope_height_cm"]
+        assert isinstance(slope_height, QDoubleSpinBox)
+        slope_height.setValue(self._defaults.slope_height_cm)
+
+        frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
+        assert isinstance(frame_weight, QDoubleSpinBox)
+        frame_weight.setValue(self._defaults.frame_weight_per_meter_kg_m)
+
+    def get_parameters(self) -> ParallelogramRailingShapeParameters:
+        """
+        Get the current parallelogram parameter values.
+
+        Returns:
+            Validated parallelogram parameters
+
+        Raises:
+            ValidationError: If parameters are invalid
+        """
+        post_length = self.field_widgets["post_length_cm"]
+        assert isinstance(post_length, QDoubleSpinBox)
+
+        slope_width = self.field_widgets["slope_width_cm"]
+        assert isinstance(slope_width, QDoubleSpinBox)
+
+        slope_height = self.field_widgets["slope_height_cm"]
+        assert isinstance(slope_height, QDoubleSpinBox)
+
+        frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
+        assert isinstance(frame_weight, QDoubleSpinBox)
+
+        return ParallelogramRailingShapeParameters(
+            post_length_cm=post_length.value(),
+            slope_width_cm=slope_width.value(),
+            slope_height_cm=slope_height.value(),
+            frame_weight_per_meter_kg_m=frame_weight.value(),
+        )
+
+    def set_parameters(self, params: RailingShapeParameters) -> None:
+        """Set the widget values from a ParallelogramRailingShapeParameters object."""
+        if not isinstance(params, ParallelogramRailingShapeParameters):
+            return
+
+        post_length = self.field_widgets["post_length_cm"]
+        assert isinstance(post_length, QDoubleSpinBox)
+        post_length.setValue(params.post_length_cm)
+
+        slope_width = self.field_widgets["slope_width_cm"]
+        assert isinstance(slope_width, QDoubleSpinBox)
+        slope_width.setValue(params.slope_width_cm)
+
+        slope_height = self.field_widgets["slope_height_cm"]
+        assert isinstance(slope_height, QDoubleSpinBox)
+        slope_height.setValue(params.slope_height_cm)
 
         frame_weight = self.field_widgets["frame_weight_per_meter_kg_m"]
         assert isinstance(frame_weight, QDoubleSpinBox)

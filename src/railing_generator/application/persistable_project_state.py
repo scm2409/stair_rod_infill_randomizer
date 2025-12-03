@@ -12,6 +12,9 @@ from railing_generator.domain.infill_generators.random_generator_v2_parameters i
     RandomGeneratorParametersV2,
 )
 from railing_generator.domain.rod import Rod
+from railing_generator.domain.shapes.parallelogram_railing_shape import (
+    ParallelogramRailingShapeParameters,
+)
 from railing_generator.domain.shapes.rectangular_railing_shape import (
     RectangularRailingShapeParameters,
 )
@@ -22,7 +25,9 @@ from railing_generator.domain.shapes.staircase_railing_shape import (
 
 # Type aliases for discriminated unions
 ShapeParametersUnion = Annotated[
-    StaircaseRailingShapeParameters | RectangularRailingShapeParameters,
+    StaircaseRailingShapeParameters
+    | RectangularRailingShapeParameters
+    | ParallelogramRailingShapeParameters,
     Field(discriminator="type"),
 ]
 

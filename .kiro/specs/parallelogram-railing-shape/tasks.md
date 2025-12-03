@@ -1,0 +1,63 @@
+# Implementation Plan
+
+- [x] 1. Create ParallelogramRailingShapeDefaults and YAML configuration
+  - [x] 1.1 Create `conf/shapes/parallelogram.yaml` with default values
+    - Define post_length_cm, slope_width_cm, slope_height_cm, frame_weight_per_meter_kg_m
+    - _Requirements: 3.1, 3.2_
+  - [x] 1.2 Create `ParallelogramRailingShapeDefaults` dataclass in shape module
+    - Extend `RailingShapeDefaults`
+    - Register with Hydra ConfigStore
+    - _Requirements: 3.1, 3.2_
+
+- [x] 2. Create ParallelogramRailingShapeParameters Pydantic model
+  - [x] 2.1 Implement `ParallelogramRailingShapeParameters` class
+    - Extend `RailingShapeParameters`
+    - Add type literal "parallelogram"
+    - Add validated fields: post_length_cm, slope_width_cm, slope_height_cm, frame_weight_per_meter_kg_m
+    - Implement `from_defaults()` class method
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+  - [x] 2.2 Write property test for positive parameters accepted
+    - **Property 6: Positive Parameters Accepted**
+    - **Validates: Requirements 2.1, 2.2, 2.3, 2.4**
+  - [x] 2.3 Write property test for invalid parameters rejected
+    - **Property 7: Invalid Parameters Rejected**
+    - **Validates: Requirements 2.5**
+  - [x] 2.4 Write property test for serialization round-trip
+    - **Property 8: Serialization Round-Trip**
+    - **Validates: Requirements 4.1, 4.2**
+
+- [x] 3. Implement ParallelogramRailingShape class
+  - [x] 3.1 Create `ParallelogramRailingShape` class
+    - Extend `RailingShape` ABC
+    - Implement `generate_frame()` method
+    - Implement `_generate_frame_rods()` to create 4 rods: left post, handrail, right post, bottom rail
+    - Ensure rods form a closed boundary loop (counterclockwise)
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
+  - [x] 3.2 Write property test for frame rod count
+    - **Property 1: Frame Rod Count**
+    - **Validates: Requirements 1.1**
+  - [x] 3.3 Write property test for handrail and bottom rail parallelism
+    - **Property 2: Handrail and Bottom Rail Parallelism**
+    - **Validates: Requirements 1.2**
+  - [x] 3.4 Write property test for posts are vertical
+    - **Property 3: Posts Are Vertical**
+    - **Validates: Requirements 1.3**
+  - [x] 3.5 Write property test for left post position
+    - **Property 4: Left Post Position**
+    - **Validates: Requirements 1.4**
+  - [x] 3.6 Write property test for right post base position
+    - **Property 5: Right Post Base Position**
+    - **Validates: Requirements 1.5**
+
+- [x] 4. Register shape in factory
+  - [x] 4.1 Update `RailingShapeFactory` to include parallelogram shape
+    - Add "parallelogram" to `_SHAPE_REGISTRY`
+    - Add parameter type validation in `create_shape()` method
+    - _Requirements: 1.1_
+  - [x] 4.2 Write unit tests for factory registration
+    - Test shape creation via factory
+    - Test error handling for parameter type mismatch
+    - _Requirements: 1.1_
+
+- [x] 5. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.

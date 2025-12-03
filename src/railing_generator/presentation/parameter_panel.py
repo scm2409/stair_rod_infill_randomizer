@@ -21,6 +21,7 @@ from railing_generator.presentation.generator_parameter_widget import (
     RandomGeneratorParameterWidgetV2,
 )
 from railing_generator.presentation.shape_parameter_widget import (
+    ParallelogramParameterWidget,
     RectangularParameterWidget,
     ShapeParameterWidget,
     StaircaseParameterWidget,
@@ -171,6 +172,8 @@ class ParameterPanel(QWidget):
             self.current_shape_param_widget = StaircaseParameterWidget()
         elif shape_type == "rectangular":
             self.current_shape_param_widget = RectangularParameterWidget()
+        elif shape_type == "parallelogram":
+            self.current_shape_param_widget = ParallelogramParameterWidget()
 
         # Add the new widget to the layout
         if self.current_shape_param_widget is not None:

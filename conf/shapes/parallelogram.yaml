@@ -1,0 +1,6 @@
+# Default parameters for parallelogram-shaped railing frames
+
+post_length_cm: 100.0
+slope_width_cm: 300.0
+slope_height_cm: 150.0
+frame_weight_per_meter_kg_m: 0.5

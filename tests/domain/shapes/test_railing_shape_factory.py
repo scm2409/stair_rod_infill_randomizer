@@ -2,6 +2,10 @@
 
 import pytest
 
+from railing_generator.domain.shapes.parallelogram_railing_shape import (
+    ParallelogramRailingShape,
+    ParallelogramRailingShapeParameters,
+)
 from railing_generator.domain.shapes.railing_shape_factory import RailingShapeFactory
 from railing_generator.domain.shapes.rectangular_railing_shape import (
     RectangularRailingShape,
@@ -96,6 +100,38 @@ class TestRailingShapeFactory:
         with pytest.raises(ValueError, match="requires RectangularRailingShapeParameters"):
             RailingShapeFactory.create_shape("rectangular", params)
 
+    def test_create_parallelogram_shape(self) -> None:
+        """Test creating a parallelogram shape from factory."""
+        # Arrange
+        params = ParallelogramRailingShapeParameters(
+            post_length_cm=100.0,
+            slope_width_cm=300.0,
+            slope_height_cm=150.0,
+            frame_weight_per_meter_kg_m=0.5,
+        )
+
+        # Act
+        shape = RailingShapeFactory.create_shape("parallelogram", params)
+
+        # Assert
+        assert isinstance(shape, ParallelogramRailingShape)
+        assert shape.params == params
+
+    def test_create_parallelogram_shape_with_mismatched_parameters(self) -> None:
+        """Test that creating parallelogram shape with wrong parameter type raises ValueError."""
+        # Arrange - Use staircase parameters for parallelogram shape
+        params = StaircaseRailingShapeParameters(
+            post_length_cm=150.0,
+            stair_width_cm=280.0,
+            stair_height_cm=280.0,
+            num_steps=10,
+            frame_weight_per_meter_kg_m=0.5,
+        )
+
+        # Act & Assert
+        with pytest.raises(ValueError, match="requires ParallelogramRailingShapeParameters"):
+            RailingShapeFactory.create_shape("parallelogram", params)
+
     def test_get_available_shape_types(self) -> None:
         """Test getting list of available shape types."""
         # Act
@@ -105,7 +141,8 @@ class TestRailingShapeFactory:
         assert isinstance(types, list)
         assert "staircase" in types
         assert "rectangular" in types
-        assert len(types) >= 2  # At least staircase and rectangular should be available
+        assert "parallelogram" in types
+        assert len(types) >= 3  # At least staircase, rectangular, and parallelogram
 
     def test_create_shape_with_registered_but_unhandled_type(self) -> None:
         """Test that factory raises error for registered but unhandled shape types."""

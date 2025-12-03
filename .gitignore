@@ -57,3 +57,4 @@ logs/
 Thumbs.db
 
 .mypy_cache/
+.hypothesis/
