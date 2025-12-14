@@ -135,13 +135,13 @@ class ViewportWidget(QGraphicsView):
         if event.button() == Qt.MouseButton.MiddleButton:
             # Start panning
             self._is_panning = True
-            self._pan_start_x = event.x()
-            self._pan_start_y = event.y()
+            self._pan_start_x = int(event.position().x())
+            self._pan_start_y = int(event.position().y())
             self.setCursor(Qt.CursorShape.ClosedHandCursor)
             event.accept()
         elif event.button() == Qt.MouseButton.LeftButton:
             # Convert to scene coordinates
-            scene_pos = self.mapToScene(event.pos())
+            scene_pos = self.mapToScene(event.position().toPoint())
             if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
                 # Shift+left-click: reconnect to target anchor
                 self.anchor_shift_clicked.emit(scene_pos.x(), scene_pos.y())
@@ -163,12 +163,14 @@ class ViewportWidget(QGraphicsView):
         """
         if self._is_panning:
             # Calculate delta
-            dx = event.x() - self._pan_start_x
-            dy = event.y() - self._pan_start_y
+            current_x = int(event.position().x())
+            current_y = int(event.position().y())
+            dx = current_x - self._pan_start_x
+            dy = current_y - self._pan_start_y
 
             # Update start position
-            self._pan_start_x = event.x()
-            self._pan_start_y = event.y()
+            self._pan_start_x = current_x
+            self._pan_start_y = current_y
 
             # Scroll the viewport
             h_bar = self.horizontalScrollBar()

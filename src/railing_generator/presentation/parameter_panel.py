@@ -19,6 +19,7 @@ from railing_generator.presentation.generator_parameter_widget import (
     GeneratorParameterWidget,
     RandomGeneratorParameterWidget,
     RandomGeneratorParameterWidgetV2,
+    UniformDirectionalGeneratorParameterWidget,
 )
 from railing_generator.presentation.shape_parameter_widget import (
     ParallelogramParameterWidget,
@@ -200,6 +201,8 @@ class ParameterPanel(QWidget):
             self.current_generator_param_widget = RandomGeneratorParameterWidget()
         elif generator_type == "random_v2":
             self.current_generator_param_widget = RandomGeneratorParameterWidgetV2()
+        elif generator_type == "uniform_directional":
+            self.current_generator_param_widget = UniformDirectionalGeneratorParameterWidget()
 
         # Add the new widget to the layout
         if self.current_generator_param_widget is not None:

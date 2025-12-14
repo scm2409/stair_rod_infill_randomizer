@@ -6,6 +6,9 @@ from railing_generator.domain.infill_generators.generator_parameters import (
 )
 from railing_generator.domain.infill_generators.random_generator import RandomGenerator
 from railing_generator.domain.infill_generators.random_generator_v2 import RandomGeneratorV2
+from railing_generator.domain.infill_generators.uniform_directional_generator import (
+    UniformDirectionalGenerator,
+)
 
 
 class GeneratorFactory:
@@ -20,6 +23,7 @@ class GeneratorFactory:
     _GENERATOR_TYPES: dict[str, type[Generator]] = {
         "random_v2": RandomGeneratorV2,  # Default (listed first)
         "random": RandomGenerator,
+        "uniform_directional": UniformDirectionalGenerator,
     }
 
     @classmethod

@@ -1,0 +1,29 @@
+# Default parameters for Uniform Directional Generator
+# A deterministic infill generator that creates evenly distributed rod patterns
+
+# Core parameters
+num_rods: 30
+num_layers: 3
+main_direction_range_min_deg: -45.0
+main_direction_range_max_deg: 25.0
+min_anchor_distance_cm: 5.0
+infill_weight_per_meter_kg_m: 0.59
+
+# Evaluator configuration
+# Supported evaluator types: "passthrough", "quality"
+# 
+# Pass-Through Evaluator (fastest, no optimization):
+#   evaluator:
+#     type: passthrough
+#
+# Quality Evaluator (best quality, slower):
+#   evaluator:
+#     type: quality
+#     max_hole_area_cm2: 10000.0
+#     hole_uniformity_weight: 0.3
+#     incircle_uniformity_weight: 0.2
+#     angle_distribution_weight: 0.2
+#     anchor_spacing_horizontal_weight: 0.15
+#     anchor_spacing_vertical_weight: 0.15
+#
+# Note: Evaluator parameters are nested in the parameters object, not in config defaults

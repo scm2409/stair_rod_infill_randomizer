@@ -331,7 +331,7 @@ class TestViewportMouseEvents:
         self, viewport: ViewportWidget, qtbot: object
     ) -> None:
         """Test that left-click emits anchor_clicked signal with scene coordinates."""
-        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtCore import QPointF, Qt
         from PySide6.QtGui import QMouseEvent
         from PySide6.QtCore import QEvent
 
@@ -344,9 +344,12 @@ class TestViewportMouseEvents:
         viewport.anchor_clicked.connect(on_anchor_clicked)
 
         # Simulate left-click at viewport position (100, 100)
+        local_pos = QPointF(100, 100)
+        global_pos = viewport.mapToGlobal(local_pos.toPoint())
         event = QMouseEvent(
             QEvent.Type.MouseButtonPress,
-            QPoint(100, 100),
+            local_pos,
+            QPointF(global_pos),
             Qt.MouseButton.LeftButton,
             Qt.MouseButton.LeftButton,
             Qt.KeyboardModifier.NoModifier,
@@ -363,7 +366,7 @@ class TestViewportMouseEvents:
         self, viewport: ViewportWidget, qtbot: object
     ) -> None:
         """Test that Shift+left-click emits anchor_shift_clicked signal."""
-        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtCore import QPointF, Qt
         from PySide6.QtGui import QMouseEvent
         from PySide6.QtCore import QEvent
 
@@ -376,9 +379,12 @@ class TestViewportMouseEvents:
         viewport.anchor_shift_clicked.connect(on_anchor_shift_clicked)
 
         # Simulate Shift+left-click
+        local_pos = QPointF(100, 100)
+        global_pos = viewport.mapToGlobal(local_pos.toPoint())
         event = QMouseEvent(
             QEvent.Type.MouseButtonPress,
-            QPoint(100, 100),
+            local_pos,
+            QPointF(global_pos),
             Qt.MouseButton.LeftButton,
             Qt.MouseButton.LeftButton,
             Qt.KeyboardModifier.ShiftModifier,
@@ -390,7 +396,7 @@ class TestViewportMouseEvents:
 
     def test_middle_click_starts_panning(self, viewport: ViewportWidget) -> None:
         """Test that middle-click starts panning mode."""
-        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtCore import QPointF, Qt
         from PySide6.QtGui import QMouseEvent
         from PySide6.QtCore import QEvent
 
@@ -398,9 +404,12 @@ class TestViewportMouseEvents:
         assert viewport._is_panning is False
 
         # Simulate middle-click
+        local_pos = QPointF(100, 100)
+        global_pos = viewport.mapToGlobal(local_pos.toPoint())
         event = QMouseEvent(
             QEvent.Type.MouseButtonPress,
-            QPoint(100, 100),
+            local_pos,
+            QPointF(global_pos),
             Qt.MouseButton.MiddleButton,
             Qt.MouseButton.MiddleButton,
             Qt.KeyboardModifier.NoModifier,
@@ -413,14 +422,17 @@ class TestViewportMouseEvents:
 
     def test_middle_release_stops_panning(self, viewport: ViewportWidget) -> None:
         """Test that middle-button release stops panning mode."""
-        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtCore import QPointF, Qt
         from PySide6.QtGui import QMouseEvent
         from PySide6.QtCore import QEvent
 
         # Start panning
+        local_pos = QPointF(100, 100)
+        global_pos = viewport.mapToGlobal(local_pos.toPoint())
         press_event = QMouseEvent(
             QEvent.Type.MouseButtonPress,
-            QPoint(100, 100),
+            local_pos,
+            QPointF(global_pos),
             Qt.MouseButton.MiddleButton,
             Qt.MouseButton.MiddleButton,
             Qt.KeyboardModifier.NoModifier,
@@ -429,9 +441,12 @@ class TestViewportMouseEvents:
         assert viewport._is_panning is True
 
         # Release middle button
+        release_local_pos = QPointF(150, 150)
+        release_global_pos = viewport.mapToGlobal(release_local_pos.toPoint())
         release_event = QMouseEvent(
             QEvent.Type.MouseButtonRelease,
-            QPoint(150, 150),
+            release_local_pos,
+            QPointF(release_global_pos),
             Qt.MouseButton.MiddleButton,
             Qt.MouseButton.MiddleButton,
             Qt.KeyboardModifier.NoModifier,
@@ -444,14 +459,17 @@ class TestViewportMouseEvents:
 
     def test_left_click_does_not_start_panning(self, viewport: ViewportWidget) -> None:
         """Test that left-click does not start panning (reserved for selection)."""
-        from PySide6.QtCore import QPoint, Qt
+        from PySide6.QtCore import QPointF, Qt
         from PySide6.QtGui import QMouseEvent
         from PySide6.QtCore import QEvent
 
         # Simulate left-click
+        local_pos = QPointF(100, 100)
+        global_pos = viewport.mapToGlobal(local_pos.toPoint())
         event = QMouseEvent(
             QEvent.Type.MouseButtonPress,
-            QPoint(100, 100),
+            local_pos,
+            QPointF(global_pos),
             Qt.MouseButton.LeftButton,
             Qt.MouseButton.LeftButton,
             Qt.KeyboardModifier.NoModifier,
