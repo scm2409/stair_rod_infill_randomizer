@@ -62,6 +62,9 @@ valid_improvement_threshold = st.floats(
     min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False
 )
 valid_stagnation_limit = st.integers(min_value=1, max_value=10000)
+valid_max_direction_deviation_deg = st.floats(
+    min_value=0.0, max_value=90.0, allow_nan=False, allow_infinity=False
+)
 
 
 # Strategy for generating valid EvolutionaryInfillGeneratorParameters
@@ -80,6 +83,7 @@ def valid_evolutionary_params(draw: st.DrawFn) -> EvolutionaryInfillGeneratorPar
         max_duration_sec=draw(valid_max_duration_sec),
         improvement_threshold=draw(valid_improvement_threshold),
         stagnation_limit=draw(valid_stagnation_limit),
+        max_direction_deviation_deg=draw(valid_max_direction_deviation_deg),
     )
 
 
@@ -104,6 +108,7 @@ class TestParameterValidationProperty:
         max_duration_sec=valid_max_duration_sec,
         improvement_threshold=valid_improvement_threshold,
         stagnation_limit=valid_stagnation_limit,
+        max_direction_deviation_deg=valid_max_direction_deviation_deg,
     )
     def test_valid_parameters_accepted(
         self,
@@ -116,6 +121,7 @@ class TestParameterValidationProperty:
         max_duration_sec: float,
         improvement_threshold: float,
         stagnation_limit: int,
+        max_direction_deviation_deg: float,
     ) -> None:
         """
         **Feature: evolutionary-infill-generator, Property 9: Parameter Validation**
@@ -139,6 +145,7 @@ class TestParameterValidationProperty:
             max_duration_sec=max_duration_sec,
             improvement_threshold=improvement_threshold,
             stagnation_limit=stagnation_limit,
+            max_direction_deviation_deg=max_direction_deviation_deg,
         )
 
         # Verify baseline values are stored correctly
@@ -154,6 +161,7 @@ class TestParameterValidationProperty:
         assert params.max_duration_sec == max_duration_sec
         assert params.improvement_threshold == improvement_threshold
         assert params.stagnation_limit == stagnation_limit
+        assert params.max_direction_deviation_deg == max_direction_deviation_deg
 
         # Verify type discriminator
         assert params.type == "evolutionary"
@@ -186,6 +194,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=0.001,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -211,6 +220,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=0.001,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -236,6 +246,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=0.001,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -263,6 +274,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=0.001,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -288,6 +300,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=0.001,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -313,6 +326,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=0.001,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -338,6 +352,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=invalid_max_duration,
                 improvement_threshold=0.001,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -363,6 +378,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=0.001,
                 stagnation_limit=invalid_stagnation_limit,
+                max_direction_deviation_deg=90.0,
             )
 
     @settings(max_examples=20)
@@ -391,6 +407,7 @@ class TestParameterValidationProperty:
                 max_duration_sec=60.0,
                 improvement_threshold=invalid_threshold,
                 stagnation_limit=100,
+                max_direction_deviation_deg=90.0,
             )
 
 
@@ -415,6 +432,7 @@ class TestFromDefaultsMethod:
         assert params.max_duration_sec == defaults.max_duration_sec
         assert params.improvement_threshold == defaults.improvement_threshold
         assert params.stagnation_limit == defaults.stagnation_limit
+        assert params.max_direction_deviation_deg == defaults.max_direction_deviation_deg
 
         # Verify type discriminator
         assert params.type == "evolutionary"
@@ -463,6 +481,7 @@ class TestSerializationRoundTripProperty:
         assert restored.max_duration_sec == params.max_duration_sec
         assert restored.improvement_threshold == params.improvement_threshold
         assert restored.stagnation_limit == params.stagnation_limit
+        assert restored.max_direction_deviation_deg == params.max_direction_deviation_deg
 
         # Verify type discriminator
         assert restored.type == params.type
@@ -500,6 +519,7 @@ class TestSerializationRoundTripProperty:
         assert restored.max_duration_sec == params.max_duration_sec
         assert restored.improvement_threshold == params.improvement_threshold
         assert restored.stagnation_limit == params.stagnation_limit
+        assert restored.max_direction_deviation_deg == params.max_direction_deviation_deg
 
         # Verify type discriminator
         assert restored.type == params.type
@@ -543,3 +563,4 @@ class TestDefaultsSerializationRoundTrip:
         assert restored.max_duration_sec == original.max_duration_sec
         assert restored.improvement_threshold == original.improvement_threshold
         assert restored.stagnation_limit == original.stagnation_limit
+        assert restored.max_direction_deviation_deg == original.max_direction_deviation_deg

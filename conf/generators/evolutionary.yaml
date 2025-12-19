@@ -15,6 +15,7 @@ max_iterations: 1000
 max_duration_sec: 60.0
 improvement_threshold: 0.001
 stagnation_limit: 100
+max_direction_deviation_deg: 90.0  # Maximum deviation from layer's main direction (degrees)
 
 # Evaluator configuration
 # Supported evaluator types: "passthrough", "quality"

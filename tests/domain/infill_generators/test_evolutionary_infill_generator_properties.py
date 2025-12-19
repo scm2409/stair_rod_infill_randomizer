@@ -141,6 +141,7 @@ class TestBaselineLayerDistributionProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -205,6 +206,7 @@ class TestBaselineLayerDistributionProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -257,6 +259,7 @@ class TestBaselineLayerDistributionProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -324,6 +327,7 @@ class TestAnchorCountInvarianceProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -382,6 +386,7 @@ class TestAnchorCountInvarianceProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -434,6 +439,7 @@ class TestAnchorCountInvarianceProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -500,6 +506,7 @@ class TestAnchorStateConsistencyProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -557,6 +564,7 @@ class TestAnchorStateConsistencyProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -612,6 +620,7 @@ class TestAnchorStateConsistencyProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -670,6 +679,7 @@ class TestAnchorStateConsistencyProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -682,8 +692,14 @@ class TestAnchorStateConsistencyProperty:
                 return
 
             # Perform mutation
+            layer_directions = generator._calculate_layer_directions(params)
             mutated_infill, mutated_anchors = generator._mutate_arrangement(
-                infill, infill.anchor_points, frame, num_layers
+                infill,
+                infill.anchor_points,
+                frame,
+                num_layers,
+                layer_directions,
+                params.max_direction_deviation_deg,
             )
 
             # Check anchor state consistency after mutation
@@ -760,6 +776,7 @@ class TestNoSameLayerCrossingsProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -834,6 +851,7 @@ class TestNoSameLayerCrossingsProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -846,8 +864,14 @@ class TestNoSameLayerCrossingsProperty:
                 return
 
             # Perform mutation
+            layer_directions = generator._calculate_layer_directions(params)
             mutated_infill, _ = generator._mutate_arrangement(
-                infill, infill.anchor_points, frame, num_layers
+                infill,
+                infill.anchor_points,
+                frame,
+                num_layers,
+                layer_directions,
+                params.max_direction_deviation_deg,
             )
 
             # Check for same-layer crossings after mutation
@@ -936,6 +960,7 @@ class TestFitnessMonotonicityProperty:
             max_duration_sec=60.0,
             improvement_threshold=improvement_threshold,
             stagnation_limit=max_iterations + 1,  # Don't stop due to stagnation
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -997,6 +1022,7 @@ class TestFitnessMonotonicityProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=25,  # Don't stop due to stagnation
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1073,6 +1099,7 @@ class TestTerminationLimitsProperty:
             max_duration_sec=300.0,  # Long duration to not trigger time limit
             improvement_threshold=0.001,
             stagnation_limit=max_iterations + 100,  # Don't stop due to stagnation
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1127,6 +1154,7 @@ class TestTerminationLimitsProperty:
             max_duration_sec=max_duration_sec,
             improvement_threshold=0.001,
             stagnation_limit=10000,  # Don't stop due to stagnation
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1184,6 +1212,7 @@ class TestTerminationLimitsProperty:
             max_duration_sec=300.0,  # Long duration to not trigger time limit
             improvement_threshold=1.0,  # Very high threshold - no improvements possible
             stagnation_limit=stagnation_limit,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1248,6 +1277,7 @@ class TestRodBoundaryConstraintsProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1311,6 +1341,7 @@ class TestRodBoundaryConstraintsProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1365,6 +1396,7 @@ class TestRodBoundaryConstraintsProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1377,8 +1409,14 @@ class TestRodBoundaryConstraintsProperty:
                 return
 
             # Perform mutation
+            layer_directions = generator._calculate_layer_directions(params)
             mutated_infill, _ = generator._mutate_arrangement(
-                infill, infill.anchor_points, frame, num_layers
+                infill,
+                infill.anchor_points,
+                frame,
+                num_layers,
+                layer_directions,
+                params.max_direction_deviation_deg,
             )
 
             # Check all rods satisfy boundary constraints after mutation
@@ -1445,6 +1483,7 @@ class TestRodBoundaryConstraintsProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1506,6 +1545,7 @@ class TestMinimumAnchorDistanceProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1567,6 +1607,7 @@ class TestMinimumAnchorDistanceProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1631,6 +1672,7 @@ class TestMinimumAnchorDistanceProperty:
             max_duration_sec=60.0,
             improvement_threshold=0.001,
             stagnation_limit=100,
+            max_direction_deviation_deg=90.0,
             evaluator=PassThroughEvaluatorParameters(),
         )
 
@@ -1643,8 +1685,14 @@ class TestMinimumAnchorDistanceProperty:
                 return
 
             # Perform mutation
+            layer_directions = generator._calculate_layer_directions(params)
             _, mutated_anchors = generator._mutate_arrangement(
-                infill, infill.anchor_points, frame, num_layers
+                infill,
+                infill.anchor_points,
+                frame,
+                num_layers,
+                layer_directions,
+                params.max_direction_deviation_deg,
             )
 
             # Check all pairs of anchor points after mutation

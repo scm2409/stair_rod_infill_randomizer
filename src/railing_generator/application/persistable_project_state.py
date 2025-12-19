@@ -5,6 +5,9 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, Field
 
 from railing_generator.domain.anchor_point import AnchorPoint
+from railing_generator.domain.infill_generators.evolutionary_infill_generator_parameters import (
+    EvolutionaryInfillGeneratorParameters,
+)
 from railing_generator.domain.infill_generators.random_generator_parameters import (
     RandomGeneratorParameters,
 )
@@ -32,7 +35,7 @@ ShapeParametersUnion = Annotated[
 ]
 
 GeneratorParametersUnion = Annotated[
-    RandomGeneratorParameters | RandomGeneratorParametersV2,
+    RandomGeneratorParameters | RandomGeneratorParametersV2 | EvolutionaryInfillGeneratorParameters,
     Field(discriminator="type"),
 ]
 

@@ -1148,6 +1148,17 @@ class EvolutionaryInfillGeneratorParameterWidget(GeneratorParameterWidget):
         self.form_layout.addRow("Stagnation Limit:", stagnation_limit_spin)
         self.field_widgets["stagnation_limit"] = stagnation_limit_spin
 
+        # Max direction deviation
+        max_direction_deviation_spin = QDoubleSpinBox()
+        max_direction_deviation_spin.setRange(0.0, 90.0)
+        max_direction_deviation_spin.setSuffix(" °")
+        max_direction_deviation_spin.setDecimals(1)
+        max_direction_deviation_spin.setToolTip(
+            "Maximum allowed deviation from layer's main direction after mutation"
+        )
+        self.form_layout.addRow("Max Direction Deviation:", max_direction_deviation_spin)
+        self.field_widgets["max_direction_deviation_deg"] = max_direction_deviation_spin
+
         # === Evaluator Configuration ===
         self.form_layout.addRow(QLabel())  # Spacer
         evaluator_label = QLabel("<b>Evaluator Configuration</b>")
@@ -1235,6 +1246,10 @@ class EvolutionaryInfillGeneratorParameterWidget(GeneratorParameterWidget):
         assert isinstance(stagnation_limit, QSpinBox)
         stagnation_limit.setValue(self._defaults.stagnation_limit)
 
+        max_direction_deviation = self.field_widgets["max_direction_deviation_deg"]
+        assert isinstance(max_direction_deviation, QDoubleSpinBox)
+        max_direction_deviation.setValue(self._defaults.max_direction_deviation_deg)
+
     def get_parameters(self) -> EvolutionaryInfillGeneratorParameters:
         """
         Get the current parameter values as an EvolutionaryInfillGeneratorParameters instance.
@@ -1274,6 +1289,9 @@ class EvolutionaryInfillGeneratorParameterWidget(GeneratorParameterWidget):
         stagnation_limit = self.field_widgets["stagnation_limit"]
         assert isinstance(stagnation_limit, QSpinBox)
 
+        max_direction_deviation = self.field_widgets["max_direction_deviation_deg"]
+        assert isinstance(max_direction_deviation, QDoubleSpinBox)
+
         # Get evaluator parameters from the active evaluator widget
         assert self.evaluator_type_combo is not None
         evaluator_type = self.evaluator_type_combo.currentText()
@@ -1299,6 +1317,7 @@ class EvolutionaryInfillGeneratorParameterWidget(GeneratorParameterWidget):
             max_duration_sec=max_duration.value(),
             improvement_threshold=improvement_threshold.value(),
             stagnation_limit=stagnation_limit.value(),
+            max_direction_deviation_deg=max_direction_deviation.value(),
             evaluator=evaluator_params_typed,
         )
 
@@ -1348,6 +1367,10 @@ class EvolutionaryInfillGeneratorParameterWidget(GeneratorParameterWidget):
         stagnation_limit = self.field_widgets["stagnation_limit"]
         assert isinstance(stagnation_limit, QSpinBox)
         stagnation_limit.setValue(params.stagnation_limit)
+
+        max_direction_deviation = self.field_widgets["max_direction_deviation_deg"]
+        assert isinstance(max_direction_deviation, QDoubleSpinBox)
+        max_direction_deviation.setValue(params.max_direction_deviation_deg)
 
         # Set evaluator type and parameters
         if params.evaluator is not None and self.evaluator_type_combo is not None:

@@ -158,7 +158,12 @@ class EvolutionaryInfillGenerator(Generator):
 
             # Mutate the current arrangement (Requirements: 3.1, 3.8)
             mutated_infill, mutated_anchors = self._mutate_arrangement(
-                current_best, current_anchor_points, frame, params.num_layers
+                current_best,
+                current_anchor_points,
+                frame,
+                params.num_layers,
+                layer_directions,
+                params.max_direction_deviation_deg,
             )
 
             # Evaluate mutated arrangement (Requirements: 4.1)
@@ -597,7 +602,10 @@ class EvolutionaryInfillGenerator(Generator):
         centroid = frame.boundary.centroid
         cx, cy = centroid.x, centroid.y
 
-        rotation_angle_rad = math.radians(-direction_deg)
+        # Rotate frame so that the desired direction becomes vertical
+        # We rotate by +direction_deg so that when we create vertical rods in rotated space,
+        # they will be at direction_deg when viewed in original space
+        rotation_angle_rad = math.radians(direction_deg)
 
         rotated_anchors: list[tuple[float, float, int, AnchorPoint]] = []
         for idx, anchor in enumerate(anchor_points):
@@ -1066,13 +1074,16 @@ class EvolutionaryInfillGenerator(Generator):
         anchor_points: list[AnchorPoint],
         same_layer_rods: list[Rod],
         frame: RailingFrame,
+        layer_main_direction_deg: float,
+        max_direction_deviation_deg: float,
     ) -> bool:
         """
         Mutate a single rod by moving its endpoints to neighboring free anchor points.
 
         This method attempts to move both endpoints of a rod to the next free anchor
         points along the frame boundary. If the mutation would cause a same-layer
-        crossing, the mutation is undone and the rod remains unchanged.
+        crossing or exceed the maximum direction deviation from the layer's main
+        direction, the mutation is undone and the rod remains unchanged.
 
         Algorithm:
         1. Find the anchor points at the rod's current endpoints
@@ -1082,15 +1093,18 @@ class EvolutionaryInfillGenerator(Generator):
         5. If new anchors are the same point, return without mutation
         6. Release original anchor points (mark free, clear layer)
         7. Create mutated rod geometry
-        8. Check for same-layer crossings
-        9. If crossing detected: restore original anchors and return False
-        10. If valid: claim new anchors and update rod geometry, return True
+        8. Check direction deviation from layer's main direction
+        9. Check for same-layer crossings
+        10. If crossing detected or deviation exceeded: restore original anchors and return False
+        11. If valid: claim new anchors and update rod geometry, return True
 
         Args:
             rod: The rod to mutate (will be modified in place if mutation succeeds)
             anchor_points: List of all anchor points (will be modified)
             same_layer_rods: List of other rods in the same layer (for crossing check)
             frame: The railing frame defining the boundary
+            layer_main_direction_deg: Main direction angle for this layer (degrees from vertical)
+            max_direction_deviation_deg: Maximum allowed deviation from layer's main direction
 
         Returns:
             True if mutation was applied, False if mutation was rejected or not possible
@@ -1159,6 +1173,37 @@ class EvolutionaryInfillGenerator(Generator):
             weight_kg_m=rod.weight_kg_m,
             layer=rod.layer,
         )
+
+        # Check direction deviation from layer's main direction
+        # Both angles are signed (negative = leans left, positive = leans right)
+        # However, angle_from_vertical_deg can return values outside -90 to +90
+        # because it depends on LineString direction (which endpoint is "start")
+        # A rod at 180° is geometrically the same as 0° (both vertical)
+        # A rod at 170° is geometrically the same as -10° (both lean 10° left)
+        rod_direction_deg = temp_rod.angle_from_vertical_deg
+
+        # Normalize rod direction to -90° to +90° range
+        # This makes the angle independent of LineString direction
+        normalized_rod_direction = rod_direction_deg
+        if normalized_rod_direction > 90:
+            normalized_rod_direction = normalized_rod_direction - 180
+        elif normalized_rod_direction < -90:
+            normalized_rod_direction = normalized_rod_direction + 180
+
+        # Calculate deviation from layer's main direction
+        direction_deviation = abs(normalized_rod_direction - layer_main_direction_deg)
+
+        if direction_deviation > max_direction_deviation_deg:
+            # Direction deviation exceeded - restore original anchors and reject mutation
+            start_anchor.used = original_start_used
+            start_anchor.layer = original_start_layer
+            end_anchor.used = original_end_used
+            end_anchor.layer = original_end_layer
+            logger.debug(
+                f"Mutation rejected: direction deviation {direction_deviation:.1f}° "
+                f"exceeds max {max_direction_deviation_deg:.1f}°"
+            )
+            return False
 
         # Check for same-layer crossings (exclude the current rod from the check)
         other_rods = [r for r in same_layer_rods if r is not rod]
@@ -1253,6 +1298,8 @@ class EvolutionaryInfillGenerator(Generator):
         anchor_points: list[AnchorPoint],
         frame: RailingFrame,
         num_layers: int,
+        layer_directions: dict[int, float],
+        max_direction_deviation_deg: float,
     ) -> tuple[RailingInfill, list[AnchorPoint]]:
         """
         Mutate the entire infill arrangement by processing each layer sequentially.
@@ -1272,6 +1319,8 @@ class EvolutionaryInfillGenerator(Generator):
             anchor_points: The current anchor point state
             frame: The railing frame defining the boundary
             num_layers: Number of layers in the arrangement
+            layer_directions: Dictionary mapping layer number to main direction angle (degrees)
+            max_direction_deviation_deg: Maximum allowed deviation from layer's main direction
 
         Returns:
             Tuple of (mutated_infill, mutated_anchor_points)
@@ -1286,10 +1335,18 @@ class EvolutionaryInfillGenerator(Generator):
         for layer_num in range(1, num_layers + 1):
             # Get all rods in this layer
             layer_rods = [rod for rod in mutated_rods if rod.layer == layer_num]
+            layer_main_direction_deg = layer_directions.get(layer_num, 0.0)
 
             # For each rod in layer: attempt mutation
             for rod in layer_rods:
-                self._mutate_rod(rod, mutated_anchors, layer_rods, frame)
+                self._mutate_rod(
+                    rod,
+                    mutated_anchors,
+                    layer_rods,
+                    frame,
+                    layer_main_direction_deg,
+                    max_direction_deviation_deg,
+                )
 
         # Create mutated infill
         mutated_infill = RailingInfill(

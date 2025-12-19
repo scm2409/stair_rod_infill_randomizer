@@ -49,6 +49,7 @@ class EvolutionaryInfillGeneratorDefaults(InfillGeneratorDefaults):
         max_duration_sec: Maximum generation duration in seconds
         improvement_threshold: Minimum fitness improvement to accept a mutation
         stagnation_limit: Iterations without improvement before early termination
+        max_direction_deviation_deg: Maximum allowed deviation from layer's main direction (degrees)
     """
 
     # Baseline parameters (same as UniformDirectionalGenerator)
@@ -64,6 +65,7 @@ class EvolutionaryInfillGeneratorDefaults(InfillGeneratorDefaults):
     max_duration_sec: float = 60.0
     improvement_threshold: float = 0.001
     stagnation_limit: int = 100
+    max_direction_deviation_deg: float = 90.0
 
 
 class EvolutionaryInfillGeneratorParameters(InfillGeneratorParameters):
@@ -103,6 +105,11 @@ class EvolutionaryInfillGeneratorParameters(InfillGeneratorParameters):
     )
     stagnation_limit: int = Field(
         ge=1, description="Iterations without improvement before early termination"
+    )
+    max_direction_deviation_deg: float = Field(
+        ge=0,
+        le=90,
+        description="Maximum allowed deviation from layer's main direction after mutation (degrees)",
     )
 
     # Nested evaluator parameters (discriminated union)
@@ -145,6 +152,7 @@ class EvolutionaryInfillGeneratorParameters(InfillGeneratorParameters):
             max_duration_sec=defaults.max_duration_sec,
             improvement_threshold=defaults.improvement_threshold,
             stagnation_limit=defaults.stagnation_limit,
+            max_direction_deviation_deg=defaults.max_direction_deviation_deg,
             evaluator=PassThroughEvaluatorParameters(),  # Default evaluator
         )
 

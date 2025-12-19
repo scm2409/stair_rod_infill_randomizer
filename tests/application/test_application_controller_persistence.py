@@ -25,6 +25,12 @@ from railing_generator.domain.shapes.rectangular_railing_shape import (
 from railing_generator.domain.shapes.staircase_railing_shape import (
     StaircaseRailingShapeParameters,
 )
+from railing_generator.domain.evaluators.passthrough_evaluator_parameters import (
+    PassThroughEvaluatorParameters,
+)
+from railing_generator.domain.infill_generators.evolutionary_infill_generator_parameters import (
+    EvolutionaryInfillGeneratorParameters,
+)
 from railing_generator.domain.infill_generators.random_generator_parameters import (
     RandomGeneratorParameters,
 )
@@ -511,3 +517,136 @@ class TestRoundTrip(TestApplicationControllerPersistence):
 
         assert project_model.rod_annotation_visible is True
         assert project_model.infill_layers_colored_by_layer is False
+
+
+class TestGeneratorParametersPersistence(TestApplicationControllerPersistence):
+    """Tests for generator parameters persistence."""
+
+    def test_round_trip_evolutionary_generator_parameters(
+        self,
+        qtbot: "QtBot",
+        controller: ApplicationController,
+        project_model: RailingProjectModel,
+        staircase_params: StaircaseRailingShapeParameters,
+        tmp_path: Path,
+    ) -> None:
+        """Test round-trip save/load preserves evolutionary generator parameters."""
+        controller.update_railing_shape("staircase", staircase_params)
+
+        # Set evolutionary generator parameters
+        evo_params = EvolutionaryInfillGeneratorParameters(
+            num_rods=15,
+            num_layers=3,
+            main_direction_range_min_deg=-30.0,
+            main_direction_range_max_deg=45.0,
+            min_anchor_distance_cm=8.0,
+            infill_weight_per_meter_kg_m=0.59,
+            max_iterations=500,
+            max_duration_sec=30.0,
+            improvement_threshold=0.001,
+            stagnation_limit=50,
+            max_direction_deviation_deg=15.0,
+            evaluator=PassThroughEvaluatorParameters(),
+        )
+        project_model.set_infill_generator_type("evolutionary")
+        project_model.set_infill_generator_parameters(evo_params)
+
+        file_path = tmp_path / "test_evolutionary.rig.zip"
+
+        controller.save_project(file_path)
+        controller.create_new_project()
+        controller.load_project(file_path)
+
+        assert project_model.infill_generator_type == "evolutionary"
+        params = project_model.infill_generator_parameters
+        assert isinstance(params, EvolutionaryInfillGeneratorParameters)
+        assert params.num_rods == 15
+        assert params.num_layers == 3
+        assert params.max_direction_deviation_deg == 15.0
+        assert params.max_iterations == 500
+
+    def test_round_trip_random_generator_parameters(
+        self,
+        qtbot: "QtBot",
+        controller: ApplicationController,
+        project_model: RailingProjectModel,
+        staircase_params: StaircaseRailingShapeParameters,
+        tmp_path: Path,
+    ) -> None:
+        """Test round-trip save/load preserves random generator parameters."""
+        controller.update_railing_shape("staircase", staircase_params)
+
+        # Set random generator parameters
+        random_params = RandomGeneratorParameters(
+            num_rods=20,
+            num_layers=2,
+            main_direction_range_min_deg=-45.0,
+            main_direction_range_max_deg=45.0,
+            min_anchor_distance_cm=5.0,
+            infill_weight_per_meter_kg_m=0.5,
+            min_rod_length_cm=50.0,
+            max_rod_length_cm=200.0,
+            max_angle_deviation_deg=30.0,
+            max_iterations=1000,
+            max_duration_sec=60.0,
+        )
+        project_model.set_infill_generator_type("random")
+        project_model.set_infill_generator_parameters(random_params)
+
+        file_path = tmp_path / "test_random.rig.zip"
+
+        controller.save_project(file_path)
+        controller.create_new_project()
+        controller.load_project(file_path)
+
+        assert project_model.infill_generator_type == "random"
+        params = project_model.infill_generator_parameters
+        assert isinstance(params, RandomGeneratorParameters)
+        assert params.num_rods == 20
+        assert params.num_layers == 2
+
+    def test_round_trip_random_v2_generator_parameters(
+        self,
+        qtbot: "QtBot",
+        controller: ApplicationController,
+        project_model: RailingProjectModel,
+        staircase_params: StaircaseRailingShapeParameters,
+        tmp_path: Path,
+    ) -> None:
+        """Test round-trip save/load preserves random_v2 generator parameters."""
+        controller.update_railing_shape("staircase", staircase_params)
+
+        # Set random_v2 generator parameters
+        random_v2_params = RandomGeneratorParametersV2(
+            num_rods=25,
+            num_layers=4,
+            main_direction_range_min_deg=-60.0,
+            main_direction_range_max_deg=60.0,
+            min_anchor_distance_vertical_cm=15.0,
+            min_anchor_distance_other_cm=6.0,
+            infill_weight_per_meter_kg_m=0.55,
+            min_rod_length_cm=50.0,
+            max_rod_length_cm=200.0,
+            max_angle_deviation_deg=40.0,
+            max_iterations=1000,
+            max_duration_sec=60.0,
+            max_evaluation_attempts=10,
+            max_evaluation_duration_sec=60.0,
+            min_acceptable_fitness=0.7,
+            random_angle_deviation_deg=20.0,
+            evaluator=PassThroughEvaluatorParameters(),
+        )
+        project_model.set_infill_generator_type("random_v2")
+        project_model.set_infill_generator_parameters(random_v2_params)
+
+        file_path = tmp_path / "test_random_v2.rig.zip"
+
+        controller.save_project(file_path)
+        controller.create_new_project()
+        controller.load_project(file_path)
+
+        assert project_model.infill_generator_type == "random_v2"
+        params = project_model.infill_generator_parameters
+        assert isinstance(params, RandomGeneratorParametersV2)
+        assert params.num_rods == 25
+        assert params.num_layers == 4
