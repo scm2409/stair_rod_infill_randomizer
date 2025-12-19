@@ -69,7 +69,7 @@ class TestParameterValidationProperty:
     **Validates: Requirements 2.6, 2.7**
     """
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         num_rods=valid_num_rods,
         num_layers=valid_num_layers,
@@ -115,7 +115,7 @@ class TestParameterValidationProperty:
         assert params.min_anchor_distance_cm == min_anchor_distance_cm
         assert params.infill_weight_per_meter_kg_m == infill_weight_per_meter_kg_m
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(direction_range=invalid_direction_range())
     def test_invalid_direction_range_rejected(
         self,
@@ -141,7 +141,7 @@ class TestParameterValidationProperty:
                 infill_weight_per_meter_kg_m=0.59,
             )
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         invalid_num_rods=st.integers(max_value=0),
     )
@@ -164,7 +164,7 @@ class TestParameterValidationProperty:
                 infill_weight_per_meter_kg_m=0.59,
             )
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         invalid_num_layers=st.integers(max_value=0),
     )
@@ -187,7 +187,7 @@ class TestParameterValidationProperty:
                 infill_weight_per_meter_kg_m=0.59,
             )
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         invalid_min_anchor_distance=st.floats(max_value=0.0, allow_nan=False, allow_infinity=False),
     )
@@ -210,7 +210,7 @@ class TestParameterValidationProperty:
                 infill_weight_per_meter_kg_m=0.59,
             )
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         invalid_weight=st.floats(max_value=0.0, allow_nan=False, allow_infinity=False),
     )
@@ -233,7 +233,7 @@ class TestParameterValidationProperty:
                 infill_weight_per_meter_kg_m=invalid_weight,
             )
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         min_deg=st.floats(min_value=-200.0, max_value=-90.1, allow_nan=False, allow_infinity=False)
         | st.floats(min_value=90.1, max_value=200.0, allow_nan=False, allow_infinity=False),

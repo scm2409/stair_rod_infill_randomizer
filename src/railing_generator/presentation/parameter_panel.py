@@ -16,6 +16,7 @@ from railing_generator.application.railing_project_model import RailingProjectMo
 from railing_generator.domain.infill_generators.generator_factory import GeneratorFactory
 from railing_generator.domain.shapes.railing_shape_factory import RailingShapeFactory
 from railing_generator.presentation.generator_parameter_widget import (
+    EvolutionaryInfillGeneratorParameterWidget,
     GeneratorParameterWidget,
     RandomGeneratorParameterWidget,
     RandomGeneratorParameterWidgetV2,
@@ -203,6 +204,8 @@ class ParameterPanel(QWidget):
             self.current_generator_param_widget = RandomGeneratorParameterWidgetV2()
         elif generator_type == "uniform_directional":
             self.current_generator_param_widget = UniformDirectionalGeneratorParameterWidget()
+        elif generator_type == "evolutionary":
+            self.current_generator_param_widget = EvolutionaryInfillGeneratorParameterWidget()
 
         # Add the new widget to the layout
         if self.current_generator_param_widget is not None:

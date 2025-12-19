@@ -1,5 +1,8 @@
 """Factory for creating infill generator instances."""
 
+from railing_generator.domain.infill_generators.evolutionary_infill_generator import (
+    EvolutionaryInfillGenerator,
+)
 from railing_generator.domain.infill_generators.generator import Generator
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
@@ -24,6 +27,7 @@ class GeneratorFactory:
         "random_v2": RandomGeneratorV2,  # Default (listed first)
         "random": RandomGenerator,
         "uniform_directional": UniformDirectionalGenerator,
+        "evolutionary": EvolutionaryInfillGenerator,
     }
 
     @classmethod

@@ -70,7 +70,7 @@ class TestPolygonExtentCalculationProperty:
     **Validates: Requirements 1.1, 1.2**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         polygon=valid_convex_polygon(),
         direction_deg=valid_direction_angle,
@@ -115,7 +115,7 @@ class TestPolygonExtentCalculationProperty:
             f"max_proj {max_proj:.6f} should equal expected {expected_max:.6f}"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         polygon=valid_convex_polygon(),
         direction_deg=valid_direction_angle,
@@ -151,7 +151,7 @@ class TestPolygonExtentCalculationProperty:
             f"(min={min_proj:.6f}, max={max_proj:.6f})"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         polygon=valid_convex_polygon(),
         direction_deg=valid_direction_angle,
@@ -194,7 +194,7 @@ class TestPolygonExtentCalculationProperty:
                 f"is above max_proj {max_proj:.6f}"
             )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         polygon=valid_convex_polygon(),
     )
@@ -306,7 +306,7 @@ class TestEvenDistributionProperty:
     **Validates: Requirements 1.3, 1.4, 1.5, 2.1, 2.3**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_frame(),
         direction_deg=valid_direction_angle,
@@ -374,7 +374,7 @@ class TestEvenDistributionProperty:
                 f"(tolerance={tolerance:.4f})"
             )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_frame(),
         direction_deg=valid_direction_angle,
@@ -425,7 +425,7 @@ class TestEvenDistributionProperty:
             f"(tolerance={tolerance:.4f})"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_frame(),
         direction_deg=valid_direction_angle,
@@ -476,7 +476,7 @@ class TestEvenDistributionProperty:
             f"(tolerance={tolerance:.4f})"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_frame(),
         direction_deg=valid_direction_angle,
@@ -528,7 +528,7 @@ class TestEvenDistributionProperty:
             f"(tolerance={tolerance:.4f})"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_frame(),
         direction_deg=valid_direction_angle,

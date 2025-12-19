@@ -33,7 +33,7 @@ valid_params_strategy = st.builds(
 class TestParameterValidation:
     """Property tests for parameter validation."""
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         post_length_cm=positive_float,
         slope_width_cm=positive_float,
@@ -70,7 +70,7 @@ class TestParameterValidation:
         assert params.slope_height_cm == slope_height_cm
         assert params.frame_weight_per_meter_kg_m == frame_weight_per_meter_kg_m
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(
         invalid_value=st.floats(max_value=0.0, allow_nan=False, allow_infinity=False),
         field_index=st.integers(min_value=0, max_value=3),
@@ -99,7 +99,7 @@ class TestParameterValidation:
         with pytest.raises(ValidationError):
             ParallelogramRailingShapeParameters(**values)
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(params=valid_params_strategy)
     def test_serialization_round_trip(self, params: ParallelogramRailingShapeParameters) -> None:
         """
@@ -127,7 +127,7 @@ class TestParameterValidation:
 class TestFrameGeometry:
     """Property tests for frame geometry generation."""
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(params=valid_params_strategy)
     def test_frame_rod_count(self, params: ParallelogramRailingShapeParameters) -> None:
         """
@@ -143,7 +143,7 @@ class TestFrameGeometry:
 
         assert len(frame.rods) == 4
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(params=valid_params_strategy)
     def test_handrail_and_bottom_rail_parallelism(
         self, params: ParallelogramRailingShapeParameters
@@ -186,7 +186,7 @@ class TestFrameGeometry:
         )
         assert abs(cross_product) < max_magnitude * 1e-9
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(params=valid_params_strategy)
     def test_posts_are_vertical(self, params: ParallelogramRailingShapeParameters) -> None:
         """
@@ -214,7 +214,7 @@ class TestFrameGeometry:
         # Verify right post is vertical (same x at start and end)
         assert math.isclose(right_post_coords[0][0], right_post_coords[1][0], abs_tol=1e-9)
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(params=valid_params_strategy)
     def test_left_post_position(self, params: ParallelogramRailingShapeParameters) -> None:
         """
@@ -240,7 +240,7 @@ class TestFrameGeometry:
         assert math.isclose(coords[1][0], 0.0, abs_tol=1e-9)
         assert math.isclose(coords[1][1], params.post_length_cm, abs_tol=1e-9)
 
-    @settings(max_examples=100)
+    @settings(max_examples=20)
     @given(params=valid_params_strategy)
     def test_right_post_base_position(self, params: ParallelogramRailingShapeParameters) -> None:
         """

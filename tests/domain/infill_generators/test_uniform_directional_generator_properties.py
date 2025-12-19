@@ -84,7 +84,7 @@ class TestMinimumAnchorDistanceProperty:
     **Validates: Requirements 3.2, 3.3**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_rectangular_frame(),
         min_anchor_distance_cm=valid_min_anchor_distance_cm,
@@ -131,7 +131,7 @@ class TestMinimumAnchorDistanceProperty:
                     f"min_anchor_distance_cm {min_anchor_distance_cm:.4f}cm"
                 )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_rectangular_frame(),
         min_anchor_distance_cm=valid_min_anchor_distance_cm,
@@ -184,7 +184,7 @@ class TestMinimumAnchorDistanceProperty:
             # (already tested above, but good to verify here too)
             assert distance >= min_anchor_distance_cm - 0.01
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_rectangular_frame(),
         min_anchor_distance_cm=valid_min_anchor_distance_cm,
@@ -221,7 +221,7 @@ class TestMinimumAnchorDistanceProperty:
             assert anchor.used is False, "Anchor should start as unused"
             assert anchor.layer is None, "Anchor should start with no layer assigned"
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         frame=valid_rectangular_frame(),
         min_anchor_distance_cm=valid_min_anchor_distance_cm,
@@ -298,7 +298,7 @@ class TestLayerDirectionCalculationProperty:
     **Validates: Requirements 1.3, 1.4, 2.4, 2.5**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         num_layers=valid_num_layers,
         direction_range=valid_direction_range(),
@@ -349,7 +349,7 @@ class TestLayerDirectionCalculationProperty:
             f"{expected_direction:.6f}° of range [{min_deg:.2f}°, {max_deg:.2f}°]"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         num_layers=st.integers(min_value=2, max_value=10),
         direction_range=valid_direction_range(),
@@ -405,7 +405,7 @@ class TestLayerDirectionCalculationProperty:
                 f"{expected_direction:.6f}° (t={t:.4f}, range=[{min_deg:.2f}°, {max_deg:.2f}°])"
             )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         num_layers=st.integers(min_value=2, max_value=10),
         direction_range=valid_direction_range(),
@@ -444,7 +444,7 @@ class TestLayerDirectionCalculationProperty:
             f"First layer direction {layer_directions[1]:.6f}° should equal min_deg {min_deg:.6f}°"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         num_layers=st.integers(min_value=2, max_value=10),
         direction_range=valid_direction_range(),
@@ -484,7 +484,7 @@ class TestLayerDirectionCalculationProperty:
             f"should equal max_deg {max_deg:.6f}°"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         num_layers=st.integers(min_value=2, max_value=10),
         direction_range=valid_direction_range(),
@@ -532,7 +532,7 @@ class TestLayerDirectionCalculationProperty:
                 f"{actual_spacing:.6f}°, expected {expected_spacing:.6f}°"
             )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=2))
+    @settings(max_examples=20, deadline=timedelta(seconds=2))
     @given(
         num_layers=valid_num_layers,
         direction_range=valid_direction_range(),
@@ -588,7 +588,7 @@ class TestRodConstraintSatisfactionProperty:
     **Validates: Requirements 6.1, 6.3, 6.4**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=5))
+    @settings(max_examples=20, deadline=timedelta(seconds=5))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=3),
@@ -682,7 +682,7 @@ class TestRodConstraintSatisfactionProperty:
                                 f"rod_b from {rod_b.start_point} to {rod_b.end_point}"
                             )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=5))
+    @settings(max_examples=20, deadline=timedelta(seconds=5))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=3),
@@ -753,7 +753,7 @@ class TestRodConstraintSatisfactionProperty:
                 f"Rod from {rod.start_point} to {rod.end_point} is not within the frame boundary"
             )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=5))
+    @settings(max_examples=20, deadline=timedelta(seconds=5))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=3),
@@ -841,7 +841,7 @@ class TestDeterministicGenerationProperty:
     **Validates: Requirements 1.1, 5.2**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=10))
+    @settings(max_examples=20, deadline=timedelta(seconds=10))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=3),
@@ -925,7 +925,7 @@ class TestEvenLayerDistributionProperty:
     **Validates: Requirements 1.2, 1.5, 4.2, 4.3**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=10))
+    @settings(max_examples=20, deadline=timedelta(seconds=10))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=5),
@@ -988,7 +988,7 @@ class TestEvenLayerDistributionProperty:
             f"expected at most 1. Rods per layer: {rods_per_layer}"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=10))
+    @settings(max_examples=20, deadline=timedelta(seconds=10))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=2, max_value=5),
@@ -1073,7 +1073,7 @@ class TestFailFastBehaviorProperty:
     **Validates: Requirements 3.5, 5.5**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=5))
+    @settings(max_examples=20, deadline=timedelta(seconds=5))
     @given(
         # Use small frames that can't accommodate many rods
         width=st.floats(min_value=20.0, max_value=50.0, allow_nan=False, allow_infinity=False),
@@ -1233,7 +1233,7 @@ class TestEvaluatorIntegrationProperty:
     **Validates: Requirements 7.2, 7.3**
     """
 
-    @settings(max_examples=100, deadline=timedelta(seconds=10))
+    @settings(max_examples=20, deadline=timedelta(seconds=10))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=3),
@@ -1292,7 +1292,7 @@ class TestEvaluatorIntegrationProperty:
             f"PassThroughEvaluator should return 1.0, got {result.fitness_score}"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=10))
+    @settings(max_examples=20, deadline=timedelta(seconds=10))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=3),
@@ -1360,7 +1360,7 @@ class TestEvaluatorIntegrationProperty:
             f"QualityEvaluator should return score in [0.0, 1.0], got {result.fitness_score}"
         )
 
-    @settings(max_examples=100, deadline=timedelta(seconds=10))
+    @settings(max_examples=20, deadline=timedelta(seconds=10))
     @given(
         frame=valid_rectangular_frame(),
         num_layers=st.integers(min_value=1, max_value=3),

@@ -13,6 +13,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from railing_generator.domain.infill_generators.evolutionary_infill_generator_parameters import (
+    EvolutionaryInfillGeneratorDefaults,
+    EvolutionaryInfillGeneratorParameters,
+)
 from railing_generator.domain.infill_generators.generator_parameters import (
     InfillGeneratorParameters,
 )
@@ -1030,6 +1034,320 @@ class UniformDirectionalGeneratorParameterWidget(GeneratorParameterWidget):
         infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
         assert isinstance(infill_weight, QDoubleSpinBox)
         infill_weight.setValue(params.infill_weight_per_meter_kg_m)
+
+        # Set evaluator type and parameters
+        if params.evaluator is not None and self.evaluator_type_combo is not None:
+            evaluator_type = params.evaluator.type
+            # Set combo box to correct evaluator type
+            index = self.evaluator_type_combo.findText(evaluator_type)
+            if index >= 0:
+                self.evaluator_type_combo.setCurrentIndex(index)
+            # Set evaluator parameters
+            if evaluator_type in self.evaluator_widgets:
+                self.evaluator_widgets[evaluator_type].set_parameters(params.evaluator)
+
+
+class EvolutionaryInfillGeneratorParameterWidget(GeneratorParameterWidget):
+    """
+    Parameter widget for evolutionary infill generator configuration.
+
+    Provides input fields for all evolutionary infill generator parameters with validation,
+    including baseline parameters (same as UniformDirectionalGenerator), evolutionary
+    optimization parameters, and nested evaluator parameter selection.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the evolutionary infill generator parameter widget."""
+        self._defaults = EvolutionaryInfillGeneratorDefaults()
+        # Dictionary of evaluator widgets (created in _create_widgets)
+        self.evaluator_widgets: dict[str, EvaluatorParameterWidget] = {}
+        self.evaluator_type_combo: QComboBox | None = None
+        self.evaluator_container: QWidget | None = None
+        super().__init__()
+
+    def _create_widgets(self) -> None:
+        """Create input widgets for evolutionary infill generator parameters."""
+        # === Baseline Parameters (same as UniformDirectionalGenerator) ===
+
+        # Number of rods
+        num_rods_spin = QSpinBox()
+        num_rods_spin.setRange(1, 200)
+        num_rods_spin.setSuffix(" rods")
+        self.form_layout.addRow("Number of Rods:", num_rods_spin)
+        self.field_widgets["num_rods"] = num_rods_spin
+
+        # Number of layers
+        num_layers_spin = QSpinBox()
+        num_layers_spin.setRange(1, 10)
+        num_layers_spin.setSuffix(" layers")
+        self.form_layout.addRow("Number of Layers:", num_layers_spin)
+        self.field_widgets["num_layers"] = num_layers_spin
+
+        # Main direction range min
+        main_direction_min_spin = QDoubleSpinBox()
+        main_direction_min_spin.setRange(-90.0, 90.0)
+        main_direction_min_spin.setSuffix(" °")
+        main_direction_min_spin.setDecimals(1)
+        self.form_layout.addRow("Direction Range Min:", main_direction_min_spin)
+        self.field_widgets["main_direction_range_min_deg"] = main_direction_min_spin
+
+        # Main direction range max
+        main_direction_max_spin = QDoubleSpinBox()
+        main_direction_max_spin.setRange(-90.0, 90.0)
+        main_direction_max_spin.setSuffix(" °")
+        main_direction_max_spin.setDecimals(1)
+        self.form_layout.addRow("Direction Range Max:", main_direction_max_spin)
+        self.field_widgets["main_direction_range_max_deg"] = main_direction_max_spin
+
+        # Min anchor distance
+        min_anchor_distance_spin = QDoubleSpinBox()
+        min_anchor_distance_spin.setRange(0.1, 100.0)
+        min_anchor_distance_spin.setSuffix(" cm")
+        min_anchor_distance_spin.setDecimals(1)
+        self.form_layout.addRow("Min Anchor Distance:", min_anchor_distance_spin)
+        self.field_widgets["min_anchor_distance_cm"] = min_anchor_distance_spin
+
+        # Infill weight per meter
+        infill_weight_spin = QDoubleSpinBox()
+        infill_weight_spin.setRange(0.01, 10.0)
+        infill_weight_spin.setSuffix(" kg/m")
+        infill_weight_spin.setDecimals(2)
+        self.form_layout.addRow("Infill Weight/Meter:", infill_weight_spin)
+        self.field_widgets["infill_weight_per_meter_kg_m"] = infill_weight_spin
+
+        # === Evolutionary Parameters ===
+        self.form_layout.addRow(QLabel())  # Spacer
+        evolutionary_label = QLabel("<b>Evolutionary Optimization</b>")
+        self.form_layout.addRow(evolutionary_label)
+
+        # Max iterations
+        max_iterations_spin = QSpinBox()
+        max_iterations_spin.setRange(1, 100000)
+        self.form_layout.addRow("Max Iterations:", max_iterations_spin)
+        self.field_widgets["max_iterations"] = max_iterations_spin
+
+        # Max duration
+        max_duration_spin = QDoubleSpinBox()
+        max_duration_spin.setRange(1.0, 3600.0)
+        max_duration_spin.setSuffix(" sec")
+        max_duration_spin.setDecimals(0)
+        self.form_layout.addRow("Max Duration:", max_duration_spin)
+        self.field_widgets["max_duration_sec"] = max_duration_spin
+
+        # Improvement threshold
+        improvement_threshold_spin = QDoubleSpinBox()
+        improvement_threshold_spin.setRange(0.0, 1.0)
+        improvement_threshold_spin.setDecimals(4)
+        improvement_threshold_spin.setSingleStep(0.001)
+        self.form_layout.addRow("Improvement Threshold:", improvement_threshold_spin)
+        self.field_widgets["improvement_threshold"] = improvement_threshold_spin
+
+        # Stagnation limit
+        stagnation_limit_spin = QSpinBox()
+        stagnation_limit_spin.setRange(1, 10000)
+        self.form_layout.addRow("Stagnation Limit:", stagnation_limit_spin)
+        self.field_widgets["stagnation_limit"] = stagnation_limit_spin
+
+        # === Evaluator Configuration ===
+        self.form_layout.addRow(QLabel())  # Spacer
+        evaluator_label = QLabel("<b>Evaluator Configuration</b>")
+        self.form_layout.addRow(evaluator_label)
+
+        # Evaluator type dropdown
+        self.evaluator_type_combo = QComboBox()
+        self.evaluator_type_combo.addItems(["passthrough", "quality"])
+        self.form_layout.addRow("Evaluator Type:", self.evaluator_type_combo)
+
+        # Container for evaluator parameter widgets
+        self.evaluator_container = QWidget()
+        evaluator_container_layout = QVBoxLayout(self.evaluator_container)
+        evaluator_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Create evaluator widgets
+        self.evaluator_widgets["passthrough"] = PassThroughEvaluatorParameterWidget()
+        self.evaluator_widgets["quality"] = QualityEvaluatorParameterWidget()
+
+        # Add all evaluator widgets to container (hide all except first)
+        for widget in self.evaluator_widgets.values():
+            evaluator_container_layout.addWidget(widget)
+            widget.hide()
+
+        # Show the default evaluator widget
+        self.evaluator_widgets["passthrough"].show()
+
+        # Add container to form
+        self.form_layout.addRow(self.evaluator_container)
+
+        # Connect evaluator type change signal
+        self.evaluator_type_combo.currentTextChanged.connect(self._on_evaluator_type_changed)
+
+    def _on_evaluator_type_changed(self, evaluator_type: str) -> None:
+        """Handle evaluator type selection change."""
+        # Hide all evaluator widgets
+        for widget in self.evaluator_widgets.values():
+            widget.hide()
+
+        # Show the selected evaluator widget
+        if evaluator_type in self.evaluator_widgets:
+            self.evaluator_widgets[evaluator_type].show()
+
+    def _load_defaults(self) -> None:
+        """Load default values into the widgets."""
+        # Baseline parameters
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+        num_rods.setValue(self._defaults.num_rods)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+        num_layers.setValue(self._defaults.num_layers)
+
+        main_direction_min = self.field_widgets["main_direction_range_min_deg"]
+        assert isinstance(main_direction_min, QDoubleSpinBox)
+        main_direction_min.setValue(self._defaults.main_direction_range_min_deg)
+
+        main_direction_max = self.field_widgets["main_direction_range_max_deg"]
+        assert isinstance(main_direction_max, QDoubleSpinBox)
+        main_direction_max.setValue(self._defaults.main_direction_range_max_deg)
+
+        min_anchor_distance = self.field_widgets["min_anchor_distance_cm"]
+        assert isinstance(min_anchor_distance, QDoubleSpinBox)
+        min_anchor_distance.setValue(self._defaults.min_anchor_distance_cm)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+        infill_weight.setValue(self._defaults.infill_weight_per_meter_kg_m)
+
+        # Evolutionary parameters
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+        max_iterations.setValue(self._defaults.max_iterations)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+        max_duration.setValue(self._defaults.max_duration_sec)
+
+        improvement_threshold = self.field_widgets["improvement_threshold"]
+        assert isinstance(improvement_threshold, QDoubleSpinBox)
+        improvement_threshold.setValue(self._defaults.improvement_threshold)
+
+        stagnation_limit = self.field_widgets["stagnation_limit"]
+        assert isinstance(stagnation_limit, QSpinBox)
+        stagnation_limit.setValue(self._defaults.stagnation_limit)
+
+    def get_parameters(self) -> EvolutionaryInfillGeneratorParameters:
+        """
+        Get the current parameter values as an EvolutionaryInfillGeneratorParameters instance.
+
+        Returns:
+            EvolutionaryInfillGeneratorParameters with current widget values
+        """
+        # Baseline parameters
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+
+        main_direction_min = self.field_widgets["main_direction_range_min_deg"]
+        assert isinstance(main_direction_min, QDoubleSpinBox)
+
+        main_direction_max = self.field_widgets["main_direction_range_max_deg"]
+        assert isinstance(main_direction_max, QDoubleSpinBox)
+
+        min_anchor_distance = self.field_widgets["min_anchor_distance_cm"]
+        assert isinstance(min_anchor_distance, QDoubleSpinBox)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+
+        # Evolutionary parameters
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+
+        improvement_threshold = self.field_widgets["improvement_threshold"]
+        assert isinstance(improvement_threshold, QDoubleSpinBox)
+
+        stagnation_limit = self.field_widgets["stagnation_limit"]
+        assert isinstance(stagnation_limit, QSpinBox)
+
+        # Get evaluator parameters from the active evaluator widget
+        assert self.evaluator_type_combo is not None
+        evaluator_type = self.evaluator_type_combo.currentText()
+        evaluator_params = self.evaluator_widgets[evaluator_type].get_parameters()
+
+        # Type narrowing: evaluator_params is EvaluatorParameters, which is compatible
+        # with the union type expected by EvolutionaryInfillGeneratorParameters
+        from railing_generator.domain.infill_generators.evolutionary_infill_generator_parameters import (
+            EvaluatorParametersUnion,
+        )
+        from typing import cast
+
+        evaluator_params_typed = cast(EvaluatorParametersUnion, evaluator_params)
+
+        return EvolutionaryInfillGeneratorParameters(
+            num_rods=num_rods.value(),
+            num_layers=num_layers.value(),
+            main_direction_range_min_deg=main_direction_min.value(),
+            main_direction_range_max_deg=main_direction_max.value(),
+            min_anchor_distance_cm=min_anchor_distance.value(),
+            infill_weight_per_meter_kg_m=infill_weight.value(),
+            max_iterations=max_iterations.value(),
+            max_duration_sec=max_duration.value(),
+            improvement_threshold=improvement_threshold.value(),
+            stagnation_limit=stagnation_limit.value(),
+            evaluator=evaluator_params_typed,
+        )
+
+    def set_parameters(self, params: InfillGeneratorParameters) -> None:
+        """Set the widget values from an EvolutionaryInfillGeneratorParameters object."""
+        if not isinstance(params, EvolutionaryInfillGeneratorParameters):
+            return
+
+        # Baseline parameters
+        num_rods = self.field_widgets["num_rods"]
+        assert isinstance(num_rods, QSpinBox)
+        num_rods.setValue(params.num_rods)
+
+        num_layers = self.field_widgets["num_layers"]
+        assert isinstance(num_layers, QSpinBox)
+        num_layers.setValue(params.num_layers)
+
+        main_direction_min = self.field_widgets["main_direction_range_min_deg"]
+        assert isinstance(main_direction_min, QDoubleSpinBox)
+        main_direction_min.setValue(params.main_direction_range_min_deg)
+
+        main_direction_max = self.field_widgets["main_direction_range_max_deg"]
+        assert isinstance(main_direction_max, QDoubleSpinBox)
+        main_direction_max.setValue(params.main_direction_range_max_deg)
+
+        min_anchor_distance = self.field_widgets["min_anchor_distance_cm"]
+        assert isinstance(min_anchor_distance, QDoubleSpinBox)
+        min_anchor_distance.setValue(params.min_anchor_distance_cm)
+
+        infill_weight = self.field_widgets["infill_weight_per_meter_kg_m"]
+        assert isinstance(infill_weight, QDoubleSpinBox)
+        infill_weight.setValue(params.infill_weight_per_meter_kg_m)
+
+        # Evolutionary parameters
+        max_iterations = self.field_widgets["max_iterations"]
+        assert isinstance(max_iterations, QSpinBox)
+        max_iterations.setValue(params.max_iterations)
+
+        max_duration = self.field_widgets["max_duration_sec"]
+        assert isinstance(max_duration, QDoubleSpinBox)
+        max_duration.setValue(params.max_duration_sec)
+
+        improvement_threshold = self.field_widgets["improvement_threshold"]
+        assert isinstance(improvement_threshold, QDoubleSpinBox)
+        improvement_threshold.setValue(params.improvement_threshold)
+
+        stagnation_limit = self.field_widgets["stagnation_limit"]
+        assert isinstance(stagnation_limit, QSpinBox)
+        stagnation_limit.setValue(params.stagnation_limit)
 
         # Set evaluator type and parameters
         if params.evaluator is not None and self.evaluator_type_combo is not None:
